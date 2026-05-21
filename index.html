@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#16001C">
+  <meta name="description" content="ZETINA — App para vendedoras por catálogo">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ZETINA">
+  <title>ZETINA</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-brand">
+      <svg class="star-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" fill="currentColor"/>
+      </svg>
+      <h1 class="logo">ZETINA</h1>
+      <svg class="star-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" fill="currentColor"/>
+      </svg>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <section id="catalogo" class="view active" aria-labelledby="nav-catalogo">
+      <div class="view-content"></div>
+    </section>
+    <section id="pedidos" class="view" aria-labelledby="nav-pedidos" hidden>
+      <div class="view-content"></div>
+    </section>
+    <section id="clientas" class="view" aria-labelledby="nav-clientas" hidden>
+      <div class="view-content"></div>
+    </section>
+    <section id="cobros" class="view" aria-labelledby="nav-cobros" hidden>
+      <div class="view-content"></div>
+    </section>
+    <section id="prendas" class="view" aria-labelledby="nav-prendas" hidden>
+      <div class="view-content"></div>
+    </section>
+    <section id="cuenta" class="view" aria-labelledby="nav-cuenta" hidden>
+      <div class="view-content"></div>
+    </section>
+  </main>
+
+  <nav class="bottom-nav" aria-label="Navegación principal">
+    <a href="#catalogo" id="nav-catalogo" class="nav-item active" data-view="catalogo">
+      <span class="nav-icon" aria-hidden="true">◇</span>
+      <span class="nav-label">Catálogo</span>
+    </a>
+    <a href="#pedidos" id="nav-pedidos" class="nav-item" data-view="pedidos">
+      <span class="nav-icon" aria-hidden="true">▣</span>
+      <span class="nav-label">Mis Pedidos</span>
+    </a>
+    <a href="#clientas" id="nav-clientas" class="nav-item" data-view="clientas">
+      <span class="nav-icon" aria-hidden="true">◎</span>
+      <span class="nav-label">Mis Clientas</span>
+    </a>
+    <a href="#cobros" id="nav-cobros" class="nav-item" data-view="cobros">
+      <span class="nav-icon" aria-hidden="true">$</span>
+      <span class="nav-label">Mis Cobros</span>
+    </a>
+    <a href="#prendas" id="nav-prendas" class="nav-item" data-view="prendas">
+      <span class="nav-icon" aria-hidden="true">✦</span>
+      <span class="nav-label">Mis Prendas</span>
+    </a>
+    <a href="#cuenta" id="nav-cuenta" class="nav-item" data-view="cuenta">
+      <span class="nav-icon" aria-hidden="true">○</span>
+      <span class="nav-label">Mi Cuenta</span>
+    </a>
+  </nav>
+
+  <script src="js/app.js" defer></script>
+</body>
+</html>

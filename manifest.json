@@ -1,0 +1,26 @@
+{
+  "name": "ZETINA — Vendedoras por catálogo",
+  "short_name": "ZETINA",
+  "description": "App para vendedoras de moda por catálogo",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#16001C",
+  "theme_color": "#16001C",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
