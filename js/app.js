@@ -71,7 +71,7 @@ function renderCatalog() {
       <article class="product-card">
         <div class="product-image" style="background: ${p.gradiente}">
           <span class="product-emoji" aria-hidden="true">${p.emoji}</span>
-          <span class="size-badge">${p.tallaEtiqueta} / ${p.tallaReal}</span>
+
         </div>
         <div class="product-info">
           <div class="product-meta">

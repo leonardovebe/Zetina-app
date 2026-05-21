@@ -246,7 +246,7 @@ h1, h2, h3, h4, h5, h6,
 
 .talla-chip {
   flex: 1;
-  background: #f5f5f5;
+  background: rgba(204, 184, 221, 0.15);
   border-radius: 0.625rem;
   padding: 0.375rem 0.625rem;
   display: flex;
@@ -314,7 +314,7 @@ h1, h2, h3, h4, h5, h6,
 
 .price-label {
   font-size: 0.8125rem;
-  color: #666;
+  color: #855AA2;
 }
 
 .price-row--ganancia .price-label {
