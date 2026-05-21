@@ -1092,12 +1092,9 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .cliente-card {
-  display: flex;
-  align-items: center;
-  gap: 0.875rem;
-  padding: 0.875rem;
   background: #fff;
   border-radius: 1rem;
+  overflow: hidden;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
   border: 1px solid rgba(0, 0, 0, 0.05);
   cursor: pointer;
@@ -1107,6 +1104,23 @@ h1, h2, h3, h4, h5, h6,
 
 .cliente-card:active {
   transform: scale(0.985);
+}
+
+.cliente-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.75rem 0.875rem;
+  background: #130016;
+}
+
+.cliente-card-body {
+  padding: 0.625rem 0.875rem 0.875rem;
+}
+
+.cliente-head-info {
+  flex: 1;
+  min-width: 0;
 }
 
 .cliente-avatar {
@@ -1139,7 +1153,7 @@ h1, h2, h3, h4, h5, h6,
   font-family: var(--font-heading);
   font-size: 0.9375rem;
   font-weight: 700;
-  color: #111;
+  color: #ffffff;
 }
 
 .badge-pendiente {

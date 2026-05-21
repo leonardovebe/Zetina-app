@@ -464,6 +464,8 @@ let clientes = [
     telefono: "5512345678",
     tallaRopa: "M",
     tallaPantalon: "30",
+    tallaCalzado: "24",
+    fechaCumpleanos: "1995-03-15",
     notas: "Prefiere colores oscuros. Paga puntualmente.",
     compras: [
       { prenda: "Blusa Satinada Manga Larga",  marca: "ZARA",       fecha: "2026-05-10", monto: 350, pagado: true  },
@@ -476,6 +478,8 @@ let clientes = [
     telefono: "5598765432",
     tallaRopa: "S",
     tallaPantalon: "28",
+    tallaCalzado: "22.5",
+    fechaCumpleanos: "1998-11-07",
     notas: "Le encantan los vestidos y blusas ligeras.",
     compras: [
       { prenda: "Pantalón Skinny de Mezclilla", marca: "BERSHKA", fecha: "2026-05-05", monto: 450, pagado: true },
@@ -487,6 +491,8 @@ let clientes = [
     telefono: "5567891234",
     tallaRopa: "L",
     tallaPantalon: "32",
+    tallaCalzado: "25",
+    fechaCumpleanos: "1990-07-22",
     notas: "Contactar solo por WhatsApp. Sin llamadas.",
     compras: [
       { prenda: "Chamarra de Cuero Sintético", marca: "PULL&BEAR", fecha: "2026-04-28", monto: 620, pagado: false },
@@ -497,7 +503,7 @@ let clientes = [
 
 const AVATAR_PALETTES = [
   { bg: "#855AA2", color: "#fff"     },
-  { bg: "#130016", color: "#DEFF00"  },
+  { bg: "#DEFF00", color: "#130016"  },
   { bg: "#CCB8DD", color: "#130016"  },
 ];
 
@@ -511,6 +517,14 @@ function iniciales(nombre) {
 
 function tienePendiente(c) {
   return c.compras.some((comp) => !comp.pagado);
+}
+
+const MESES_FULL = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+function formatCumpleanos(iso) {
+  if (!iso) return "";
+  const [, m, d] = iso.split("-");
+  return `${parseInt(d)} de ${MESES_FULL[parseInt(m) - 1]}`;
 }
 
 function saveClientes() {
@@ -532,13 +546,15 @@ function buildClienteCard(c) {
   return `
     <article class="cliente-card" data-id="${c.id}" role="button" tabindex="0"
              aria-label="Ver detalle de ${c.nombre}">
-      <div class="cliente-avatar" style="background:${bg};color:${color}">${iniciales(c.nombre)}</div>
-      <div class="cliente-info">
-        <div class="cliente-name-row">
+      <div class="cliente-card-head">
+        <div class="cliente-avatar" style="background:${bg};color:${color}">${iniciales(c.nombre)}</div>
+        <div class="cliente-head-info">
           <p class="cliente-name">${c.nombre}</p>
           ${pendiente ? `<span class="badge-pendiente">Pago pendiente</span>` : ""}
         </div>
-        <p class="cliente-talla">Talla ${c.tallaRopa} · Pantalón ${c.tallaPantalon}</p>
+      </div>
+      <div class="cliente-card-body">
+        <p class="cliente-talla">Talla ${c.tallaRopa} · Pantalón ${c.tallaPantalon}${c.tallaCalzado ? ` · Calzado ${c.tallaCalzado}` : ""}</p>
         <p class="cliente-phone">${c.telefono}</p>
       </div>
     </article>`;
@@ -650,6 +666,16 @@ function openClienteDetail(id) {
         <span class="detail-label">Talla de pantalón</span>
         <span class="detail-value">${c.tallaPantalon}</span>
       </div>
+      ${c.tallaCalzado ? `
+      <div class="detail-field">
+        <span class="detail-label">Talla de calzado</span>
+        <span class="detail-value">${c.tallaCalzado}</span>
+      </div>` : ""}
+      ${c.fechaCumpleanos ? `
+      <div class="detail-field">
+        <span class="detail-label">Cumpleaños</span>
+        <span class="detail-value">${formatCumpleanos(c.fechaCumpleanos)}</span>
+      </div>` : ""}
       ${c.notas ? `
       <div class="detail-field">
         <span class="detail-label">Notas</span>
@@ -704,6 +730,17 @@ function createClienteFormSheet() {
                      placeholder="Ej. 30" autocomplete="off">
             </div>
           </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="fTallaCalzado">Talla de calzado</label>
+              <input class="form-input" id="fTallaCalzado" name="tallaCalzado" type="text"
+                     placeholder="Ej. 24.5" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="fCumpleanos">Cumpleaños</label>
+              <input class="form-input" id="fCumpleanos" name="fechaCumpleanos" type="date">
+            </div>
+          </div>
           <div class="form-group">
             <label class="form-label" for="fNotas">Notas adicionales</label>
             <textarea class="form-textarea" id="fNotas" name="notas"
@@ -728,6 +765,8 @@ function createClienteFormSheet() {
       telefono: data.get("telefono").trim(),
       tallaRopa: data.get("tallaRopa"),
       tallaPantalon: data.get("tallaPantalon").trim(),
+      tallaCalzado: data.get("tallaCalzado").trim(),
+      fechaCumpleanos: data.get("fechaCumpleanos") || "",
       notas: data.get("notas").trim(),
       compras: [],
     });
