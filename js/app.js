@@ -309,7 +309,7 @@ function renderCatalog() {
               Compartir
             </a>
             <button class="btn-order" data-id="${p.id}">
-              Hacer pedido
+              Agregar al carrito
             </button>
           </div>
         </div>
@@ -332,7 +332,7 @@ function renderCatalog() {
     btn.style.color = "#130016";
     btn.disabled = true;
     setTimeout(() => {
-      btn.textContent = "Hacer pedido";
+      btn.textContent = "Agregar al carrito";
       btn.style.background = "";
       btn.style.color = "";
       btn.disabled = false;
