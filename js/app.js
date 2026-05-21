@@ -7,7 +7,8 @@ const productos = [
     id: 1,
     nombre: "Blusa Satinada Manga Larga",
     marca: "ZARA",
-    talla: "M",
+    tallaEtiqueta: "M",
+    tallaReal: "38",
     emoji: "👚",
     gradiente: "linear-gradient(150deg, #130016 0%, #855AA2 100%)",
     precioCosto: 185,
@@ -18,7 +19,8 @@ const productos = [
     id: 2,
     nombre: "Pantalón Skinny de Mezclilla",
     marca: "BERSHKA",
-    talla: "28",
+    tallaEtiqueta: "28",
+    tallaReal: "30",
     emoji: "👖",
     gradiente: "linear-gradient(150deg, #130016 0%, #CCB8DD 100%)",
     precioCosto: 245,
@@ -29,7 +31,8 @@ const productos = [
     id: 3,
     nombre: "Vestido Floral Midi",
     marca: "ZARA WOMAN",
-    talla: "S",
+    tallaEtiqueta: "S",
+    tallaReal: "36",
     emoji: "👗",
     gradiente: "linear-gradient(150deg, #855AA2 0%, #130016 100%)",
     precioCosto: 320,
@@ -49,7 +52,7 @@ function buildWhatsappUrl(p) {
   const ganMax = p.precioMax - p.precioCosto;
   const texto =
     `✨ *${p.nombre}*\n` +
-    `👗 Marca: ${p.marca}  |  Talla: ${p.talla}\n` +
+    `👗 Marca: ${p.marca}  |  Talla etiqueta: ${p.tallaEtiqueta}  |  Talla real: ${p.tallaReal}\n` +
     `💰 Precio: ${formatPeso(p.precioMin)} – ${formatPeso(p.precioMax)}\n\n` +
     `¡Escríbeme para apartar tu pieza! 🛍️`;
   return "https://wa.me/?text=" + encodeURIComponent(texto);
@@ -68,20 +71,30 @@ function renderCatalog() {
       <article class="product-card">
         <div class="product-image" style="background: ${p.gradiente}">
           <span class="product-emoji" aria-hidden="true">${p.emoji}</span>
-          <span class="size-badge">Talla ${p.talla}</span>
+          <span class="size-badge">${p.tallaEtiqueta} / ${p.tallaReal}</span>
         </div>
         <div class="product-info">
           <div class="product-meta">
             <span class="brand-chip">${p.marca}</span>
           </div>
           <h3 class="product-name">${p.nombre}</h3>
+          <div class="talla-row">
+            <div class="talla-chip">
+              <span class="talla-label">Talla etiqueta</span>
+              <span class="talla-val">${p.tallaEtiqueta}</span>
+            </div>
+            <div class="talla-chip">
+              <span class="talla-label">Talla real</span>
+              <span class="talla-val">${p.tallaReal}</span>
+            </div>
+          </div>
           <div class="price-table">
             <div class="price-row">
-              <span class="price-label">Precio mayoreo</span>
+              <span class="price-label">A ti te cuesta</span>
               <span class="price-val price-costo">${formatPeso(p.precioCosto)}</span>
             </div>
             <div class="price-row">
-              <span class="price-label">Precio de venta</span>
+              <span class="price-label">Lo puedes vender</span>
               <span class="price-val">${formatPeso(p.precioMin)} – ${formatPeso(p.precioMax)}</span>
             </div>
             <div class="price-row price-row--ganancia">
