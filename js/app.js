@@ -41,6 +41,69 @@ const productos = [
   },
 ];
 
+// ── Datos de pedidos ────────────────────────────────────────────────────────
+
+const pedidos = [
+  {
+    id: 1,
+    prenda: "Blusa Satinada Manga Larga",
+    marca: "ZARA",
+    emoji: "👚",
+    gradiente: "linear-gradient(150deg, #130016 0%, #855AA2 100%)",
+    cliente: "María González",
+    fecha: "2026-05-15",
+    monto: 350,
+    estado: "Por entregar",
+  },
+  {
+    id: 2,
+    prenda: "Pantalón Skinny de Mezclilla",
+    marca: "BERSHKA",
+    emoji: "👖",
+    gradiente: "linear-gradient(150deg, #130016 0%, #CCB8DD 100%)",
+    cliente: "Sofía Ramírez",
+    fecha: "2026-05-10",
+    monto: 450,
+    estado: "Pagado",
+  },
+  {
+    id: 3,
+    prenda: "Vestido Floral Midi",
+    marca: "ZARA WOMAN",
+    emoji: "👗",
+    gradiente: "linear-gradient(150deg, #855AA2 0%, #130016 100%)",
+    cliente: "Lucía Hernández",
+    fecha: "2026-05-08",
+    monto: 580,
+    estado: "Pendiente de pago",
+  },
+  {
+    id: 4,
+    prenda: "Chamarra de Cuero Sintético",
+    marca: "PULL&BEAR",
+    emoji: "🧥",
+    gradiente: "linear-gradient(150deg, #CCB8DD 0%, #855AA2 100%)",
+    cliente: "Andrea Torres",
+    fecha: "2026-05-03",
+    monto: 620,
+    estado: "Entregado",
+  },
+];
+
+const ESTADO_CONFIG = {
+  "Por entregar":      { bg: "#CCB8DD", color: "#130016" },
+  "Pagado":            { bg: "#DEFF00", color: "#130016" },
+  "Pendiente de pago": { bg: "#855AA2", color: "#ffffff" },
+  "Entregado":         { bg: "#e8e0f0", color: "#5a3e6b" },
+};
+
+const MESES_ES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+
+function formatFecha(iso) {
+  const [y, m, d] = iso.split("-");
+  return `${parseInt(d)} ${MESES_ES[parseInt(m) - 1]}. ${y}`;
+}
+
 // ── Utilidades ──────────────────────────────────────────────────────────────
 
 function formatPeso(n) {
@@ -128,6 +191,58 @@ function renderCatalog() {
     <div class="catalog-grid">${cards.join("")}</div>`;
 }
 
+// ── Render: Pedidos ─────────────────────────────────────────────────────────
+
+function renderPedidos() {
+  const container = document.querySelector("#pedidos .view-content");
+
+  const orderCards = pedidos.map((p) => {
+    const { bg, color } = ESTADO_CONFIG[p.estado] || { bg: "#eee", color: "#333" };
+    return `
+      <article class="order-card" data-estado="${p.estado}">
+        <div class="order-thumb" style="background:${p.gradiente}">
+          <span class="order-emoji" aria-hidden="true">${p.emoji}</span>
+        </div>
+        <div class="order-details">
+          <p class="order-name">${p.prenda}</p>
+          <p class="order-meta"><span class="order-brand">${p.marca}</span> · ${formatFecha(p.fecha)}</p>
+          <p class="order-client">${p.cliente}</p>
+          <div class="order-footer">
+            <span class="order-amount">${formatPeso(p.monto)}</span>
+            <span class="status-badge" style="background:${bg};color:${color}">${p.estado}</span>
+          </div>
+        </div>
+      </article>`;
+  }).join("");
+
+  container.innerHTML = `
+    <div class="pedidos-header">
+      <h2 class="catalog-title">Pedidos</h2>
+      <p class="catalog-subtitle">${pedidos.length} pedidos en total</p>
+    </div>
+    <div class="pedidos-filters">
+      <button class="filter-btn active" data-filter="todos">Todos</button>
+      <button class="filter-btn" data-filter="pendientes">Pendientes</button>
+      <button class="filter-btn" data-filter="pagados">Pagados</button>
+    </div>
+    <div class="orders-list">${orderCards}</div>`;
+
+  container.querySelector(".pedidos-filters").addEventListener("click", (e) => {
+    const btn = e.target.closest(".filter-btn");
+    if (!btn) return;
+    container.querySelectorAll(".filter-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    const filter = btn.dataset.filter;
+    container.querySelectorAll(".order-card").forEach((card) => {
+      const estado = card.dataset.estado;
+      let visible = true;
+      if (filter === "pendientes") visible = estado === "Por entregar" || estado === "Pendiente de pago";
+      if (filter === "pagados")    visible = estado === "Pagado" || estado === "Entregado";
+      card.style.display = visible ? "" : "none";
+    });
+  });
+}
+
 // ── Render: secciones vacías ────────────────────────────────────────────────
 
 function renderSection(viewId, titulo) {
@@ -178,7 +293,7 @@ window.addEventListener("hashchange", () => {
 // ── Init ────────────────────────────────────────────────────────────────────
 
 renderCatalog();
-renderSection("pedidos",  "Pedidos");
+renderPedidos();
 renderSection("clientes", "Clientes");
 renderSection("cobros",   "Cobros");
 renderSection("prendas",  "Mis Prendas");
