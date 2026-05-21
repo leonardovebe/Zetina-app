@@ -455,6 +455,293 @@ function renderPedidos() {
   });
 }
 
+// ── Datos de clientes ────────────────────────────────────────────────────────
+
+let clientes = [
+  {
+    id: 1,
+    nombre: "María González",
+    telefono: "5512345678",
+    tallaRopa: "M",
+    tallaPantalon: "30",
+    notas: "Prefiere colores oscuros. Paga puntualmente.",
+    compras: [
+      { prenda: "Blusa Satinada Manga Larga",  marca: "ZARA",       fecha: "2026-05-10", monto: 350, pagado: true  },
+      { prenda: "Vestido Floral Midi",          marca: "ZARA WOMAN", fecha: "2026-05-18", monto: 580, pagado: false },
+    ],
+  },
+  {
+    id: 2,
+    nombre: "Sofía Ramírez",
+    telefono: "5598765432",
+    tallaRopa: "S",
+    tallaPantalon: "28",
+    notas: "Le encantan los vestidos y blusas ligeras.",
+    compras: [
+      { prenda: "Pantalón Skinny de Mezclilla", marca: "BERSHKA", fecha: "2026-05-05", monto: 450, pagado: true },
+    ],
+  },
+  {
+    id: 3,
+    nombre: "Lucía Hernández",
+    telefono: "5567891234",
+    tallaRopa: "L",
+    tallaPantalon: "32",
+    notas: "Contactar solo por WhatsApp. Sin llamadas.",
+    compras: [
+      { prenda: "Chamarra de Cuero Sintético", marca: "PULL&BEAR", fecha: "2026-04-28", monto: 620, pagado: false },
+      { prenda: "Falda Plisada Mini",           marca: "H&M",       fecha: "2026-05-12", monto: 280, pagado: false },
+    ],
+  },
+];
+
+const AVATAR_PALETTES = [
+  { bg: "#855AA2", color: "#fff"     },
+  { bg: "#130016", color: "#DEFF00"  },
+  { bg: "#CCB8DD", color: "#130016"  },
+];
+
+function avatarPalette(id) {
+  return AVATAR_PALETTES[(id - 1) % AVATAR_PALETTES.length];
+}
+
+function iniciales(nombre) {
+  return nombre.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+}
+
+function tienePendiente(c) {
+  return c.compras.some((comp) => !comp.pagado);
+}
+
+function saveClientes() {
+  try { localStorage.setItem("zetina_clientes", JSON.stringify(clientes)); } catch(e) {}
+}
+
+function loadClientes() {
+  try {
+    const stored = localStorage.getItem("zetina_clientes");
+    if (stored) { clientes = JSON.parse(stored); } else { saveClientes(); }
+  } catch(e) {}
+}
+
+// ── Render: Clientes ─────────────────────────────────────────────────────────
+
+function buildClienteCard(c) {
+  const { bg, color } = avatarPalette(c.id);
+  const pendiente = tienePendiente(c);
+  return `
+    <article class="cliente-card" data-id="${c.id}" role="button" tabindex="0"
+             aria-label="Ver detalle de ${c.nombre}">
+      <div class="cliente-avatar" style="background:${bg};color:${color}">${iniciales(c.nombre)}</div>
+      <div class="cliente-info">
+        <div class="cliente-name-row">
+          <p class="cliente-name">${c.nombre}</p>
+          ${pendiente ? `<span class="badge-pendiente">Pago pendiente</span>` : ""}
+        </div>
+        <p class="cliente-talla">Talla ${c.tallaRopa} · Pantalón ${c.tallaPantalon}</p>
+        <p class="cliente-phone">${c.telefono}</p>
+      </div>
+    </article>`;
+}
+
+function renderClientesList(container, query = "") {
+  const filtered = query
+    ? clientes.filter((c) => c.nombre.toLowerCase().includes(query.toLowerCase()))
+    : clientes;
+  const list = container.querySelector(".clientes-list");
+  if (!list) return;
+  list.innerHTML = filtered.length
+    ? filtered.map(buildClienteCard).join("")
+    : `<div class="clientes-empty"><p class="clientes-empty-text">Sin resultados</p></div>`;
+}
+
+function renderClientes() {
+  const container = document.querySelector("#clientes .view-content");
+  container.innerHTML = `
+    <div class="clientes-header">
+      <h2 class="catalog-title">Clientes</h2>
+      <p class="catalog-subtitle">${clientes.length} clientas registradas</p>
+    </div>
+    <div class="clientes-toolbar">
+      <div class="search-wrap">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input class="search-input" id="clienteSearch" type="search" placeholder="Buscar clienta...">
+      </div>
+      <button class="btn-add-cliente" id="btnAddCliente" aria-label="Agregar clienta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+             stroke-linecap="round" aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="clientes-list"></div>`;
+
+  renderClientesList(container);
+
+  container.querySelector("#clienteSearch").addEventListener("input", (e) => {
+    renderClientesList(container, e.target.value.trim());
+  });
+  container.querySelector("#btnAddCliente").addEventListener("click", openClienteForm);
+  container.querySelector(".clientes-list").addEventListener("click", (e) => {
+    const card = e.target.closest(".cliente-card");
+    if (card) openClienteDetail(parseInt(card.dataset.id));
+  });
+}
+
+function createClienteDetailSheet() {
+  if (document.getElementById("clienteDetailOverlay")) return;
+  const overlay = document.createElement("div");
+  overlay.id = "clienteDetailOverlay";
+  overlay.className = "order-detail-overlay";
+  overlay.innerHTML = `
+    <div class="order-detail-sheet">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-body" id="clienteDetailBody"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.classList.remove("open");
+  });
+}
+
+function openClienteDetail(id) {
+  const c = clientes.find((cl) => cl.id === id);
+  if (!c) return;
+  const { bg, color } = avatarPalette(c.id);
+  const pendiente = tienePendiente(c);
+
+  const comprasHTML = c.compras.length
+    ? c.compras.map((comp) => `
+        <div class="compra-row">
+          <div class="compra-info">
+            <p class="compra-prenda">${comp.prenda}</p>
+            <p class="compra-meta">${comp.marca} · ${formatFecha(comp.fecha)}</p>
+          </div>
+          <div class="compra-right">
+            <p class="compra-monto">${formatPeso(comp.monto)}</p>
+            <span class="compra-status ${comp.pagado ? "compra-pagado" : "compra-pendiente"}">
+              ${comp.pagado ? "Pagado" : "Pendiente"}
+            </span>
+          </div>
+        </div>`).join("")
+    : `<p class="compras-empty">Sin compras registradas</p>`;
+
+  document.getElementById("clienteDetailBody").innerHTML = `
+    <div class="detail-avatar-row">
+      <div class="detail-avatar" style="background:${bg};color:${color}">${iniciales(c.nombre)}</div>
+      <div>
+        <h3 class="detail-nombre">${c.nombre}</h3>
+        ${pendiente ? `<span class="badge-pendiente">Pago pendiente</span>` : ""}
+      </div>
+    </div>
+    <div class="detail-fields">
+      <div class="detail-field">
+        <span class="detail-label">Teléfono</span>
+        <span class="detail-value">${c.telefono}</span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-label">Talla de ropa</span>
+        <span class="detail-value">${c.tallaRopa}</span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-label">Talla de pantalón</span>
+        <span class="detail-value">${c.tallaPantalon}</span>
+      </div>
+      ${c.notas ? `
+      <div class="detail-field">
+        <span class="detail-label">Notas</span>
+        <span class="detail-value detail-notes">${c.notas}</span>
+      </div>` : ""}
+    </div>
+    <a href="https://wa.me/52${c.telefono}" target="_blank" rel="noopener noreferrer"
+       class="btn-wa-cliente">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${WA_PATH}"/></svg>
+      Contactar por WhatsApp
+    </a>
+    <p class="sheet-section-label" style="margin-top:1.25rem">
+      Historial de compras (${c.compras.length})
+    </p>
+    <div class="compras-list">${comprasHTML}</div>`;
+
+  document.getElementById("clienteDetailOverlay").classList.add("open");
+}
+
+function createClienteFormSheet() {
+  if (document.getElementById("clienteFormOverlay")) return;
+  const overlay = document.createElement("div");
+  overlay.id = "clienteFormOverlay";
+  overlay.className = "order-detail-overlay";
+  overlay.innerHTML = `
+    <div class="order-detail-sheet">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-body">
+        <h3 class="cart-title" style="margin-bottom:1.25rem">Nueva clienta</h3>
+        <form id="clienteForm" class="cliente-form">
+          <div class="form-group">
+            <label class="form-label" for="fNombre">Nombre completo</label>
+            <input class="form-input" id="fNombre" name="nombre" type="text"
+                   placeholder="Ej. Ana López" required autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="fTelefono">Teléfono</label>
+            <input class="form-input" id="fTelefono" name="telefono" type="tel"
+                   placeholder="10 dígitos" required autocomplete="off">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="fTallaRopa">Talla de ropa</label>
+              <select class="form-select" id="fTallaRopa" name="tallaRopa">
+                <option>XS</option><option>S</option><option selected>M</option>
+                <option>L</option><option>XL</option><option>XXL</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="fTallaPant">Talla pantalón</label>
+              <input class="form-input" id="fTallaPant" name="tallaPantalon" type="text"
+                     placeholder="Ej. 30" autocomplete="off">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="fNotas">Notas adicionales</label>
+            <textarea class="form-textarea" id="fNotas" name="notas"
+                      placeholder="Colores favoritos, estilo, forma de pago..."></textarea>
+          </div>
+          <button type="submit" class="btn-save-cliente">Guardar clienta</button>
+        </form>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.classList.remove("open");
+  });
+
+  overlay.querySelector("#clienteForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const data = new FormData(e.target);
+    clientes.unshift({
+      id: Date.now(),
+      nombre: data.get("nombre").trim(),
+      telefono: data.get("telefono").trim(),
+      tallaRopa: data.get("tallaRopa"),
+      tallaPantalon: data.get("tallaPantalon").trim(),
+      notas: data.get("notas").trim(),
+      compras: [],
+    });
+    saveClientes();
+    overlay.classList.remove("open");
+    e.target.reset();
+    renderClientes();
+  });
+}
+
+function openClienteForm() {
+  document.getElementById("clienteFormOverlay").classList.add("open");
+}
+
 // ── Render: secciones vacías ────────────────────────────────────────────────
 
 function renderSection(viewId, titulo) {
@@ -504,12 +791,15 @@ window.addEventListener("hashchange", () => {
 
 // ── Init ────────────────────────────────────────────────────────────────────
 
+loadClientes();
 renderCatalog();
 renderPedidos();
+renderClientes();
 createOrderDetailSheet();
+createClienteDetailSheet();
+createClienteFormSheet();
 createCartSheet();
 document.getElementById("cartBtn").addEventListener("click", openCartSheet);
-renderSection("clientes", "Clientes");
 renderSection("cobros",   "Cobros");
 renderSection("prendas",  "Mis Prendas");
 renderSection("cuenta",   "Cuenta");
