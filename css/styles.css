@@ -14,7 +14,8 @@
   --color-accent: #DEFF00;
   --color-purple: #855AA2;
   --color-lavender: #CCB8DD;
-  --font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --font-body: 'Poppins', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Montserrat', system-ui, -apple-system, sans-serif;
   --header-height: 3.5rem;
   --nav-height: 5.25rem;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -28,7 +29,7 @@ html {
 body {
   min-height: 100%;
   min-height: 100dvh;
-  font-family: var(--font-family);
+  font-family: var(--font-body);
   font-size: 1rem;
   line-height: 1.5;
   background-color: var(--color-bg);
@@ -152,6 +153,13 @@ body {
   .nav-label {
     font-size: 0.75rem;
   }
+}
+
+/* Montserrat en títulos y encabezados */
+h1, h2, h3, h4, h5, h6,
+.catalog-title,
+.product-name {
+  font-family: var(--font-heading);
 }
 
 /* ── Catálogo ────────────────────────────────────────────────────────────── */
