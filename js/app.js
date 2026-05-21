@@ -536,6 +536,11 @@ function loadClientes() {
     const stored = localStorage.getItem("zetina_clientes");
     if (stored) { clientes = JSON.parse(stored); } else { saveClientes(); }
   } catch(e) {}
+  let changed = false;
+  clientes.forEach((c, ci) => c.compras.forEach((comp, cj) => {
+    if (!comp.id) { comp.id = Date.now() + ci * 100 + cj; changed = true; }
+  }));
+  if (changed) saveClientes();
 }
 
 // ── Render: Clientes ─────────────────────────────────────────────────────────
@@ -621,6 +626,10 @@ function createClienteDetailSheet() {
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) overlay.classList.remove("open");
   });
+  overlay.querySelector(".sheet-body").addEventListener("click", (e) => {
+    const btn = e.target.closest(".btn-registrar-venta");
+    if (btn) openVentaForm(parseInt(btn.dataset.id));
+  });
 }
 
 function openClienteDetail(id) {
@@ -687,7 +696,14 @@ function openClienteDetail(id) {
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${WA_PATH}"/></svg>
       Contactar por WhatsApp
     </a>
-    <p class="sheet-section-label" style="margin-top:1.25rem">
+    <button class="btn-registrar-venta" data-id="${c.id}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+           stroke-linecap="round" aria-hidden="true">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      Registrar venta
+    </button>
+    <p class="sheet-section-label">
       Historial de compras (${c.compras.length})
     </p>
     <div class="compras-list">${comprasHTML}</div>`;
@@ -781,6 +797,99 @@ function openClienteForm() {
   document.getElementById("clienteFormOverlay").classList.add("open");
 }
 
+// ── Venta ────────────────────────────────────────────────────────────────────
+
+function getMisPrendas() {
+  const seen = new Set();
+  const result = [];
+  pedidos.forEach((p) => p.prendas.forEach((pr) => {
+    const key = `${pr.nombre}|${pr.marca}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push({ nombre: pr.nombre, marca: pr.marca, emoji: pr.emoji || "👗" });
+    }
+  }));
+  return result;
+}
+
+let currentVentaClienteId = null;
+
+function createVentaFormSheet() {
+  if (document.getElementById("ventaFormOverlay")) return;
+  const overlay = document.createElement("div");
+  overlay.id = "ventaFormOverlay";
+  overlay.className = "venta-form-overlay";
+  overlay.innerHTML = `
+    <div class="order-detail-sheet">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-body">
+        <h3 class="cart-title" style="margin-bottom:1.25rem">Registrar venta</h3>
+        <form id="ventaForm" class="cliente-form">
+          <div class="form-group">
+            <label class="form-label" for="fPrenda">Prenda vendida</label>
+            <select class="form-select" id="fPrenda" name="prendaKey" required></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="fMonto">Precio de venta</label>
+            <input class="form-input" id="fMonto" name="monto" type="number"
+                   min="1" step="1" placeholder="Ej. 350" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="fFechaVenta">Fecha de venta</label>
+              <input class="form-input" id="fFechaVenta" name="fecha" type="date" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="fPagado">Estado de pago</label>
+              <select class="form-select" id="fPagado" name="pagado">
+                <option value="false">Pendiente</option>
+                <option value="true">Pagado</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="btn-save-cliente">Guardar venta</button>
+        </form>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.classList.remove("open");
+  });
+
+  overlay.querySelector("#ventaForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const data = new FormData(e.target);
+    const [nombre, marca] = data.get("prendaKey").split("|");
+    const c = clientes.find((cl) => cl.id === currentVentaClienteId);
+    if (!c) return;
+    c.compras.unshift({
+      id: Date.now(),
+      prenda: nombre,
+      marca: marca || "",
+      fecha: data.get("fecha"),
+      monto: parseFloat(data.get("monto")) || 0,
+      pagado: data.get("pagado") === "true",
+    });
+    saveClientes();
+    overlay.classList.remove("open");
+    e.target.reset();
+    openClienteDetail(currentVentaClienteId);
+    renderCobros();
+  });
+}
+
+function openVentaForm(clienteId) {
+  currentVentaClienteId = clienteId;
+  const select = document.getElementById("fPrenda");
+  const prendas = getMisPrendas();
+  select.innerHTML = prendas.length
+    ? prendas.map((p) => `<option value="${p.nombre}|${p.marca}">${p.emoji} ${p.nombre} — ${p.marca}</option>`).join("")
+    : `<option value="Otra prenda|">Sin prendas en inventario</option>`;
+  document.getElementById("fFechaVenta").value = new Date().toISOString().split("T")[0];
+  document.getElementById("ventaFormOverlay").classList.add("open");
+}
+
 // ── Render: secciones vacías ────────────────────────────────────────────────
 
 function renderSection(viewId, titulo) {
@@ -789,6 +898,74 @@ function renderSection(viewId, titulo) {
     <div class="catalog-header">
       <h2 class="catalog-title">${titulo}</h2>
     </div>`;
+}
+
+// ── Render: Cobros ──────────────────────────────────────────────────────────
+
+function renderCobros() {
+  const container = document.querySelector("#cobros .view-content");
+  const pendientes = [];
+  clientes.forEach((c) => {
+    c.compras.filter((comp) => !comp.pagado).forEach((comp) => {
+      pendientes.push({ cliente: c, comp });
+    });
+  });
+  pendientes.sort((a, b) => b.comp.fecha.localeCompare(a.comp.fecha));
+
+  const total = pendientes.reduce((sum, { comp }) => sum + comp.monto, 0);
+
+  if (pendientes.length === 0) {
+    container.innerHTML = `
+      <div class="cobros-header">
+        <h2 class="catalog-title">Cobros</h2>
+        <p class="catalog-subtitle">Sin pagos pendientes</p>
+      </div>
+      <div class="cobros-empty">
+        <p class="cobros-empty-icon">💰</p>
+        <p class="cobros-empty-text">Todo está al corriente</p>
+      </div>`;
+    return;
+  }
+
+  const rows = pendientes.map(({ cliente, comp }) => `
+    <div class="cobro-card">
+      <div class="cobro-info">
+        <p class="cobro-cliente">${cliente.nombre}</p>
+        <p class="cobro-prenda">${comp.prenda}${comp.marca ? ` · ${comp.marca}` : ""}</p>
+        <p class="cobro-fecha">${formatFecha(comp.fecha)}</p>
+      </div>
+      <div class="cobro-right">
+        <p class="cobro-monto">${formatPeso(comp.monto)}</p>
+        <button class="btn-marcar-pagado"
+                data-cliente-id="${cliente.id}"
+                data-compra-id="${comp.id}">Cobrado ✓</button>
+      </div>
+    </div>`).join("");
+
+  container.innerHTML = `
+    <div class="cobros-header">
+      <h2 class="catalog-title">Cobros</h2>
+      <p class="catalog-subtitle">${pendientes.length} pago${pendientes.length !== 1 ? "s" : ""} pendiente${pendientes.length !== 1 ? "s" : ""}</p>
+    </div>
+    <div class="cobros-total-bar">
+      <span class="cobros-total-label">Total por cobrar</span>
+      <span class="cobros-total-value">${formatPeso(total)}</span>
+    </div>
+    <div class="cobros-list">${rows}</div>`;
+
+  container.querySelector(".cobros-list").addEventListener("click", (e) => {
+    const btn = e.target.closest(".btn-marcar-pagado");
+    if (!btn) return;
+    const clienteId = parseInt(btn.dataset.clienteId);
+    const compraId  = parseInt(btn.dataset.compraId);
+    const c = clientes.find((cl) => cl.id === clienteId);
+    if (!c) return;
+    const comp = c.compras.find((cp) => cp.id === compraId);
+    if (!comp) return;
+    comp.pagado = true;
+    saveClientes();
+    renderCobros();
+  });
 }
 
 // ── Navegación ──────────────────────────────────────────────────────────────
@@ -805,6 +982,8 @@ function showView(viewId) {
   document.querySelectorAll(".nav-item").forEach((link) => {
     link.classList.toggle("active", link.dataset.view === viewId);
   });
+
+  if (viewId === "cobros") renderCobros();
 }
 
 function getViewFromHash() {
@@ -837,9 +1016,10 @@ renderClientes();
 createOrderDetailSheet();
 createClienteDetailSheet();
 createClienteFormSheet();
+createVentaFormSheet();
 createCartSheet();
 document.getElementById("cartBtn").addEventListener("click", openCartSheet);
-renderSection("cobros",   "Cobros");
+renderCobros();
 renderSection("prendas",  "Mis Prendas");
 renderSection("cuenta",   "Cuenta");
 showView(getViewFromHash());
