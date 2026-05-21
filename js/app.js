@@ -6,14 +6,10 @@ let carrito = [];
 
 function addToCarrito(id) {
   const producto = productos.find((p) => p.id === id);
-  if (!producto) return;
-  const existing = carrito.find((item) => item.producto.id === id);
-  if (existing) {
-    existing.cantidad++;
-  } else {
-    carrito.push({ producto, cantidad: 1 });
-  }
+  if (!producto || carrito.some((p) => p.id === id)) return false;
+  carrito.push(producto);
   updateCartBadge();
+  return true;
 }
 
 function clearCarrito() {
@@ -22,27 +18,21 @@ function clearCarrito() {
 }
 
 function totalCarrito() {
-  return carrito.reduce((sum, item) => sum + item.producto.precioCosto * item.cantidad, 0);
-}
-
-function countCarrito() {
-  return carrito.reduce((sum, item) => sum + item.cantidad, 0);
+  return carrito.reduce((sum, p) => sum + p.precioCosto, 0);
 }
 
 function updateCartBadge() {
   const btn = document.getElementById("cartBtn");
   const badge = document.getElementById("cartBadge");
   if (!btn) return;
-  const count = countCarrito();
-  btn.hidden = count === 0;
-  badge.textContent = count;
+  btn.hidden = carrito.length === 0;
+  badge.textContent = carrito.length;
 }
 
 function buildCartWhatsappUrl() {
-  const lines = carrito.map(({ producto: p, cantidad }) => {
-    const qty = cantidad > 1 ? ` x${cantidad}` : "";
-    return `${p.emoji} ${p.nombre} - ${p.marca} | Talla ${p.tallaEtiqueta}/${p.tallaReal}${qty} | ${formatPeso(p.precioCosto * cantidad)}`;
-  });
+  const lines = carrito.map((p) =>
+    `${p.emoji} ${p.nombre} - ${p.marca} | Talla ${p.tallaEtiqueta}/${p.tallaReal} | ${formatPeso(p.precioCosto)}`
+  );
   const msg =
     `Hola ZETINA! 👋 Quisiera hacer el siguiente pedido:\n\n` +
     lines.join("\n") +
@@ -66,25 +56,17 @@ function refreshCartSheet() {
     return;
   }
 
-  const items = carrito.map((item, idx) => {
-    const { producto: p, cantidad } = item;
-    return `
-      <div class="cart-item">
-        <div class="cart-item-thumb" style="background:${p.gradiente}">
-          <span aria-hidden="true">${p.emoji}</span>
-        </div>
-        <div class="cart-item-info">
-          <p class="cart-item-name">${p.nombre}</p>
-          <p class="cart-item-meta">${p.marca} · Talla ${p.tallaEtiqueta}</p>
-          <p class="cart-item-price">${formatPeso(p.precioCosto)}</p>
-        </div>
-        <div class="cart-item-qty">
-          <button class="qty-btn" data-idx="${idx}" data-action="dec">−</button>
-          <span class="qty-val">${cantidad}</span>
-          <button class="qty-btn" data-idx="${idx}" data-action="inc">+</button>
-        </div>
-      </div>`;
-  }).join("");
+  const items = carrito.map((p) => `
+    <div class="cart-item">
+      <div class="cart-item-thumb" style="background:${p.gradiente}">
+        <span aria-hidden="true">${p.emoji}</span>
+      </div>
+      <div class="cart-item-info">
+        <p class="cart-item-name">${p.nombre}</p>
+        <p class="cart-item-meta">${p.marca} · Talla ${p.tallaEtiqueta}</p>
+        <p class="cart-item-price">${formatPeso(p.precioCosto)}</p>
+      </div>
+    </div>`).join("");
 
   body.innerHTML = `
     <div class="cart-head">
@@ -132,19 +114,7 @@ function createCartSheet() {
     if (e.target.closest("#cartClearBtn")) {
       clearCarrito();
       closeCartSheet();
-      return;
     }
-    const qtyBtn = e.target.closest(".qty-btn");
-    if (!qtyBtn) return;
-    const idx = parseInt(qtyBtn.dataset.idx);
-    if (qtyBtn.dataset.action === "inc") {
-      carrito[idx].cantidad++;
-    } else {
-      carrito[idx].cantidad--;
-      if (carrito[idx].cantidad <= 0) carrito.splice(idx, 1);
-    }
-    updateCartBadge();
-    refreshCartSheet();
   });
 }
 
@@ -326,17 +296,22 @@ function renderCatalog() {
   container.querySelector(".catalog-grid").addEventListener("click", (e) => {
     const btn = e.target.closest(".btn-order");
     if (!btn) return;
-    addToCarrito(parseInt(btn.dataset.id));
-    btn.textContent = "✓ Agregado";
-    btn.style.background = "#DEFF00";
-    btn.style.color = "#130016";
-    btn.disabled = true;
-    setTimeout(() => {
-      btn.textContent = "Agregar al carrito";
-      btn.style.background = "";
-      btn.style.color = "";
-      btn.disabled = false;
-    }, 1400);
+    const added = addToCarrito(parseInt(btn.dataset.id));
+    if (added) {
+      btn.textContent = "✓ Agregado";
+      btn.style.background = "#DEFF00";
+      btn.style.color = "#130016";
+      btn.disabled = true;
+      setTimeout(() => {
+        btn.textContent = "Agregar al carrito";
+        btn.style.background = "";
+        btn.style.color = "";
+        btn.disabled = false;
+      }, 1400);
+    } else {
+      btn.textContent = "Ya en carrito";
+      setTimeout(() => { btn.textContent = "Agregar al carrito"; }, 1400);
+    }
   });
 }
 
