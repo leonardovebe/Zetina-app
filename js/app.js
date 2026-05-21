@@ -115,6 +115,16 @@ function renderCatalog() {
     <div class="catalog-grid">${cards.join("")}</div>`;
 }
 
+// ── Render: secciones vacías ────────────────────────────────────────────────
+
+function renderSection(viewId, titulo) {
+  const container = document.querySelector(`#${viewId} .view-content`);
+  container.innerHTML = `
+    <div class="catalog-header">
+      <h2 class="catalog-title">${titulo}</h2>
+    </div>`;
+}
+
 // ── Navegación ──────────────────────────────────────────────────────────────
 
 function showView(viewId) {
@@ -155,6 +165,11 @@ window.addEventListener("hashchange", () => {
 // ── Init ────────────────────────────────────────────────────────────────────
 
 renderCatalog();
+renderSection("pedidos",  "Pedidos");
+renderSection("clientes", "Clientes");
+renderSection("cobros",   "Cobros");
+renderSection("prendas",  "Mis Prendas");
+renderSection("cuenta",   "Cuenta");
 showView(getViewFromHash());
 
 if ("serviceWorker" in navigator) {
