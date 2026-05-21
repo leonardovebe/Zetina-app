@@ -46,33 +46,33 @@ const productos = [
 const pedidos = [
   {
     id: 1,
-    prenda: "Blusa Satinada Manga Larga",
-    marca: "ZARA",
-    emoji: "👚",
-    gradiente: "linear-gradient(150deg, #130016 0%, #855AA2 100%)",
+    numero: "001",
     fecha: "2026-05-20",
-    precioPagado: 185,
     estado: "En proceso",
+    prendas: [
+      { nombre: "Blusa Satinada Manga Larga",    marca: "ZARA",      emoji: "👚", precio: 185 },
+      { nombre: "Pantalón Skinny de Mezclilla",  marca: "BERSHKA",   emoji: "👖", precio: 245 },
+      { nombre: "Falda Plisada Mini",            marca: "H&M",       emoji: "🩱", precio: 178 },
+    ],
   },
   {
     id: 2,
-    prenda: "Vestido Floral Midi",
-    marca: "ZARA WOMAN",
-    emoji: "👗",
-    gradiente: "linear-gradient(150deg, #855AA2 0%, #130016 100%)",
+    numero: "002",
     fecha: "2026-05-14",
-    precioPagado: 320,
     estado: "En camino",
+    prendas: [
+      { nombre: "Vestido Floral Midi",           marca: "ZARA WOMAN",  emoji: "👗", precio: 320 },
+      { nombre: "Chamarra de Cuero Sintético",   marca: "PULL&BEAR",   emoji: "🧥", precio: 415 },
+    ],
   },
   {
     id: 3,
-    prenda: "Pantalón Skinny de Mezclilla",
-    marca: "BERSHKA",
-    emoji: "👖",
-    gradiente: "linear-gradient(150deg, #130016 0%, #CCB8DD 100%)",
+    numero: "003",
     fecha: "2026-05-05",
-    precioPagado: 245,
     estado: "Entregado",
+    prendas: [
+      { nombre: "Top Crop de Encaje",            marca: "ZARA",        emoji: "👙", precio: 155 },
+    ],
   },
 ];
 
@@ -176,6 +176,63 @@ function renderCatalog() {
     <div class="catalog-grid">${cards.join("")}</div>`;
 }
 
+// ── Bottom sheet: detalle de pedido ─────────────────────────────────────────
+
+function createOrderDetailSheet() {
+  if (document.getElementById("orderDetailOverlay")) return;
+  const overlay = document.createElement("div");
+  overlay.id = "orderDetailOverlay";
+  overlay.className = "order-detail-overlay";
+  overlay.innerHTML = `
+    <div class="order-detail-sheet">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-body" id="orderDetailBody"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closeOrderDetail();
+  });
+}
+
+function openOrderDetail(id) {
+  const p = pedidos.find((o) => o.id === id);
+  if (!p) return;
+  const { bg, color } = ESTADO_CONFIG[p.estado] || { bg: "#eee", color: "#333" };
+  const total = p.prendas.reduce((sum, pr) => sum + pr.precio, 0);
+  const countLabel = p.prendas.length === 1 ? "1 prenda" : `${p.prendas.length} prendas`;
+
+  const items = p.prendas.map((pr) => `
+    <div class="sheet-item">
+      <span class="sheet-item-emoji" aria-hidden="true">${pr.emoji}</span>
+      <div class="sheet-item-info">
+        <p class="sheet-item-name">${pr.nombre}</p>
+        <p class="sheet-item-brand">${pr.marca}</p>
+      </div>
+      <span class="sheet-item-price">${formatPeso(pr.precio)}</span>
+    </div>`).join("");
+
+  document.getElementById("orderDetailBody").innerHTML = `
+    <div class="sheet-header">
+      <div class="sheet-title-row">
+        <h3 class="sheet-order-number">Pedido #${p.numero}</h3>
+        <span class="status-badge" style="background:${bg};color:${color}">${p.estado}</span>
+      </div>
+      <p class="sheet-date">${formatFecha(p.fecha)}</p>
+    </div>
+    <p class="sheet-section-label">${countLabel}</p>
+    <div class="sheet-items">${items}</div>
+    <div class="sheet-total">
+      <span class="sheet-total-label">Total pagado a ZETINA</span>
+      <span class="sheet-total-value">${formatPeso(total)}</span>
+    </div>`;
+
+  document.getElementById("orderDetailOverlay").classList.add("open");
+}
+
+function closeOrderDetail() {
+  document.getElementById("orderDetailOverlay").classList.remove("open");
+}
+
 // ── Render: Pedidos ─────────────────────────────────────────────────────────
 
 function renderPedidos() {
@@ -183,21 +240,31 @@ function renderPedidos() {
 
   const orderCards = pedidos.map((p) => {
     const { bg, color } = ESTADO_CONFIG[p.estado] || { bg: "#eee", color: "#333" };
+    const total = p.prendas.reduce((sum, pr) => sum + pr.precio, 0);
+    const countLabel = p.prendas.length === 1 ? "1 prenda" : `${p.prendas.length} prendas`;
+
+    const itemRows = p.prendas.map((pr) => `
+      <div class="order-item-row">
+        <span class="order-item-emoji" aria-hidden="true">${pr.emoji}</span>
+        <span class="order-item-name">${pr.nombre}</span>
+        <span class="order-item-sep">·</span>
+        <span class="order-item-brand">${pr.marca}</span>
+      </div>`).join("");
+
     return `
-      <article class="order-card" data-estado="${p.estado}">
-        <div class="order-thumb" style="background:${p.gradiente}">
-          <span class="order-emoji" aria-hidden="true">${p.emoji}</span>
-        </div>
-        <div class="order-details">
-          <div class="order-top">
-            <p class="order-name">${p.prenda}</p>
+      <article class="order-card" data-id="${p.id}" data-estado="${p.estado}"
+               role="button" tabindex="0" aria-label="Ver detalle Pedido #${p.numero}">
+        <div class="order-card-head">
+          <div class="order-number-row">
+            <h3 class="order-number">Pedido #${p.numero}</h3>
             <span class="status-badge" style="background:${bg};color:${color}">${p.estado}</span>
           </div>
-          <p class="order-meta"><span class="order-brand">${p.marca}</span> · Pedido el ${formatFecha(p.fecha)}</p>
-          <div class="order-footer">
-            <span class="order-price-label">Precio mayoreo</span>
-            <span class="order-amount">${formatPeso(p.precioPagado)}</span>
-          </div>
+          <p class="order-date">${formatFecha(p.fecha)}</p>
+        </div>
+        <div class="order-items-preview">${itemRows}</div>
+        <div class="order-card-foot">
+          <span class="order-count-label">${countLabel}</span>
+          <span class="order-total-amount">${formatPeso(total)}</span>
         </div>
       </article>`;
   }).join("");
@@ -227,6 +294,12 @@ function renderPedidos() {
       if (filter === "entregados") visible = estado === "Entregado";
       card.style.display = visible ? "" : "none";
     });
+  });
+
+  container.querySelector(".orders-list").addEventListener("click", (e) => {
+    const card = e.target.closest(".order-card");
+    if (!card) return;
+    openOrderDetail(parseInt(card.dataset.id));
   });
 }
 
@@ -281,6 +354,7 @@ window.addEventListener("hashchange", () => {
 
 renderCatalog();
 renderPedidos();
+createOrderDetailSheet();
 renderSection("clientes", "Clientes");
 renderSection("cobros",   "Cobros");
 renderSection("prendas",  "Mis Prendas");
