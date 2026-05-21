@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#16001C">
+  <meta name="theme-color" content="#130016">
   <meta name="description" content="ZETINA — App para vendedoras por catálogo">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -28,7 +28,7 @@
     <section id="pedidos" class="view" aria-labelledby="nav-pedidos" hidden>
       <div class="view-content"></div>
     </section>
-    <section id="clientas" class="view" aria-labelledby="nav-clientas" hidden>
+    <section id="clientes" class="view" aria-labelledby="nav-clientes" hidden>
       <div class="view-content"></div>
     </section>
     <section id="cobros" class="view" aria-labelledby="nav-cobros" hidden>
@@ -44,27 +44,48 @@
 
   <nav class="bottom-nav" aria-label="Navegación principal">
     <a href="#catalogo" id="nav-catalogo" class="nav-item active" data-view="catalogo">
-      <span class="nav-icon" aria-hidden="true">◇</span>
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.57a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.57a2 2 0 0 0-1.34-2.23z"/>
+      </svg>
       <span class="nav-label">Catálogo</span>
     </a>
     <a href="#pedidos" id="nav-pedidos" class="nav-item" data-view="pedidos">
-      <span class="nav-icon" aria-hidden="true">▣</span>
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+        <line x1="12" y1="22.08" x2="12" y2="12"/>
+      </svg>
       <span class="nav-label">Mis Pedidos</span>
     </a>
-    <a href="#clientas" id="nav-clientas" class="nav-item" data-view="clientas">
-      <span class="nav-icon" aria-hidden="true">◎</span>
-      <span class="nav-label">Mis Clientas</span>
+    <a href="#clientes" id="nav-clientes" class="nav-item" data-view="clientes">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+      <span class="nav-label">Mis Clientes</span>
     </a>
     <a href="#cobros" id="nav-cobros" class="nav-item" data-view="cobros">
-      <span class="nav-icon" aria-hidden="true">$</span>
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="2" y="6" width="20" height="12" rx="2"/>
+        <circle cx="12" cy="12" r="2.5"/>
+        <path d="M6 12h.01M18 12h.01"/>
+      </svg>
       <span class="nav-label">Mis Cobros</span>
     </a>
     <a href="#prendas" id="nav-prendas" class="nav-item" data-view="prendas">
-      <span class="nav-icon" aria-hidden="true">✦</span>
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
       <span class="nav-label">Mis Prendas</span>
     </a>
     <a href="#cuenta" id="nav-cuenta" class="nav-item" data-view="cuenta">
-      <span class="nav-icon" aria-hidden="true">○</span>
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/>
+        <circle cx="12" cy="9" r="3"/>
+        <path d="M6.17 18.82A6 6 0 0 1 12 15a6 6 0 0 1 5.83 3.82"/>
+      </svg>
       <span class="nav-label">Mi Cuenta</span>
     </a>
   </nav>

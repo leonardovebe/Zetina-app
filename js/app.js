@@ -1,4 +1,4 @@
-const VIEWS = ["catalogo", "pedidos", "clientas", "cobros", "prendas", "cuenta"];
+const VIEWS = ["catalogo", "pedidos", "clientes", "cobros", "prendas", "cuenta"];
 
 // ── Datos del catálogo ──────────────────────────────────────────────────────
 
