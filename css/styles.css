@@ -158,3 +158,195 @@ body {
     font-size: 0.6875rem;
   }
 }
+
+/* ── Catálogo ────────────────────────────────────────────────────────────── */
+
+.catalog-header {
+  margin-bottom: 1.25rem;
+}
+
+.catalog-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111;
+  letter-spacing: -0.01em;
+}
+
+.catalog-subtitle {
+  font-size: 0.8125rem;
+  color: #999;
+  margin-top: 0.125rem;
+}
+
+.catalog-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Tarjeta de producto */
+.product-card {
+  background: #fff;
+  border-radius: 1.125rem;
+  overflow: hidden;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.09);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Imagen / placeholder */
+.product-image {
+  position: relative;
+  aspect-ratio: 3 / 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.product-emoji {
+  font-size: 4.5rem;
+  line-height: 1;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.35));
+  user-select: none;
+}
+
+.size-badge {
+  position: absolute;
+  bottom: 0.75rem;
+  right: 0.75rem;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 0.25rem 0.65rem;
+  border-radius: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+/* Info de la prenda */
+.product-info {
+  padding: 1rem 1.125rem 1.125rem;
+}
+
+.product-meta {
+  margin-bottom: 0.375rem;
+}
+
+.brand-chip {
+  display: inline-block;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #7c3aed;
+  background: #f3e8ff;
+  padding: 0.2rem 0.65rem;
+  border-radius: 2rem;
+}
+
+.product-name {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: #111;
+  line-height: 1.3;
+  margin-bottom: 1rem;
+}
+
+/* Tabla de precios */
+.price-table {
+  border-radius: 0.875rem;
+  overflow: hidden;
+  border: 1px solid #f0f0f0;
+  margin-bottom: 1rem;
+}
+
+.price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.55rem 0.875rem;
+  background: #fafafa;
+}
+
+.price-row + .price-row {
+  border-top: 1px solid #f0f0f0;
+}
+
+.price-row--ganancia {
+  background: #f0fdf4;
+}
+
+.price-label {
+  font-size: 0.8125rem;
+  color: #666;
+}
+
+.price-row--ganancia .price-label {
+  color: #166534;
+  font-weight: 600;
+}
+
+.price-val {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #222;
+}
+
+.price-costo {
+  color: #aaa;
+  font-weight: 500;
+}
+
+.price-ganancia {
+  color: #16a34a;
+  font-weight: 700;
+}
+
+/* Botones */
+.card-actions {
+  display: flex;
+  gap: 0.625rem;
+}
+
+.btn-whatsapp,
+.btn-order {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.75rem 0.5rem;
+  border-radius: 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+
+.btn-whatsapp:active,
+.btn-order:active {
+  opacity: 0.82;
+  transform: scale(0.97);
+}
+
+.btn-whatsapp {
+  background: #25d366;
+  color: #fff;
+}
+
+.btn-order {
+  background: #16001c;
+  color: #fff;
+}
+
+.btn-icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
