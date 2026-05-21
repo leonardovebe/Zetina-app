@@ -1,5 +1,153 @@
 const VIEWS = ["catalogo", "pedidos", "clientes", "cobros", "prendas", "cuenta"];
 
+// ── Carrito ──────────────────────────────────────────────────────────────────
+
+let carrito = [];
+
+function addToCarrito(id) {
+  const producto = productos.find((p) => p.id === id);
+  if (!producto) return;
+  const existing = carrito.find((item) => item.producto.id === id);
+  if (existing) {
+    existing.cantidad++;
+  } else {
+    carrito.push({ producto, cantidad: 1 });
+  }
+  updateCartBadge();
+}
+
+function clearCarrito() {
+  carrito = [];
+  updateCartBadge();
+}
+
+function totalCarrito() {
+  return carrito.reduce((sum, item) => sum + item.producto.precioCosto * item.cantidad, 0);
+}
+
+function countCarrito() {
+  return carrito.reduce((sum, item) => sum + item.cantidad, 0);
+}
+
+function updateCartBadge() {
+  const btn = document.getElementById("cartBtn");
+  const badge = document.getElementById("cartBadge");
+  if (!btn) return;
+  const count = countCarrito();
+  btn.hidden = count === 0;
+  badge.textContent = count;
+}
+
+function buildCartWhatsappUrl() {
+  const lines = carrito.map(({ producto: p, cantidad }) => {
+    const qty = cantidad > 1 ? ` x${cantidad}` : "";
+    return `${p.emoji} ${p.nombre} - ${p.marca} | Talla ${p.tallaEtiqueta}/${p.tallaReal}${qty} | ${formatPeso(p.precioCosto * cantidad)}`;
+  });
+  const msg =
+    `Hola ZETINA! 👋 Quisiera hacer el siguiente pedido:\n\n` +
+    lines.join("\n") +
+    `\n\n💰 *Total: ${formatPeso(totalCarrito())}*\n\n¡Gracias! 🛍️`;
+  return "https://wa.me/?text=" + encodeURIComponent(msg);
+}
+
+const WA_PATH = "M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z";
+
+function refreshCartSheet() {
+  const body = document.getElementById("cartSheetBody");
+  if (!body) return;
+
+  if (carrito.length === 0) {
+    body.innerHTML = `
+      <div class="cart-head"><h3 class="cart-title">Mi Carrito</h3></div>
+      <div class="cart-empty">
+        <p class="cart-empty-icon">🛒</p>
+        <p class="cart-empty-text">Tu carrito está vacío</p>
+      </div>`;
+    return;
+  }
+
+  const items = carrito.map((item, idx) => {
+    const { producto: p, cantidad } = item;
+    return `
+      <div class="cart-item">
+        <div class="cart-item-thumb" style="background:${p.gradiente}">
+          <span aria-hidden="true">${p.emoji}</span>
+        </div>
+        <div class="cart-item-info">
+          <p class="cart-item-name">${p.nombre}</p>
+          <p class="cart-item-meta">${p.marca} · Talla ${p.tallaEtiqueta}</p>
+          <p class="cart-item-price">${formatPeso(p.precioCosto)}</p>
+        </div>
+        <div class="cart-item-qty">
+          <button class="qty-btn" data-idx="${idx}" data-action="dec">−</button>
+          <span class="qty-val">${cantidad}</span>
+          <button class="qty-btn" data-idx="${idx}" data-action="inc">+</button>
+        </div>
+      </div>`;
+  }).join("");
+
+  body.innerHTML = `
+    <div class="cart-head">
+      <h3 class="cart-title">Mi Carrito</h3>
+      <button class="cart-clear-btn" id="cartClearBtn">Vaciar todo</button>
+    </div>
+    <div class="cart-items">${items}</div>
+    <div class="cart-total">
+      <span class="cart-total-label">Total a pagar a ZETINA</span>
+      <span class="cart-total-value">${formatPeso(totalCarrito())}</span>
+    </div>
+    <a href="${buildCartWhatsappUrl()}" target="_blank" rel="noopener noreferrer"
+       class="btn-cart-whatsapp">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${WA_PATH}"/></svg>
+      Enviar pedido por WhatsApp
+    </a>`;
+}
+
+function openCartSheet() {
+  refreshCartSheet();
+  document.getElementById("cartOverlay").classList.add("open");
+}
+
+function closeCartSheet() {
+  document.getElementById("cartOverlay").classList.remove("open");
+}
+
+function createCartSheet() {
+  if (document.getElementById("cartOverlay")) return;
+  const overlay = document.createElement("div");
+  overlay.id = "cartOverlay";
+  overlay.className = "cart-overlay";
+  overlay.innerHTML = `
+    <div class="cart-sheet">
+      <div class="sheet-drag-handle"></div>
+      <div class="cart-body" id="cartSheetBody"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) closeCartSheet();
+  });
+
+  overlay.querySelector("#cartSheetBody").addEventListener("click", (e) => {
+    if (e.target.closest("#cartClearBtn")) {
+      clearCarrito();
+      closeCartSheet();
+      return;
+    }
+    const qtyBtn = e.target.closest(".qty-btn");
+    if (!qtyBtn) return;
+    const idx = parseInt(qtyBtn.dataset.idx);
+    if (qtyBtn.dataset.action === "inc") {
+      carrito[idx].cantidad++;
+    } else {
+      carrito[idx].cantidad--;
+      if (carrito[idx].cantidad <= 0) carrito.splice(idx, 1);
+    }
+    updateCartBadge();
+    refreshCartSheet();
+  });
+}
+
 // ── Datos del catálogo ──────────────────────────────────────────────────────
 
 const productos = [
@@ -174,6 +322,22 @@ function renderCatalog() {
       <p class="catalog-subtitle">${productos.length} prendas disponibles</p>
     </div>
     <div class="catalog-grid">${cards.join("")}</div>`;
+
+  container.querySelector(".catalog-grid").addEventListener("click", (e) => {
+    const btn = e.target.closest(".btn-order");
+    if (!btn) return;
+    addToCarrito(parseInt(btn.dataset.id));
+    btn.textContent = "✓ Agregado";
+    btn.style.background = "#DEFF00";
+    btn.style.color = "#130016";
+    btn.disabled = true;
+    setTimeout(() => {
+      btn.textContent = "Hacer pedido";
+      btn.style.background = "";
+      btn.style.color = "";
+      btn.disabled = false;
+    }, 1400);
+  });
 }
 
 // ── Bottom sheet: detalle de pedido ─────────────────────────────────────────
@@ -355,6 +519,8 @@ window.addEventListener("hashchange", () => {
 renderCatalog();
 renderPedidos();
 createOrderDetailSheet();
+createCartSheet();
+document.getElementById("cartBtn").addEventListener("click", openCartSheet);
 renderSection("clientes", "Clientes");
 renderSection("cobros",   "Cobros");
 renderSection("prendas",  "Mis Prendas");
