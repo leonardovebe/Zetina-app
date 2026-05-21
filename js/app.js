@@ -58,6 +58,11 @@ function refreshCartSheet() {
 
   const items = carrito.map((p) => `
     <div class="cart-item">
+      <button class="cart-item-remove" data-id="${p.id}" aria-label="Eliminar ${p.nombre}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
       <div class="cart-item-thumb" style="background:${p.gradiente}">
         <span aria-hidden="true">${p.emoji}</span>
       </div>
@@ -114,6 +119,14 @@ function createCartSheet() {
     if (e.target.closest("#cartClearBtn")) {
       clearCarrito();
       closeCartSheet();
+      return;
+    }
+    const removeBtn = e.target.closest(".cart-item-remove");
+    if (removeBtn) {
+      const id = parseInt(removeBtn.dataset.id);
+      carrito = carrito.filter((p) => p.id !== id);
+      updateCartBadge();
+      refreshCartSheet();
     }
   });
 }
