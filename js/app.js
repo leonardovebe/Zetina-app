@@ -158,7 +158,7 @@ async function loadCatalogo() {
   // y b) la columna puede no existir si el schema-admin.sql no se ejecutó todavía.
   const { data, error } = await db
     .from('prendas')
-    .select('id, nombre, marca, emoji, gradiente, talla_etiqueta, talla_real, precio_costo, precio_min, precio_max, numero, fotos_prendas(url)')
+    .select('id, nombre, marca, emoji, gradiente, talla_etiqueta, talla_real, precio_costo, precio_min, precio_max, fotos_prendas(url)')
     .eq('disponible', true)
     .order('created_at', { ascending: false });
 
@@ -166,7 +166,6 @@ async function loadCatalogo() {
 
   catalogo = (data || []).map((p) => ({
     id:            p.id,
-    numero:        p.numero    || null,
     nombre:        p.nombre,
     marca:         p.marca     || '',
     emoji:         p.emoji     || '👚',
