@@ -1112,10 +1112,12 @@ function buildInvCard(p) {
   const ganMin = p.precioMin - p.precioCosto;
   const ganMax = p.precioMax - p.precioCosto;
   const waUrl = buildWhatsappUrl(p);
+  const nFotos = (p.fotos || []).length;
   return `
-    <article class="inv-card">
+    <article class="inv-card" data-id="${p.id}" role="button" tabindex="0">
       <div class="inv-card-img" style="background:${p.gradiente}">
         <span class="inv-card-emoji" aria-hidden="true">${p.emoji}</span>
+        ${nFotos > 0 ? `<span class="inv-card-foto-badge">${nFotos}</span>` : ""}
       </div>
       <div class="inv-card-body">
         <p class="inv-card-id">ID: ${formatZtId(p.id)}</p>
@@ -1164,6 +1166,176 @@ function renderMisPrendas() {
       : inventario;
     container.querySelector("#invGrid").innerHTML = renderGrid(filtradas);
   });
+
+  container.onclick = (e) => {
+    if (e.target.closest(".btn-inv-compartir")) return;
+    const card = e.target.closest(".inv-card");
+    if (!card) return;
+    openGaleria(parseInt(card.dataset.id));
+  };
+}
+
+// ── Galería de fotos ────────────────────────────────────────────────────────
+
+function createGaleriaSheet() {
+  const overlay = document.createElement("div");
+  overlay.className = "order-detail-overlay";
+  overlay.id = "galeriaOverlay";
+  overlay.innerHTML = `
+    <div class="order-detail-sheet galeria-sheet">
+      <div class="detail-sheet-handle-row"><div class="sheet-drag-handle"></div></div>
+      <div class="sheet-topbar">
+        <button class="btn-sheet-close" aria-label="Cerrar galería">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+        <button class="btn-add-foto" id="btnAddFoto">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          Agregar foto
+        </button>
+      </div>
+      <div class="galeria-prenda-info" id="galeriaPrendaInfo"></div>
+      <div class="galeria-carousel-wrap">
+        <div class="galeria-carousel" id="galeriaCarousel"></div>
+        <div class="galeria-dots" id="galeriaDots"></div>
+      </div>
+      <input type="file" id="galeriaFileInput" accept="image/*" multiple hidden>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  overlay.querySelector(".btn-sheet-close").addEventListener("click", () => overlay.classList.remove("open"));
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.classList.remove("open"); });
+
+  document.getElementById("btnAddFoto").addEventListener("click", () => {
+    document.getElementById("galeriaFileInput").click();
+  });
+
+  document.getElementById("galeriaFileInput").addEventListener("change", (e) => {
+    const prendaId = parseInt(overlay.dataset.prendaId);
+    const p = inventario.find((item) => item.id === prendaId);
+    if (!p) return;
+    if (!p.fotos) p.fotos = [];
+    const files = Array.from(e.target.files);
+    let loaded = 0;
+    files.forEach((file, idx) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        p.fotos.push({ id: Date.now() + idx, url: ev.target.result });
+        loaded++;
+        if (loaded === files.length) {
+          saveInventario();
+          refreshGaleriaCarousel(p);
+          renderMisPrendas();
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = "";
+  });
+
+  const carousel = document.getElementById("galeriaCarousel");
+  carousel.addEventListener("scroll", () => {
+    if (!carousel.offsetWidth) return;
+    const idx = Math.round(carousel.scrollLeft / carousel.offsetWidth);
+    document.querySelectorAll(".galeria-dot").forEach((d, i) =>
+      d.classList.toggle("galeria-dot--active", i === idx));
+  }, { passive: true });
+
+  carousel.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-action]");
+    if (!btn) return;
+    const prendaId = parseInt(overlay.dataset.prendaId);
+    const p = inventario.find((item) => item.id === prendaId);
+    if (!p) return;
+    const fotoId = parseInt(btn.dataset.fotoId);
+    const foto = (p.fotos || []).find((f) => f.id === fotoId);
+    if (!foto) return;
+
+    if (btn.dataset.action === "descargar") {
+      const a = document.createElement("a");
+      a.href = foto.url;
+      a.download = `${p.nombre.replace(/\s+/g, "_")}_${fotoId}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else if (btn.dataset.action === "compartir") {
+      compartirFotoWA(p, foto);
+    }
+  });
+}
+
+async function compartirFotoWA(p, foto) {
+  if (!navigator.share) return;
+  try {
+    const res = await fetch(foto.url);
+    const blob = await res.blob();
+    const ext = (blob.type.split("/")[1] || "jpg").replace("jpeg", "jpg");
+    const file = new File([blob], `${p.nombre.replace(/\s+/g, "_")}.${ext}`, { type: blob.type });
+    const data = { files: [file], text: `${p.emoji} *${p.nombre}*\n${p.marca} · Talla ${p.tallaEtiqueta}/${p.tallaReal}\nPrecio: ${formatPeso(p.precioMin)} – ${formatPeso(p.precioMax)}` };
+    if (navigator.canShare && navigator.canShare(data)) {
+      await navigator.share(data);
+    } else {
+      await navigator.share({ text: data.text });
+    }
+  } catch (_) {}
+}
+
+function refreshGaleriaCarousel(p) {
+  const carousel = document.getElementById("galeriaCarousel");
+  const dots     = document.getElementById("galeriaDots");
+  const fotos    = p.fotos || [];
+
+  if (fotos.length === 0) {
+    carousel.innerHTML = `
+      <div class="galeria-empty">
+        <p class="galeria-empty-icon">📷</p>
+        <p class="galeria-empty-text">Toca "Agregar foto" para añadir imágenes de esta prenda</p>
+      </div>`;
+    dots.innerHTML = "";
+    return;
+  }
+
+  carousel.innerHTML = fotos.map((foto) => `
+    <div class="galeria-slide">
+      <div class="galeria-img-wrap">
+        <img class="galeria-img" src="${foto.url}" alt="" loading="lazy">
+      </div>
+      <div class="galeria-slide-actions">
+        <button class="btn-galeria-action btn-galeria-dl" data-action="descargar" data-foto-id="${foto.id}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Descargar
+        </button>
+        <button class="btn-galeria-action btn-galeria-wa" data-action="compartir" data-foto-id="${foto.id}">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${WA_PATH}"/></svg>
+          Compartir
+        </button>
+      </div>
+    </div>`).join("");
+
+  dots.innerHTML = fotos.map((_, i) =>
+    `<span class="galeria-dot${i === 0 ? " galeria-dot--active" : ""}"></span>`).join("");
+}
+
+function openGaleria(prendaId) {
+  const overlay = document.getElementById("galeriaOverlay");
+  const p = inventario.find((item) => item.id === prendaId);
+  if (!p) return;
+  overlay.dataset.prendaId = prendaId;
+
+  document.getElementById("galeriaPrendaInfo").innerHTML = `
+    <p class="galeria-prenda-id">ID: ${formatZtId(p.id)}</p>
+    <h3 class="galeria-prenda-nombre">${p.nombre}</h3>`;
+
+  refreshGaleriaCarousel(p);
+  overlay.classList.add("open");
 }
 
 // ── Perfil (Mi Cuenta) ──────────────────────────────────────────────────────
@@ -1681,6 +1853,7 @@ createVentaFormSheet();
 createCobrosDetailSheet();
 createAbonoFormSheet();
 createCartSheet();
+createGaleriaSheet();
 createPerfilEditSheet();
 createCerrarSesionSheet();
 document.getElementById("cartBtn").addEventListener("click", openCartSheet);
