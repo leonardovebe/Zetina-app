@@ -5,7 +5,7 @@ const VIEWS = ["catalogo", "pedidos", "clientes", "cobros", "prendas", "cuenta"]
 let carrito = [];
 
 function addToCarrito(id) {
-  const producto = productos.find((p) => p.id === id);
+  const producto = catalogo.find((p) => p.id === id);
   if (!producto || carrito.some((p) => p.id === id)) return false;
   carrito.push(producto);
   updateCartBadge();
@@ -130,7 +130,7 @@ function createCartSheet() {
     }
     const removeBtn = e.target.closest(".cart-item-remove");
     if (removeBtn) {
-      const id = parseInt(removeBtn.dataset.id);
+      const id = removeBtn.dataset.id;
       carrito = carrito.filter((p) => p.id !== id);
       updateCartBadge();
       refreshCartSheet();
@@ -138,46 +138,33 @@ function createCartSheet() {
   });
 }
 
-// ── Datos del catálogo ──────────────────────────────────────────────────────
+// ── Catálogo desde Supabase ──────────────────────────────────────────────────
 
-const productos = [
-  {
-    id: 1,
-    nombre: "Blusa Satinada Manga Larga",
-    marca: "ZARA",
-    tallaEtiqueta: "M",
-    tallaReal: "38",
-    emoji: "👚",
-    gradiente: "linear-gradient(150deg, #130016 0%, #855AA2 100%)",
-    precioCosto: 185,
-    precioMin: 290,
-    precioMax: 380,
-  },
-  {
-    id: 2,
-    nombre: "Pantalón Skinny de Mezclilla",
-    marca: "BERSHKA",
-    tallaEtiqueta: "28",
-    tallaReal: "30",
-    emoji: "👖",
-    gradiente: "linear-gradient(150deg, #130016 0%, #CCB8DD 100%)",
-    precioCosto: 245,
-    precioMin: 390,
-    precioMax: 490,
-  },
-  {
-    id: 3,
-    nombre: "Vestido Floral Midi",
-    marca: "ZARA WOMAN",
-    tallaEtiqueta: "S",
-    tallaReal: "36",
-    emoji: "👗",
-    gradiente: "linear-gradient(150deg, #855AA2 0%, #130016 100%)",
-    precioCosto: 320,
-    precioMin: 500,
-    precioMax: 640,
-  },
-];
+let catalogo = [];
+
+async function loadCatalogo() {
+  const { data } = await db
+    .from('prendas')
+    .select('*, fotos_prendas(url)')
+    .eq('disponible', true)
+    .eq('baja', false)
+    .order('created_at', { ascending: false });
+
+  catalogo = (data || []).map((p) => ({
+    id:            p.id,
+    numero:        p.numero    || null,
+    nombre:        p.nombre,
+    marca:         p.marca     || '',
+    emoji:         p.emoji     || '👚',
+    tallaEtiqueta: p.talla_etiqueta || '',
+    tallaReal:     p.talla_real     || '',
+    precioCosto:   p.precio_costo   || 0,
+    precioMin:     p.precio_min     || 0,
+    precioMax:     p.precio_max     || 0,
+    gradiente:     p.gradiente || 'linear-gradient(150deg, #130016 0%, #855AA2 100%)',
+    foto:          (p.fotos_prendas || [])[0]?.url || null,
+  }));
+}
 
 // ── Datos de pedidos (compras de la vendedora a ZETINA) ─────────────────────
 
@@ -303,30 +290,46 @@ function buildWhatsappUrl(p) {
 function renderCatalog() {
   const container = document.querySelector("#catalogo .view-content");
 
-  const cards = productos.map((p) => {
-    const ganMin = p.precioMin - p.precioCosto;
-    const ganMax = p.precioMax - p.precioCosto;
+  if (!catalogo.length) {
+    container.innerHTML = `
+      <div class="catalog-header">
+        <h2 class="catalog-title">Catálogo</h2>
+        <p class="catalog-subtitle">0 prendas disponibles</p>
+      </div>
+      <div class="catalog-empty">
+        <p class="catalog-empty-icon">👗</p>
+        <p class="catalog-empty-text">El catálogo está vacío.<br>Pronto habrá prendas disponibles.</p>
+      </div>`;
+    return;
+  }
+
+  const cards = catalogo.map((p) => {
+    const ganMin  = p.precioMin - p.precioCosto;
+    const ganMax  = p.precioMax - p.precioCosto;
+    const idLabel = p.numero || formatZtId(p.id);
 
     return `
       <article class="product-card">
-        <div class="product-image" style="background: ${p.gradiente}">
-          <span class="product-emoji" aria-hidden="true">${p.emoji}</span>
-
+        <div class="product-image${p.foto ? ' product-image--foto' : ''}"
+             ${!p.foto ? `style="background:${p.gradiente}"` : ''}>
+          ${p.foto
+            ? `<img class="product-img" src="${p.foto}" alt="${p.nombre}" loading="lazy">`
+            : `<span class="product-emoji" aria-hidden="true">${p.emoji}</span>`}
         </div>
         <div class="product-info">
           <div class="product-meta">
             <span class="brand-chip">${p.marca}</span>
           </div>
           <h3 class="product-name">${p.nombre}</h3>
-          <p class="prenda-id">ID: ${formatZtId(p.id)}</p>
+          <p class="prenda-id">ID: ${idLabel}</p>
           <div class="talla-row">
             <div class="talla-chip">
               <span class="talla-label">Talla etiqueta</span>
-              <span class="talla-val">${p.tallaEtiqueta}</span>
+              <span class="talla-val">${p.tallaEtiqueta || '—'}</span>
             </div>
             <div class="talla-chip">
               <span class="talla-label">Talla real</span>
-              <span class="talla-val">${p.tallaReal}</span>
+              <span class="talla-val">${p.tallaReal || '—'}</span>
             </div>
           </div>
           <div class="price-table">
@@ -345,11 +348,10 @@ function renderCatalog() {
           </div>
           <div class="card-actions">
             <a href="${buildWhatsappUrl(p)}"
-               target="_blank"
-               rel="noopener noreferrer"
+               target="_blank" rel="noopener noreferrer"
                class="btn-whatsapp">
               <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                <path d="${WA_PATH}"/>
               </svg>
               Compartir
             </a>
@@ -364,14 +366,14 @@ function renderCatalog() {
   container.innerHTML = `
     <div class="catalog-header">
       <h2 class="catalog-title">Catálogo</h2>
-      <p class="catalog-subtitle">${productos.length} prendas disponibles</p>
+      <p class="catalog-subtitle">${catalogo.length} prenda${catalogo.length !== 1 ? 's' : ''} disponible${catalogo.length !== 1 ? 's' : ''}</p>
     </div>
     <div class="catalog-grid">${cards.join("")}</div>`;
 
   container.querySelector(".catalog-grid").addEventListener("click", (e) => {
     const btn = e.target.closest(".btn-order");
     if (!btn) return;
-    const added = addToCarrito(parseInt(btn.dataset.id));
+    const added = addToCarrito(btn.dataset.id);
     if (added) {
       btn.textContent = "✓ Agregado";
       btn.style.background = "#DEFF00";
@@ -1890,8 +1892,11 @@ window.addEventListener("hashchange", () => {
   createCerrarSesionSheet();
   document.getElementById("cartBtn").addEventListener("click", openCartSheet);
 
+  document.querySelector("#catalogo .view-content").innerHTML =
+    '<div class="catalog-loading"><span>Cargando catálogo…</span></div>';
+
   await loadPerfil();
-  await loadInventario();
+  await Promise.all([loadCatalogo(), loadInventario()]);
 
   renderCatalog();
   renderPedidos();
