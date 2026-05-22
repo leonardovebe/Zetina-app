@@ -546,13 +546,12 @@ function loadClientes() {
 // ── Render: Clientes ─────────────────────────────────────────────────────────
 
 function buildClienteCard(c) {
-  const { bg, color } = avatarPalette(c.id);
   const pendiente = tienePendiente(c);
   return `
     <article class="cliente-card" data-id="${c.id}" role="button" tabindex="0"
              aria-label="Ver detalle de ${c.nombre}">
       <div class="cliente-card-head">
-        <div class="cliente-avatar" style="background:${bg};color:${color}">${iniciales(c.nombre)}</div>
+        <div class="cliente-avatar">${iniciales(c.nombre)}</div>
         <div class="cliente-head-info">
           <p class="cliente-name">${c.nombre}</p>
           ${pendiente ? `<span class="badge-pendiente">Pago pendiente</span>` : ""}

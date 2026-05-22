@@ -1134,6 +1134,8 @@ h1, h2, h3, h4, h5, h6,
   font-family: var(--font-heading);
   font-size: 0.9375rem;
   font-weight: 700;
+  background: #855AA2;
+  color: #fff;
 }
 
 .cliente-info {
