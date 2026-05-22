@@ -69,6 +69,7 @@ function refreshCartSheet() {
       <div class="cart-item-info">
         <p class="cart-item-name">${p.nombre}</p>
         <p class="cart-item-meta">${p.marca} · Talla ${p.tallaEtiqueta}</p>
+        <p class="prenda-id">ID: ${formatZtId(p.id)}</p>
         <p class="cart-item-price">${formatPeso(p.precioCosto)}</p>
       </div>
     </div>`).join("");
@@ -181,9 +182,9 @@ const pedidos = [
     fecha: "2026-05-20",
     estado: "En proceso",
     prendas: [
-      { nombre: "Blusa Satinada Manga Larga",    marca: "ZARA",      emoji: "👚", precio: 185 },
-      { nombre: "Pantalón Skinny de Mezclilla",  marca: "BERSHKA",   emoji: "👖", precio: 245 },
-      { nombre: "Falda Plisada Mini",            marca: "H&M",       emoji: "🩱", precio: 178 },
+      { id: 1, nombre: "Blusa Satinada Manga Larga",    marca: "ZARA",      emoji: "👚", precio: 185 },
+      { id: 2, nombre: "Pantalón Skinny de Mezclilla",  marca: "BERSHKA",   emoji: "👖", precio: 245 },
+      { id: 4, nombre: "Falda Plisada Mini",            marca: "H&M",       emoji: "🩱", precio: 178 },
     ],
   },
   {
@@ -192,8 +193,8 @@ const pedidos = [
     fecha: "2026-05-14",
     estado: "En camino",
     prendas: [
-      { nombre: "Vestido Floral Midi",           marca: "ZARA WOMAN",  emoji: "👗", precio: 320 },
-      { nombre: "Chamarra de Cuero Sintético",   marca: "PULL&BEAR",   emoji: "🧥", precio: 415 },
+      { id: 3, nombre: "Vestido Floral Midi",           marca: "ZARA WOMAN",  emoji: "👗", precio: 320 },
+      { id: 5, nombre: "Chamarra de Cuero Sintético",   marca: "PULL&BEAR",   emoji: "🧥", precio: 415 },
     ],
   },
   {
@@ -202,7 +203,7 @@ const pedidos = [
     fecha: "2026-05-05",
     estado: "Entregado",
     prendas: [
-      { nombre: "Top Crop de Encaje",            marca: "ZARA",        emoji: "👙", precio: 155 },
+      { id: 6, nombre: "Top Crop de Encaje",            marca: "ZARA",        emoji: "👙", precio: 155 },
     ],
   },
 ];
@@ -224,6 +225,10 @@ function formatFecha(iso) {
 
 function formatPeso(n) {
   return "$" + n.toLocaleString("es-MX");
+}
+
+function formatZtId(id) {
+  return "ZT-" + String(id).padStart(3, "0");
 }
 
 function buildWhatsappUrl(p) {
@@ -257,6 +262,7 @@ function renderCatalog() {
             <span class="brand-chip">${p.marca}</span>
           </div>
           <h3 class="product-name">${p.nombre}</h3>
+          <p class="prenda-id">ID: ${formatZtId(p.id)}</p>
           <div class="talla-row">
             <div class="talla-chip">
               <span class="talla-label">Talla etiqueta</span>
@@ -359,6 +365,7 @@ function openOrderDetail(id) {
       <div class="sheet-item-info">
         <p class="sheet-item-name">${pr.nombre}</p>
         <p class="sheet-item-brand">${pr.marca}</p>
+        <p class="prenda-id">ID: ${formatZtId(pr.id)}</p>
       </div>
       <span class="sheet-item-price">${formatPeso(pr.precio)}</span>
     </div>`).join("");
@@ -923,7 +930,7 @@ function getMisPrendas() {
     const key = `${pr.nombre}|${pr.marca}`;
     if (!seen.has(key)) {
       seen.add(key);
-      result.push({ nombre: pr.nombre, marca: pr.marca, emoji: pr.emoji || "👗" });
+      result.push({ id: pr.id, nombre: pr.nombre, marca: pr.marca, emoji: pr.emoji || "👗" });
     }
   }));
   return result;
@@ -1001,10 +1008,32 @@ function openVentaForm(clienteId) {
   const select = document.getElementById("fPrenda");
   const prendas = getMisPrendas();
   select.innerHTML = prendas.length
-    ? prendas.map((p) => `<option value="${p.nombre}|${p.marca}">${p.emoji} ${p.nombre} — ${p.marca}</option>`).join("")
+    ? prendas.map((p) => `<option value="${p.nombre}|${p.marca}">${p.emoji} ${p.nombre} — ${p.marca} | ID: ${formatZtId(p.id)}</option>`).join("")
     : `<option value="Otra prenda|">Sin prendas en inventario</option>`;
   document.getElementById("fFechaVenta").value = new Date().toISOString().split("T")[0];
   document.getElementById("ventaFormOverlay").classList.add("open");
+}
+
+// ── Render: Mis Prendas ─────────────────────────────────────────────────────
+
+function renderMisPrendas() {
+  const container = document.querySelector("#prendas .view-content");
+  const prendas = getMisPrendas();
+  const items = prendas.map((p) => `
+    <div class="prenda-item">
+      <div class="prenda-item-thumb">${p.emoji}</div>
+      <div class="prenda-item-info">
+        <p class="prenda-item-name">${p.nombre}</p>
+        <p class="prenda-item-marca">${p.marca}</p>
+        <p class="prenda-id">ID: ${formatZtId(p.id)}</p>
+      </div>
+    </div>`).join("");
+  container.innerHTML = `
+    <div class="catalog-header">
+      <h2 class="catalog-title">Mis Prendas</h2>
+      <p class="catalog-subtitle">${prendas.length} prendas en tu inventario</p>
+    </div>
+    <div class="prendas-list">${items.length ? items : '<p class="compras-empty">Sin prendas registradas</p>'}</div>`;
 }
 
 // ── Render: secciones vacías ────────────────────────────────────────────────
@@ -1138,7 +1167,7 @@ createVentaFormSheet();
 createCartSheet();
 document.getElementById("cartBtn").addEventListener("click", openCartSheet);
 renderCobros();
-renderSection("prendas",  "Mis Prendas");
+renderMisPrendas();
 renderSection("cuenta",   "Cuenta");
 showView(getViewFromHash());
 
