@@ -644,6 +644,10 @@ function createClienteDetailSheet() {
   overlay.querySelector(".btn-close-detail").addEventListener("click", () => {
     overlay.classList.remove("open");
   });
+  overlay.querySelector(".btn-edit-detail").addEventListener("click", () => {
+    const id = parseInt(overlay.dataset.currentId);
+    if (id) openClienteEdit(id);
+  });
   overlay.querySelector(".sheet-body").addEventListener("click", (e) => {
     const btn = e.target.closest(".btn-registrar-venta");
     if (btn) openVentaForm(parseInt(btn.dataset.id));
@@ -722,7 +726,9 @@ function openClienteDetail(id) {
     </p>
     <div class="compras-list">${comprasHTML}</div>`;
 
-  document.getElementById("clienteDetailOverlay").classList.add("open");
+  const detailOverlay = document.getElementById("clienteDetailOverlay");
+  detailOverlay.dataset.currentId = c.id;
+  detailOverlay.classList.add("open");
 }
 
 function createClienteFormSheet() {
@@ -809,6 +815,104 @@ function createClienteFormSheet() {
 
 function openClienteForm() {
   document.getElementById("clienteFormOverlay").classList.add("open");
+}
+
+function createClienteEditSheet() {
+  if (document.getElementById("clienteEditOverlay")) return;
+  const overlay = document.createElement("div");
+  overlay.id = "clienteEditOverlay";
+  overlay.className = "order-detail-overlay";
+  overlay.innerHTML = `
+    <div class="order-detail-sheet">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-body">
+        <h3 class="cart-title" style="margin-bottom:1.25rem">Editar clienta</h3>
+        <form id="clienteEditForm" class="cliente-form">
+          <div class="form-group">
+            <label class="form-label" for="eNombre">Nombre completo</label>
+            <input class="form-input" id="eNombre" name="nombre" type="text"
+                   placeholder="Ej. Ana López" required autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="eTelefono">Teléfono</label>
+            <input class="form-input" id="eTelefono" name="telefono" type="tel"
+                   placeholder="10 dígitos" required autocomplete="off">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="eTallaRopa">Talla de ropa</label>
+              <select class="form-select" id="eTallaRopa" name="tallaRopa">
+                <option>XS</option><option>S</option><option>M</option>
+                <option>L</option><option>XL</option><option>XXL</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="eTallaPant">Talla pantalón</label>
+              <input class="form-input" id="eTallaPant" name="tallaPantalon" type="text"
+                     placeholder="Ej. 30" autocomplete="off">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="eTallaCalzado">Talla de calzado</label>
+              <input class="form-input" id="eTallaCalzado" name="tallaCalzado" type="text"
+                     placeholder="Ej. 24.5" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="eCumpleanos">Cumpleaños</label>
+              <input class="form-input" id="eCumpleanos" name="fechaCumpleanos" type="date">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="eNotas">Notas adicionales</label>
+            <textarea class="form-textarea" id="eNotas" name="notas"
+                      placeholder="Colores favoritos, estilo, forma de pago..."></textarea>
+          </div>
+          <button type="submit" class="btn-save-cliente">Guardar cambios</button>
+        </form>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.classList.remove("open");
+  });
+
+  overlay.querySelector("#clienteEditForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const id = parseInt(overlay.dataset.editId);
+    const c = clientes.find((cl) => cl.id === id);
+    if (!c) return;
+    const data = new FormData(e.target);
+    c.nombre = data.get("nombre").trim();
+    c.telefono = data.get("telefono").trim();
+    c.tallaRopa = data.get("tallaRopa");
+    c.tallaPantalon = data.get("tallaPantalon").trim();
+    c.tallaCalzado = data.get("tallaCalzado").trim();
+    c.fechaCumpleanos = data.get("fechaCumpleanos") || "";
+    c.notas = data.get("notas").trim();
+    saveClientes();
+    overlay.classList.remove("open");
+    renderClientes();
+    openClienteDetail(id);
+  });
+}
+
+function openClienteEdit(id) {
+  const c = clientes.find((cl) => cl.id === id);
+  if (!c) return;
+  const overlay = document.getElementById("clienteEditOverlay");
+  overlay.dataset.editId = id;
+
+  overlay.querySelector("#eNombre").value = c.nombre;
+  overlay.querySelector("#eTelefono").value = c.telefono;
+  overlay.querySelector("#eTallaRopa").value = c.tallaRopa;
+  overlay.querySelector("#eTallaPant").value = c.tallaPantalon;
+  overlay.querySelector("#eTallaCalzado").value = c.tallaCalzado;
+  overlay.querySelector("#eCumpleanos").value = c.fechaCumpleanos;
+  overlay.querySelector("#eNotas").value = c.notas;
+
+  overlay.classList.add("open");
 }
 
 // ── Venta ────────────────────────────────────────────────────────────────────
@@ -1030,6 +1134,7 @@ renderClientes();
 createOrderDetailSheet();
 createClienteDetailSheet();
 createClienteFormSheet();
+createClienteEditSheet();
 createVentaFormSheet();
 createCartSheet();
 document.getElementById("cartBtn").addEventListener("click", openCartSheet);
