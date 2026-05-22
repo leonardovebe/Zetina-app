@@ -214,6 +214,70 @@ const pedidos = [
   },
 ];
 
+// ── Inventario de la vendedora ───────────────────────────────────────────────
+
+let inventario = [
+  {
+    id: 7,
+    nombre: "Top Floral de Gasa",
+    marca: "ZARA",
+    emoji: "👙",
+    tallaEtiqueta: "XS",
+    tallaReal: "34",
+    precioCosto: 165,
+    precioMin: 260,
+    precioMax: 320,
+    gradiente: "linear-gradient(150deg, #130016 0%, #855AA2 100%)",
+  },
+  {
+    id: 8,
+    nombre: "Pantalón Wide Leg Beige",
+    marca: "H&M",
+    emoji: "👖",
+    tallaEtiqueta: "M",
+    tallaReal: "38",
+    precioCosto: 245,
+    precioMin: 390,
+    precioMax: 480,
+    gradiente: "linear-gradient(150deg, #130016 0%, #CCB8DD 100%)",
+  },
+  {
+    id: 9,
+    nombre: "Vestido Satinado Midi Negro",
+    marca: "MANGO",
+    emoji: "👗",
+    tallaEtiqueta: "S",
+    tallaReal: "36",
+    precioCosto: 380,
+    precioMin: 600,
+    precioMax: 750,
+    gradiente: "linear-gradient(150deg, #855AA2 0%, #130016 100%)",
+  },
+  {
+    id: 10,
+    nombre: "Blazer Oversized Crema",
+    marca: "PULL&BEAR",
+    emoji: "🧥",
+    tallaEtiqueta: "L",
+    tallaReal: "40",
+    precioCosto: 420,
+    precioMin: 650,
+    precioMax: 800,
+    gradiente: "linear-gradient(150deg, #CCB8DD 0%, #130016 100%)",
+  },
+];
+
+function saveInventario() {
+  try { localStorage.setItem("zetina_inventario", JSON.stringify(inventario)); } catch(e) {}
+}
+
+function loadInventario() {
+  try {
+    const stored = localStorage.getItem("zetina_inventario");
+    if (stored) inventario = JSON.parse(stored); else saveInventario();
+  } catch(e) {}
+}
+
 const ESTADO_CONFIG = {
   "En camino":  { bg: "#CCB8DD", color: "#130016" },
   "Entregado":  { bg: "#DEFF00", color: "#130016" },
@@ -957,16 +1021,7 @@ function openClienteEdit(id) {
 // ── Venta ────────────────────────────────────────────────────────────────────
 
 function getMisPrendas() {
-  const seen = new Set();
-  const result = [];
-  pedidos.forEach((p) => p.prendas.forEach((pr) => {
-    const key = `${pr.nombre}|${pr.marca}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      result.push({ id: pr.id, nombre: pr.nombre, marca: pr.marca, emoji: pr.emoji || "👗" });
-    }
-  }));
-  return result;
+  return inventario;
 }
 
 let currentVentaClienteId = null;
@@ -1027,6 +1082,12 @@ function createVentaFormSheet() {
       monto: parseFloat(data.get("monto")) || 0,
     });
     saveClientes();
+    const prendaId = parseInt(prendaIdStr) || null;
+    if (prendaId) {
+      inventario = inventario.filter((p) => p.id !== prendaId);
+      saveInventario();
+      renderMisPrendas();
+    }
     overlay.classList.remove("open");
     e.target.reset();
     openClienteDetail(currentVentaClienteId);
@@ -1047,24 +1108,62 @@ function openVentaForm(clienteId) {
 
 // ── Render: Mis Prendas ─────────────────────────────────────────────────────
 
+function buildInvCard(p) {
+  const ganMin = p.precioMin - p.precioCosto;
+  const ganMax = p.precioMax - p.precioCosto;
+  const waUrl = buildWhatsappUrl(p);
+  return `
+    <article class="inv-card">
+      <div class="inv-card-img" style="background:${p.gradiente}">
+        <span class="inv-card-emoji" aria-hidden="true">${p.emoji}</span>
+      </div>
+      <div class="inv-card-body">
+        <p class="inv-card-id">ID: ${formatZtId(p.id)}</p>
+        <p class="inv-card-nombre">${p.nombre}</p>
+        <p class="inv-card-marca">${p.marca}</p>
+        <div class="inv-tallas">
+          <span class="inv-talla-chip">Etq&nbsp;<strong>${p.tallaEtiqueta}</strong></span>
+          <span class="inv-talla-chip">Real&nbsp;<strong>${p.tallaReal}</strong></span>
+        </div>
+        <p class="inv-precio-rango">${formatPeso(p.precioMin)} – ${formatPeso(p.precioMax)}</p>
+        <p class="inv-ganancia">+${formatPeso(ganMin)} – +${formatPeso(ganMax)}</p>
+        <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-inv-compartir">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${WA_PATH}"/></svg>
+          Compartir
+        </a>
+      </div>
+    </article>`;
+}
+
 function renderMisPrendas() {
   const container = document.querySelector("#prendas .view-content");
-  const prendas = getMisPrendas();
-  const items = prendas.map((p) => `
-    <div class="prenda-item">
-      <div class="prenda-item-thumb">${p.emoji}</div>
-      <div class="prenda-item-info">
-        <p class="prenda-item-name">${p.nombre}</p>
-        <p class="prenda-item-marca">${p.marca}</p>
-        <p class="prenda-id">ID: ${formatZtId(p.id)}</p>
-      </div>
-    </div>`).join("");
+
+  const renderGrid = (items) => items.length
+    ? items.map(buildInvCard).join("")
+    : `<p class="inv-empty">Sin prendas disponibles</p>`;
+
   container.innerHTML = `
     <div class="catalog-header">
       <h2 class="catalog-title">Mis Prendas</h2>
-      <p class="catalog-subtitle">${prendas.length} prendas en tu inventario</p>
+      <p class="catalog-subtitle">${inventario.length} prenda${inventario.length !== 1 ? "s" : ""} disponible${inventario.length !== 1 ? "s" : ""}</p>
     </div>
-    <div class="prendas-list">${items.length ? items : '<p class="compras-empty">Sin prendas registradas</p>'}</div>`;
+    <div class="clientes-search-row">
+      <input class="search-input" id="prendasBusqueda" type="search"
+             placeholder="Buscar por ID, nombre o marca…" autocomplete="off"
+             autocorrect="off" spellcheck="false">
+    </div>
+    <div class="inv-grid" id="invGrid">${renderGrid(inventario)}</div>`;
+
+  container.querySelector("#prendasBusqueda").addEventListener("input", (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    const filtradas = q
+      ? inventario.filter((p) =>
+          p.nombre.toLowerCase().includes(q) ||
+          p.marca.toLowerCase().includes(q) ||
+          formatZtId(p.id).toLowerCase().includes(q))
+      : inventario;
+    container.querySelector("#invGrid").innerHTML = renderGrid(filtradas);
+  });
 }
 
 // ── Render: secciones vacías ────────────────────────────────────────────────
@@ -1379,6 +1478,7 @@ window.addEventListener("hashchange", () => {
 // ── Init ────────────────────────────────────────────────────────────────────
 
 loadClientes();
+loadInventario();
 renderCatalog();
 renderPedidos();
 renderClientes();
