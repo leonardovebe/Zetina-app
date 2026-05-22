@@ -142,13 +142,27 @@ function createCartSheet() {
 
 let catalogo = [];
 
+// URL base del bucket público de fotos en Supabase Storage
+const FOTOS_URL = `${SUPABASE_URL}/storage/v1/object/public/prenda-fotos`;
+
+// Construye la URL pública correcta sin importar cómo esté guardada en la BD
+function fotoPublicUrl(raw) {
+  if (!raw) return null;
+  if (raw.startsWith('data:')) return raw;   // base64 de la galería de la vendedora
+  if (raw.startsWith('http')) return raw;    // ya es URL completa de Supabase Storage
+  return `${FOTOS_URL}/${raw}`;             // path relativo → URL pública completa
+}
+
 async function loadCatalogo() {
-  const { data } = await db
+  // No filtramos por 'baja' porque: a) cuando se da de baja también se pone disponible=false,
+  // y b) la columna puede no existir si el schema-admin.sql no se ejecutó todavía.
+  const { data, error } = await db
     .from('prendas')
-    .select('*, fotos_prendas(url)')
+    .select('id, nombre, marca, emoji, gradiente, talla_etiqueta, talla_real, precio_costo, precio_min, precio_max, numero, fotos_prendas(url)')
     .eq('disponible', true)
-    .eq('baja', false)
     .order('created_at', { ascending: false });
+
+  if (error) { console.error('loadCatalogo:', error.message); return; }
 
   catalogo = (data || []).map((p) => ({
     id:            p.id,
@@ -162,7 +176,7 @@ async function loadCatalogo() {
     precioMin:     p.precio_min     || 0,
     precioMax:     p.precio_max     || 0,
     gradiente:     p.gradiente || 'linear-gradient(150deg, #130016 0%, #855AA2 100%)',
-    foto:          (p.fotos_prendas || [])[0]?.url || null,
+    foto:          fotoPublicUrl((p.fotos_prendas || [])[0]?.url),
   }));
 }
 
