@@ -1564,6 +1564,7 @@ h1, h2, h3, h4, h5, h6,
 
 /* ── Cobros ──────────────────────────────────────────────────────────────── */
 
+/* ── Cobros: vista principal ─────────────────────────────────────────────── */
 .cobros-header {
   margin-bottom: 1rem;
 }
@@ -1596,90 +1597,208 @@ h1, h2, h3, h4, h5, h6,
   gap: 0.75rem;
 }
 
-.cobro-card {
+.cobro-cliente-card {
+  background: #fff;
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.1s ease;
+}
+
+.cobro-cliente-card:active {
+  transform: scale(0.985);
+}
+
+.cobro-cliente-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.875rem;
-  background: #fff;
-  border-radius: 1rem;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 0.75rem 1rem;
+  background: #130016;
 }
 
-.cobro-info {
+.cobro-cliente-nombre {
+  font-family: var(--font-heading);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.cobro-badge {
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  padding: 0.2rem 0.625rem;
+  border-radius: 2rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.cobro-badge--ok   { background: #CCB8DD; color: #130016; }
+.cobro-badge--debe { background: #DEFF00; color: #130016; }
+
+.cobro-cliente-body {
+  display: flex;
+  align-items: stretch;
+  padding: 0.625rem 1rem 0.75rem;
+  gap: 0;
+}
+
+.cobro-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0 0.25rem;
+  border-right: 1px solid rgba(133, 90, 162, 0.12);
+}
+
+.cobro-stat:last-child {
+  border-right: none;
+}
+
+.cobro-stat-label {
+  font-size: 0.625rem;
+  color: #aaa;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cobro-stat-val {
+  font-family: var(--font-heading);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #130016;
+}
+
+/* ── Cobros: estado de cuenta (sheet) ───────────────────────────────────── */
+.cta-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.cta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  background: #f7f3fc;
+  border-radius: 0.75rem;
+}
+
+.cta-info {
   flex: 1;
   min-width: 0;
 }
 
-.cobro-cliente {
+.cta-nombre {
   font-family: var(--font-heading);
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 700;
-  color: #111;
-  margin-bottom: 0.15rem;
-}
-
-.cobro-prenda {
-  font-size: 0.8125rem;
-  color: #555;
+  color: #130016;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.cobro-fecha {
+.cta-meta {
   font-size: 0.75rem;
-  color: #aaa;
-  margin-top: 0.15rem;
+  color: #888;
+  margin-top: 0.1rem;
 }
 
-.cobro-right {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.4rem;
-}
-
-.cobro-monto {
+.cta-monto {
   font-family: var(--font-heading);
-  font-size: 1.0625rem;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #130016;
+  flex-shrink: 0;
+}
+
+.cta-monto--abono {
+  color: #855AA2;
+}
+
+.cta-subtotal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.875rem;
+  background: #f0eaf7;
+  border-radius: 0.625rem;
+}
+
+.cta-subtotal-label {
+  font-size: 0.75rem;
+  color: #888;
+  font-weight: 500;
+}
+
+.cta-subtotal-val {
+  font-family: var(--font-heading);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #130016;
+}
+
+.cta-saldo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1rem;
+  border-radius: 0.875rem;
+  margin-top: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.cta-saldo--ok   { background: #CCB8DD; }
+.cta-saldo--debe { background: #DEFF00; }
+
+.cta-saldo-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #130016;
+}
+
+.cta-saldo-val {
+  font-family: var(--font-heading);
+  font-size: 1.125rem;
   font-weight: 800;
   color: #130016;
 }
 
-.btn-marcar-pagado {
-  padding: 0.3rem 0.75rem;
-  background: #DEFF00;
-  color: #130016;
+.cta-empty {
+  font-size: 0.875rem;
+  color: #aaa;
+  text-align: center;
+  padding: 0.75rem;
+}
+
+.btn-registrar-abono {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.875rem 1rem;
+  background: #130016;
+  color: #DEFF00;
   border: none;
-  border-radius: 2rem;
-  font-family: var(--font-body);
-  font-size: 0.75rem;
+  border-radius: 0.875rem;
+  font-family: var(--font-heading);
+  font-size: 0.9375rem;
   font-weight: 700;
   cursor: pointer;
-  white-space: nowrap;
   -webkit-tap-highlight-color: transparent;
   transition: opacity 0.15s ease;
 }
 
-.btn-marcar-pagado:active { opacity: 0.8; }
-
-.cobros-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 3rem 1rem;
-  gap: 0.5rem;
-}
-
-.cobros-empty-icon {
-  font-size: 3rem;
-}
-
-.cobros-empty-text {
-  font-size: 0.9375rem;
-  color: #aaa;
-}
+.btn-registrar-abono:active { opacity: 0.85; }

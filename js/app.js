@@ -475,8 +475,12 @@ let clientes = [
     fechaCumpleanos: "1995-03-15",
     notas: "Prefiere colores oscuros. Paga puntualmente.",
     compras: [
-      { prenda: "Blusa Satinada Manga Larga",  marca: "ZARA",       fecha: "2026-05-10", monto: 350, pagado: true  },
-      { prenda: "Vestido Floral Midi",          marca: "ZARA WOMAN", fecha: "2026-05-18", monto: 580, pagado: false },
+      { id: 101, prenda: "Blusa Satinada Manga Larga", marca: "ZARA",       fecha: "2026-05-10", monto: 350 },
+      { id: 102, prenda: "Vestido Floral Midi",         marca: "ZARA WOMAN", fecha: "2026-05-18", monto: 580 },
+    ],
+    pagos: [
+      { id: 201, fecha: "2026-05-10", monto: 350 },
+      { id: 202, fecha: "2026-05-20", monto: 100 },
     ],
   },
   {
@@ -489,7 +493,10 @@ let clientes = [
     fechaCumpleanos: "1998-11-07",
     notas: "Le encantan los vestidos y blusas ligeras.",
     compras: [
-      { prenda: "Pantalón Skinny de Mezclilla", marca: "BERSHKA", fecha: "2026-05-05", monto: 450, pagado: true },
+      { id: 103, prenda: "Pantalón Skinny de Mezclilla", marca: "BERSHKA", fecha: "2026-05-05", monto: 450 },
+    ],
+    pagos: [
+      { id: 203, fecha: "2026-05-05", monto: 450 },
     ],
   },
   {
@@ -502,8 +509,11 @@ let clientes = [
     fechaCumpleanos: "1990-07-22",
     notas: "Contactar solo por WhatsApp. Sin llamadas.",
     compras: [
-      { prenda: "Chamarra de Cuero Sintético", marca: "PULL&BEAR", fecha: "2026-04-28", monto: 620, pagado: false },
-      { prenda: "Falda Plisada Mini",           marca: "H&M",       fecha: "2026-05-12", monto: 280, pagado: false },
+      { id: 104, prenda: "Chamarra de Cuero Sintético", marca: "PULL&BEAR", fecha: "2026-04-28", monto: 620 },
+      { id: 105, prenda: "Falda Plisada Mini",           marca: "H&M",       fecha: "2026-05-12", monto: 280 },
+    ],
+    pagos: [
+      { id: 204, fecha: "2026-04-30", monto: 300 },
     ],
   },
 ];
@@ -523,7 +533,9 @@ function iniciales(nombre) {
 }
 
 function tienePendiente(c) {
-  return c.compras.some((comp) => !comp.pagado);
+  const totalPrendas = (c.compras || []).reduce((s, comp) => s + comp.monto, 0);
+  const totalPagado  = (c.pagos   || []).reduce((s, p)    => s + p.monto,    0);
+  return totalPrendas > totalPagado;
 }
 
 const MESES_FULL = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -670,9 +682,6 @@ function openClienteDetail(id) {
         <div class="compra-card">
           <div class="compra-card-head">
             <span class="compra-prenda">${comp.prenda}</span>
-            <span class="compra-status ${comp.pagado ? "compra-pagado" : "compra-pendiente"}">
-              ${comp.pagado ? "Pagado" : "Pendiente"}
-            </span>
           </div>
           <div class="compra-card-body">
             <span class="compra-meta">${comp.marca} · ${formatFecha(comp.fecha)}</span>
@@ -958,18 +967,9 @@ function createVentaFormSheet() {
             <input class="form-input" id="fMonto" name="monto" type="number"
                    min="1" step="1" placeholder="Ej. 350" required>
           </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="fFechaVenta">Fecha de venta</label>
-              <input class="form-input" id="fFechaVenta" name="fecha" type="date" required>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="fPagado">Estado de pago</label>
-              <select class="form-select" id="fPagado" name="pagado">
-                <option value="false">Pendiente</option>
-                <option value="true">Pagado</option>
-              </select>
-            </div>
+          <div class="form-group">
+            <label class="form-label" for="fFechaVenta">Fecha de venta</label>
+            <input class="form-input" id="fFechaVenta" name="fecha" type="date" required>
           </div>
           <button type="submit" class="btn-save-cliente">Guardar venta</button>
         </form>
@@ -987,13 +987,13 @@ function createVentaFormSheet() {
     const [nombre, marca] = data.get("prendaKey").split("|");
     const c = clientes.find((cl) => cl.id === currentVentaClienteId);
     if (!c) return;
+    if (!c.pagos) c.pagos = [];
     c.compras.unshift({
       id: Date.now(),
       prenda: nombre,
       marca: marca || "",
       fecha: data.get("fecha"),
       monto: parseFloat(data.get("monto")) || 0,
-      pagado: data.get("pagado") === "true",
     });
     saveClientes();
     overlay.classList.remove("open");
@@ -1050,68 +1050,194 @@ function renderSection(viewId, titulo) {
 
 function renderCobros() {
   const container = document.querySelector("#cobros .view-content");
-  const pendientes = [];
-  clientes.forEach((c) => {
-    c.compras.filter((comp) => !comp.pagado).forEach((comp) => {
-      pendientes.push({ cliente: c, comp });
-    });
-  });
-  pendientes.sort((a, b) => b.comp.fecha.localeCompare(a.comp.fecha));
 
-  const total = pendientes.reduce((sum, { comp }) => sum + comp.monto, 0);
+  const totalPorCobrar = clientes.reduce((sum, c) => {
+    const tp   = (c.compras || []).reduce((s, comp) => s + comp.monto, 0);
+    const tpag = (c.pagos   || []).reduce((s, p)    => s + p.monto,    0);
+    return sum + Math.max(0, tp - tpag);
+  }, 0);
 
-  if (pendientes.length === 0) {
-    container.innerHTML = `
-      <div class="cobros-header">
-        <h2 class="catalog-title">Cobros</h2>
-        <p class="catalog-subtitle">Sin pagos pendientes</p>
-      </div>
-      <div class="cobros-empty">
-        <p class="cobros-empty-icon">💰</p>
-        <p class="cobros-empty-text">Todo está al corriente</p>
-      </div>`;
-    return;
-  }
-
-  const rows = pendientes.map(({ cliente, comp }) => `
-    <div class="cobro-card">
-      <div class="cobro-info">
-        <p class="cobro-cliente">${cliente.nombre}</p>
-        <p class="cobro-prenda">${comp.prenda}${comp.marca ? ` · ${comp.marca}` : ""}</p>
-        <p class="cobro-fecha">${formatFecha(comp.fecha)}</p>
-      </div>
-      <div class="cobro-right">
-        <p class="cobro-monto">${formatPeso(comp.monto)}</p>
-        <button class="btn-marcar-pagado"
-                data-cliente-id="${cliente.id}"
-                data-compra-id="${comp.id}">Cobrado ✓</button>
-      </div>
-    </div>`).join("");
+  const cards = clientes.map((c) => {
+    const totalPrendas = (c.compras || []).reduce((s, comp) => s + comp.monto, 0);
+    const totalPagado  = (c.pagos   || []).reduce((s, p)    => s + p.monto,    0);
+    const saldo = totalPrendas - totalPagado;
+    const alCorriente = saldo <= 0;
+    return `
+      <article class="cobro-cliente-card" data-id="${c.id}" role="button" tabindex="0">
+        <div class="cobro-cliente-head">
+          <h3 class="cobro-cliente-nombre">${c.nombre}</h3>
+          ${alCorriente
+            ? `<span class="cobro-badge cobro-badge--ok">Al corriente</span>`
+            : `<span class="cobro-badge cobro-badge--debe">${formatPeso(saldo)}</span>`}
+        </div>
+        <div class="cobro-cliente-body">
+          <div class="cobro-stat">
+            <span class="cobro-stat-label">Prendas</span>
+            <span class="cobro-stat-val">${c.compras.length}</span>
+          </div>
+          <div class="cobro-stat">
+            <span class="cobro-stat-label">Vendido</span>
+            <span class="cobro-stat-val">${formatPeso(totalPrendas)}</span>
+          </div>
+          <div class="cobro-stat">
+            <span class="cobro-stat-label">Pagado</span>
+            <span class="cobro-stat-val">${formatPeso(totalPagado)}</span>
+          </div>
+        </div>
+      </article>`;
+  }).join("");
 
   container.innerHTML = `
     <div class="cobros-header">
       <h2 class="catalog-title">Cobros</h2>
-      <p class="catalog-subtitle">${pendientes.length} pago${pendientes.length !== 1 ? "s" : ""} pendiente${pendientes.length !== 1 ? "s" : ""}</p>
+      <p class="catalog-subtitle">${clientes.length} clienta${clientes.length !== 1 ? "s" : ""}</p>
     </div>
     <div class="cobros-total-bar">
       <span class="cobros-total-label">Total por cobrar</span>
-      <span class="cobros-total-value">${formatPeso(total)}</span>
+      <span class="cobros-total-value">${formatPeso(totalPorCobrar)}</span>
     </div>
-    <div class="cobros-list">${rows}</div>`;
+    <div class="cobros-list">${cards}</div>`;
 
   container.querySelector(".cobros-list").addEventListener("click", (e) => {
-    const btn = e.target.closest(".btn-marcar-pagado");
-    if (!btn) return;
-    const clienteId = parseInt(btn.dataset.clienteId);
-    const compraId  = parseInt(btn.dataset.compraId);
+    const card = e.target.closest(".cobro-cliente-card");
+    if (card) openCobrosDetail(parseInt(card.dataset.id));
+  });
+}
+
+function createCobrosDetailSheet() {
+  if (document.getElementById("cobrosDetailOverlay")) return;
+  const overlay = document.createElement("div");
+  overlay.id = "cobrosDetailOverlay";
+  overlay.className = "order-detail-overlay";
+  overlay.innerHTML = `
+    <div class="order-detail-sheet">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-body" id="cobrosDetailBody"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.classList.remove("open");
+  });
+  overlay.querySelector(".sheet-body").addEventListener("click", (e) => {
+    if (e.target.closest(".btn-registrar-abono")) {
+      openAbonoForm(parseInt(overlay.dataset.clienteId));
+    }
+  });
+}
+
+function openCobrosDetail(id) {
+  const c = clientes.find((cl) => cl.id === id);
+  if (!c) return;
+
+  const totalPrendas = (c.compras || []).reduce((s, comp) => s + comp.monto, 0);
+  const totalPagado  = (c.pagos   || []).reduce((s, p)    => s + p.monto,    0);
+  const saldo = totalPrendas - totalPagado;
+  const alCorriente = saldo <= 0;
+
+  const comprasHTML = c.compras.length
+    ? c.compras.map((comp) => `
+        <div class="cta-row">
+          <div class="cta-info">
+            <p class="cta-nombre">${comp.prenda}</p>
+            <p class="cta-meta">${comp.marca} · ${formatFecha(comp.fecha)}</p>
+          </div>
+          <span class="cta-monto">${formatPeso(comp.monto)}</span>
+        </div>`).join("")
+    : `<p class="cta-empty">Sin prendas registradas</p>`;
+
+  const pagosHTML = (c.pagos || []).length
+    ? [...(c.pagos || [])].reverse().map((p) => `
+        <div class="cta-row">
+          <div class="cta-info">
+            <p class="cta-nombre">Abono</p>
+            <p class="cta-meta">${formatFecha(p.fecha)}</p>
+          </div>
+          <span class="cta-monto cta-monto--abono">${formatPeso(p.monto)}</span>
+        </div>`).join("")
+    : `<p class="cta-empty">Sin abonos registrados</p>`;
+
+  const overlay = document.getElementById("cobrosDetailOverlay");
+  overlay.dataset.clienteId = c.id;
+
+  document.getElementById("cobrosDetailBody").innerHTML = `
+    <h3 class="detail-nombre" style="margin-bottom:1.25rem">${c.nombre}</h3>
+    <p class="sheet-section-label">Prendas vendidas (${c.compras.length})</p>
+    <div class="cta-list">${comprasHTML}</div>
+    <div class="cta-subtotal">
+      <span class="cta-subtotal-label">Total prendas</span>
+      <span class="cta-subtotal-val">${formatPeso(totalPrendas)}</span>
+    </div>
+    <p class="sheet-section-label" style="margin-top:1.5rem">Abonos registrados</p>
+    <div class="cta-list">${pagosHTML}</div>
+    <div class="cta-subtotal">
+      <span class="cta-subtotal-label">Total pagado</span>
+      <span class="cta-subtotal-val">${formatPeso(totalPagado)}</span>
+    </div>
+    <div class="cta-saldo ${alCorriente ? "cta-saldo--ok" : "cta-saldo--debe"}">
+      <span class="cta-saldo-label">Saldo restante</span>
+      <span class="cta-saldo-val">${alCorriente ? "Al corriente" : formatPeso(saldo)}</span>
+    </div>
+    <button class="btn-registrar-abono">+ Registrar abono</button>`;
+
+  overlay.classList.add("open");
+}
+
+function createAbonoFormSheet() {
+  if (document.getElementById("abonoFormOverlay")) return;
+  const overlay = document.createElement("div");
+  overlay.id = "abonoFormOverlay";
+  overlay.className = "order-detail-overlay";
+  overlay.innerHTML = `
+    <div class="order-detail-sheet">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-body">
+        <h3 class="cart-title" style="margin-bottom:1.25rem">Registrar abono</h3>
+        <form id="abonoForm" class="cliente-form">
+          <div class="form-group">
+            <label class="form-label" for="fFechaAbono">Fecha</label>
+            <input class="form-input" id="fFechaAbono" name="fecha" type="date" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="fMontoAbono">Monto del abono</label>
+            <input class="form-input" id="fMontoAbono" name="monto" type="number"
+                   min="1" step="1" placeholder="Ej. 200" required>
+          </div>
+          <button type="submit" class="btn-save-cliente">Guardar abono</button>
+        </form>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.classList.remove("open");
+  });
+
+  overlay.querySelector("#abonoForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const clienteId = parseInt(overlay.dataset.clienteId);
     const c = clientes.find((cl) => cl.id === clienteId);
     if (!c) return;
-    const comp = c.compras.find((cp) => cp.id === compraId);
-    if (!comp) return;
-    comp.pagado = true;
+    if (!c.pagos) c.pagos = [];
+    const data = new FormData(e.target);
+    c.pagos.push({
+      id: Date.now(),
+      fecha: data.get("fecha"),
+      monto: parseFloat(data.get("monto")) || 0,
+    });
     saveClientes();
+    overlay.classList.remove("open");
+    e.target.reset();
+    openCobrosDetail(clienteId);
     renderCobros();
   });
+}
+
+function openAbonoForm(clienteId) {
+  const overlay = document.getElementById("abonoFormOverlay");
+  overlay.dataset.clienteId = clienteId;
+  overlay.querySelector("#fFechaAbono").value = new Date().toISOString().split("T")[0];
+  overlay.querySelector("#fMontoAbono").value = "";
+  overlay.classList.add("open");
 }
 
 // ── Navegación ──────────────────────────────────────────────────────────────
@@ -1164,6 +1290,8 @@ createClienteDetailSheet();
 createClienteFormSheet();
 createClienteEditSheet();
 createVentaFormSheet();
+createCobrosDetailSheet();
+createAbonoFormSheet();
 createCartSheet();
 document.getElementById("cartBtn").addEventListener("click", openCartSheet);
 renderCobros();
