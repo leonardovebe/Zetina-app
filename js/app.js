@@ -619,12 +619,30 @@ function createClienteDetailSheet() {
   overlay.className = "order-detail-overlay";
   overlay.innerHTML = `
     <div class="order-detail-sheet">
-      <div class="sheet-drag-handle"></div>
+      <div class="detail-sheet-handle-row">
+        <div class="sheet-drag-handle"></div>
+      </div>
+      <div class="detail-sheet-topbar">
+        <button class="btn-close-detail" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+        <button class="btn-edit-detail" aria-label="Editar clienta">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+        </button>
+      </div>
       <div class="sheet-body" id="clienteDetailBody"></div>
     </div>`;
   document.body.appendChild(overlay);
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) overlay.classList.remove("open");
+  });
+  overlay.querySelector(".btn-close-detail").addEventListener("click", () => {
+    overlay.classList.remove("open");
   });
   overlay.querySelector(".sheet-body").addEventListener("click", (e) => {
     const btn = e.target.closest(".btn-registrar-venta");
@@ -635,32 +653,28 @@ function createClienteDetailSheet() {
 function openClienteDetail(id) {
   const c = clientes.find((cl) => cl.id === id);
   if (!c) return;
-  const { bg, color } = avatarPalette(c.id);
   const pendiente = tienePendiente(c);
 
   const comprasHTML = c.compras.length
     ? c.compras.map((comp) => `
-        <div class="compra-row">
-          <div class="compra-info">
-            <p class="compra-prenda">${comp.prenda}</p>
-            <p class="compra-meta">${comp.marca} · ${formatFecha(comp.fecha)}</p>
-          </div>
-          <div class="compra-right">
-            <p class="compra-monto">${formatPeso(comp.monto)}</p>
+        <div class="compra-card">
+          <div class="compra-card-head">
+            <span class="compra-prenda">${comp.prenda}</span>
             <span class="compra-status ${comp.pagado ? "compra-pagado" : "compra-pendiente"}">
               ${comp.pagado ? "Pagado" : "Pendiente"}
             </span>
+          </div>
+          <div class="compra-card-body">
+            <span class="compra-meta">${comp.marca} · ${formatFecha(comp.fecha)}</span>
+            <span class="compra-monto">${formatPeso(comp.monto)}</span>
           </div>
         </div>`).join("")
     : `<p class="compras-empty">Sin compras registradas</p>`;
 
   document.getElementById("clienteDetailBody").innerHTML = `
-    <div class="detail-avatar-row">
-      <div class="detail-avatar" style="background:${bg};color:${color}">${iniciales(c.nombre)}</div>
-      <div>
-        <h3 class="detail-nombre">${c.nombre}</h3>
-        ${pendiente ? `<span class="badge-pendiente">Pago pendiente</span>` : ""}
-      </div>
+    <div class="detail-nombre-row">
+      <h3 class="detail-nombre">${c.nombre}</h3>
+      ${pendiente ? `<span class="badge-pendiente">Pago pendiente</span>` : ""}
     </div>
     <div class="detail-fields">
       <div class="detail-field">

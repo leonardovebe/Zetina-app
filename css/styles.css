@@ -1159,8 +1159,8 @@ h1, h2, h3, h4, h5, h6,
 .badge-pendiente {
   font-size: 0.625rem;
   font-weight: 700;
-  background: #855AA2;
-  color: #fff;
+  background: #DEFF00;
+  color: #130016;
   padding: 0.15rem 0.5rem;
   border-radius: 2rem;
   white-space: nowrap;
@@ -1190,24 +1190,54 @@ h1, h2, h3, h4, h5, h6,
 }
 
 /* Detalle de clienta */
-.detail-avatar-row {
+.detail-sheet-handle-row {
   display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
+  justify-content: center;
+  padding-top: 0.75rem;
 }
 
-.detail-avatar {
-  flex-shrink: 0;
-  width: 3.5rem;
-  height: 3.5rem;
+.detail-sheet-handle-row .sheet-drag-handle {
+  margin: 0;
+}
+
+.detail-sheet-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem 0;
+}
+
+.btn-close-detail,
+.btn-edit-detail {
+  width: 2.25rem;
+  height: 2.25rem;
   border-radius: 50%;
+  background: #f0eaf7;
+  border: none;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-heading);
-  font-size: 1.125rem;
-  font-weight: 700;
+  color: #130016;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease;
+}
+
+.btn-close-detail:active,
+.btn-edit-detail:active { opacity: 0.7; }
+
+.btn-close-detail svg,
+.btn-edit-detail svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.detail-nombre-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
 }
 
 .detail-nombre {
@@ -1215,7 +1245,6 @@ h1, h2, h3, h4, h5, h6,
   font-size: 1.125rem;
   font-weight: 700;
   color: #130016;
-  margin-bottom: 0.25rem;
 }
 
 .detail-fields {
@@ -1292,26 +1321,35 @@ h1, h2, h3, h4, h5, h6,
   gap: 0.625rem;
 }
 
-.compra-row {
+.compra-card {
+  background: #fff;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+}
+
+.compra-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.75rem 0.875rem;
-  background: #f7f3fc;
-  border-radius: 0.75rem;
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  background: #130016;
 }
 
-.compra-info {
-  flex: 1;
-  min-width: 0;
+.compra-card-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
 }
 
 .compra-prenda {
   font-family: var(--font-heading);
   font-size: 0.875rem;
   font-weight: 700;
-  color: #111;
+  color: #fff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1320,15 +1358,6 @@ h1, h2, h3, h4, h5, h6,
 .compra-meta {
   font-size: 0.75rem;
   color: #888;
-  margin-top: 0.1rem;
-}
-
-.compra-right {
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.25rem;
 }
 
 .compra-monto {
@@ -1336,6 +1365,7 @@ h1, h2, h3, h4, h5, h6,
   font-size: 0.9375rem;
   font-weight: 700;
   color: #130016;
+  flex-shrink: 0;
 }
 
 .compra-status {
@@ -1344,6 +1374,7 @@ h1, h2, h3, h4, h5, h6,
   padding: 0.15rem 0.5rem;
   border-radius: 2rem;
   letter-spacing: 0.02em;
+  flex-shrink: 0;
 }
 
 .compra-pagado   { background: #DEFF00; color: #130016; }
