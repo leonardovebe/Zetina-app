@@ -2366,3 +2366,68 @@ h1, h2, h3, h4, h5, h6,
 
 .cuenta-action-btn--danger { color: #c0392b; }
 .cuenta-action-btn--danger svg { color: #c0392b; }
+
+.cuenta-action-btn--wa {
+  background: #25D366;
+  color: #fff;
+  text-decoration: none;
+}
+.cuenta-action-btn--wa svg { color: #fff; }
+
+/* Total vendido en morado */
+.cuenta-stat-card--vendido { }
+.cuenta-stat-value--vendido { color: #855AA2; }
+
+/* Crédito por devoluciones — card completa */
+.cuenta-stat-card--credito {
+  grid-column: 1 / -1;
+  background: #f0eaf7;
+}
+
+/* Avatar con foto */
+.cuenta-avatar--btn {
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cuenta-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.cuenta-avatar-cam {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(19, 0, 22, 0.45);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.cuenta-avatar--btn:active .cuenta-avatar-cam,
+.cuenta-avatar--btn:focus-visible .cuenta-avatar-cam {
+  opacity: 1;
+}
+
+.cuenta-avatar-cam svg {
+  width: 1.375rem;
+  height: 1.375rem;
+  color: #fff;
+}
+
+.perfil-credito-hint {
+  font-size: 0.8125rem;
+  color: #999;
+  text-align: center;
+  margin: 0.25rem 0 0;
+  font-family: var(--font-body);
+}

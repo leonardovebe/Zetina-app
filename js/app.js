@@ -1342,7 +1342,6 @@ function openGaleria(prendaId) {
 
 let perfil = {
   nombre: "Vendedora Zetina",
-  nivel: "Semilla",
   credito: 0,
 };
 
@@ -1358,7 +1357,7 @@ function savePerfil() {
   try { localStorage.setItem("zetina_perfil", JSON.stringify(perfil)); } catch (e) {}
 }
 
-const NIVELES = ["Semilla", "Estrella", "Líder", "Directora"];
+const NIVELES = ["Stylist", "Estrella", "Líder", "Directora"];
 
 function getNivel() {
   const totalVendido = clientes.reduce((sum, c) =>
@@ -1366,7 +1365,7 @@ function getNivel() {
   if (totalVendido >= 50000) return "Directora";
   if (totalVendido >= 20000) return "Líder";
   if (totalVendido >= 5000)  return "Estrella";
-  return "Semilla";
+  return "Stylist";
 }
 
 function getCuentaStats() {
@@ -1385,23 +1384,32 @@ function renderCuenta() {
   const nivel = getNivel();
   const stats = getCuentaStats();
   const iniciales = perfil.nombre.trim().split(" ").slice(0, 2).map((w) => w[0].toUpperCase()).join("");
+  const avatarContent = perfil.foto
+    ? `<img src="${perfil.foto}" alt="${perfil.nombre}" class="cuenta-avatar-img">`
+    : iniciales;
+  const ayudaUrl = `https://wa.me/525579346962?text=${encodeURIComponent(`Hola ZETINA, soy ${perfil.nombre} y necesito ayuda con mi cuenta. 😊`)}`;
 
   container.innerHTML = `
     <div class="cuenta-header">
-      <div class="cuenta-avatar">${iniciales}</div>
+      <button class="cuenta-avatar cuenta-avatar--btn" id="btnAvatarFoto" aria-label="Cambiar foto de perfil">
+        ${avatarContent}
+        <span class="cuenta-avatar-cam" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+        </span>
+      </button>
       <h2 class="cuenta-nombre">${perfil.nombre}</h2>
       <div class="cuenta-badges-row">
         <span class="cuenta-nivel-badge">${nivel}</span>
-        ${perfil.credito > 0
-          ? `<span class="cuenta-credito-badge">Crédito: ${formatPeso(perfil.credito)}</span>`
-          : ""}
       </div>
     </div>
 
     <div class="cuenta-stats-grid">
-      <div class="cuenta-stat-card">
+      <div class="cuenta-stat-card cuenta-stat-card--vendido">
         <span class="cuenta-stat-label">Total vendido</span>
-        <span class="cuenta-stat-value">${formatPeso(stats.totalVendido)}</span>
+        <span class="cuenta-stat-value cuenta-stat-value--vendido">${formatPeso(stats.totalVendido)}</span>
       </div>
       <div class="cuenta-stat-card">
         <span class="cuenta-stat-label">Total cobrado</span>
@@ -1419,6 +1427,10 @@ function renderCuenta() {
         <span class="cuenta-stat-label">Prendas en inventario</span>
         <span class="cuenta-stat-value cuenta-stat-value--num">${stats.prendas}</span>
       </div>
+      <div class="cuenta-stat-card cuenta-stat-card--credito">
+        <span class="cuenta-stat-label">Crédito por devoluciones</span>
+        <span class="cuenta-stat-value">${formatPeso(perfil.credito || 0)}</span>
+      </div>
     </div>
 
     <div class="cuenta-actions">
@@ -1429,6 +1441,10 @@ function renderCuenta() {
         </svg>
         Editar perfil
       </button>
+      <a href="${ayudaUrl}" target="_blank" rel="noopener noreferrer" class="cuenta-action-btn cuenta-action-btn--wa">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${WA_PATH}"/></svg>
+        ¿Necesitas ayuda?
+      </a>
       <button class="cuenta-action-btn cuenta-action-btn--danger" id="btnCerrarSesion">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -1437,10 +1453,25 @@ function renderCuenta() {
         </svg>
         Cerrar sesión
       </button>
-    </div>`;
+    </div>
+    <input type="file" id="avatarFileInput" accept="image/*" hidden>`;
 
   container.querySelector("#btnEditarPerfil").addEventListener("click", openPerfilEdit);
   container.querySelector("#btnCerrarSesion").addEventListener("click", openCerrarSesion);
+
+  const avatarInput = container.querySelector("#avatarFileInput");
+  container.querySelector("#btnAvatarFoto").addEventListener("click", () => avatarInput.click());
+  avatarInput.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      perfil.foto = ev.target.result;
+      savePerfil();
+      renderCuenta();
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 // ── Sheet: editar perfil ────────────────────────────────────────────────────
@@ -1472,6 +1503,7 @@ function createPerfilEditSheet() {
           </div>
           <button type="submit" class="btn-save-cliente">Guardar cambios</button>
         </form>
+        <p class="perfil-credito-hint">El crédito se muestra en tu perfil principal.</p>
       </div>
     </div>`;
   document.body.appendChild(overlay);
