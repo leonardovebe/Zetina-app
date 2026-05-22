@@ -108,6 +108,11 @@ function createCartSheet() {
   overlay.innerHTML = `
     <div class="cart-sheet">
       <div class="sheet-drag-handle"></div>
+      <div class="sheet-topbar">
+        <button class="btn-sheet-close" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
       <div class="cart-body" id="cartSheetBody"></div>
     </div>`;
   document.body.appendChild(overlay);
@@ -115,6 +120,7 @@ function createCartSheet() {
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) closeCartSheet();
   });
+  overlay.querySelector(".btn-sheet-close").addEventListener("click", closeCartSheet);
 
   overlay.querySelector("#cartSheetBody").addEventListener("click", (e) => {
     if (e.target.closest("#cartClearBtn")) {
@@ -344,12 +350,18 @@ function createOrderDetailSheet() {
   overlay.innerHTML = `
     <div class="order-detail-sheet">
       <div class="sheet-drag-handle"></div>
+      <div class="sheet-topbar">
+        <button class="btn-sheet-close" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
       <div class="sheet-body" id="orderDetailBody"></div>
     </div>`;
   document.body.appendChild(overlay);
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) closeOrderDetail();
   });
+  overlay.querySelector(".btn-sheet-close").addEventListener("click", closeOrderDetail);
 }
 
 function openOrderDetail(id) {
@@ -754,6 +766,11 @@ function createClienteFormSheet() {
   overlay.innerHTML = `
     <div class="order-detail-sheet">
       <div class="sheet-drag-handle"></div>
+      <div class="sheet-topbar">
+        <button class="btn-sheet-close" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
       <div class="sheet-body">
         <h3 class="cart-title" style="margin-bottom:1.25rem">Nueva clienta</h3>
         <form id="clienteForm" class="cliente-form">
@@ -806,6 +823,7 @@ function createClienteFormSheet() {
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) overlay.classList.remove("open");
   });
+  overlay.querySelector(".btn-sheet-close").addEventListener("click", () => overlay.classList.remove("open"));
 
   overlay.querySelector("#clienteForm").addEventListener("submit", (e) => {
     e.preventDefault();
@@ -840,6 +858,11 @@ function createClienteEditSheet() {
   overlay.innerHTML = `
     <div class="order-detail-sheet">
       <div class="sheet-drag-handle"></div>
+      <div class="sheet-topbar">
+        <button class="btn-sheet-close" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
       <div class="sheet-body">
         <h3 class="cart-title" style="margin-bottom:1.25rem">Editar clienta</h3>
         <form id="clienteEditForm" class="cliente-form">
@@ -892,6 +915,7 @@ function createClienteEditSheet() {
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) overlay.classList.remove("open");
   });
+  overlay.querySelector(".btn-sheet-close").addEventListener("click", () => overlay.classList.remove("open"));
 
   overlay.querySelector("#clienteEditForm").addEventListener("submit", (e) => {
     e.preventDefault();
@@ -955,6 +979,11 @@ function createVentaFormSheet() {
   overlay.innerHTML = `
     <div class="order-detail-sheet">
       <div class="sheet-drag-handle"></div>
+      <div class="sheet-topbar">
+        <button class="btn-sheet-close" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
       <div class="sheet-body">
         <h3 class="cart-title" style="margin-bottom:1.25rem">Registrar venta</h3>
         <form id="ventaForm" class="cliente-form">
@@ -980,6 +1009,7 @@ function createVentaFormSheet() {
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) overlay.classList.remove("open");
   });
+  overlay.querySelector(".btn-sheet-close").addEventListener("click", () => overlay.classList.remove("open"));
 
   overlay.querySelector("#ventaForm").addEventListener("submit", (e) => {
     e.preventDefault();
@@ -1113,12 +1143,18 @@ function createCobrosDetailSheet() {
   overlay.innerHTML = `
     <div class="order-detail-sheet">
       <div class="sheet-drag-handle"></div>
+      <div class="sheet-topbar">
+        <button class="btn-sheet-close" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
       <div class="sheet-body" id="cobrosDetailBody"></div>
     </div>`;
   document.body.appendChild(overlay);
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) overlay.classList.remove("open");
   });
+  overlay.querySelector(".btn-sheet-close").addEventListener("click", () => overlay.classList.remove("open"));
   overlay.querySelector(".sheet-body").addEventListener("click", (e) => {
     if (e.target.closest(".btn-registrar-abono")) {
       openAbonoForm(parseInt(overlay.dataset.clienteId));
@@ -1192,16 +1228,25 @@ function createAbonoFormSheet() {
   overlay.innerHTML = `
     <div class="order-detail-sheet">
       <div class="sheet-drag-handle"></div>
+      <div class="sheet-topbar">
+        <button class="btn-sheet-close" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
       <div class="sheet-body" id="abonoSheetBody"></div>
     </div>`;
   document.body.appendChild(overlay);
+
+  function closeAbono() {
+    overlay.classList.remove("open");
+    const id = parseInt(overlay.dataset.clienteId);
+    if (id) { openCobrosDetail(id); renderCobros(); }
+  }
+
   overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) {
-      overlay.classList.remove("open");
-      const id = parseInt(overlay.dataset.clienteId);
-      if (id) { openCobrosDetail(id); renderCobros(); }
-    }
+    if (e.target === overlay) closeAbono();
   });
+  overlay.querySelector(".btn-sheet-close").addEventListener("click", closeAbono);
 }
 
 function _showAbonoConfirmacion(overlay, c, monto, fecha) {
