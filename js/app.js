@@ -1166,14 +1166,203 @@ function renderMisPrendas() {
   });
 }
 
-// ── Render: secciones vacías ────────────────────────────────────────────────
+// ── Perfil (Mi Cuenta) ──────────────────────────────────────────────────────
 
-function renderSection(viewId, titulo) {
-  const container = document.querySelector(`#${viewId} .view-content`);
+let perfil = {
+  nombre: "Vendedora Zetina",
+  nivel: "Semilla",
+  credito: 0,
+};
+
+function loadPerfil() {
+  try {
+    const stored = localStorage.getItem("zetina_perfil");
+    if (stored) perfil = { ...perfil, ...JSON.parse(stored) };
+    else savePerfil();
+  } catch (e) {}
+}
+
+function savePerfil() {
+  try { localStorage.setItem("zetina_perfil", JSON.stringify(perfil)); } catch (e) {}
+}
+
+const NIVELES = ["Semilla", "Estrella", "Líder", "Directora"];
+
+function getNivel() {
+  const totalVendido = clientes.reduce((sum, c) =>
+    sum + (c.compras || []).reduce((s, comp) => s + comp.monto, 0), 0);
+  if (totalVendido >= 50000) return "Directora";
+  if (totalVendido >= 20000) return "Líder";
+  if (totalVendido >= 5000)  return "Estrella";
+  return "Semilla";
+}
+
+function getCuentaStats() {
+  let totalVendido = 0, totalCobrado = 0;
+  clientes.forEach((c) => {
+    totalVendido += (c.compras || []).reduce((s, comp) => s + comp.monto, 0);
+    totalCobrado += (c.pagos   || []).reduce((s, p)    => s + p.monto,    0);
+  });
+  const totalPorCobrar = Math.max(0, totalVendido - totalCobrado);
+  const clientasActivas = clientes.filter((c) => (c.compras || []).length > 0).length;
+  return { totalVendido, totalCobrado, totalPorCobrar, clientasActivas, prendas: inventario.length };
+}
+
+function renderCuenta() {
+  const container = document.querySelector("#cuenta .view-content");
+  const nivel = getNivel();
+  const stats = getCuentaStats();
+  const iniciales = perfil.nombre.trim().split(" ").slice(0, 2).map((w) => w[0].toUpperCase()).join("");
+
   container.innerHTML = `
-    <div class="catalog-header">
-      <h2 class="catalog-title">${titulo}</h2>
+    <div class="cuenta-header">
+      <div class="cuenta-avatar">${iniciales}</div>
+      <h2 class="cuenta-nombre">${perfil.nombre}</h2>
+      <div class="cuenta-badges-row">
+        <span class="cuenta-nivel-badge">${nivel}</span>
+        ${perfil.credito > 0
+          ? `<span class="cuenta-credito-badge">Crédito: ${formatPeso(perfil.credito)}</span>`
+          : ""}
+      </div>
+    </div>
+
+    <div class="cuenta-stats-grid">
+      <div class="cuenta-stat-card">
+        <span class="cuenta-stat-label">Total vendido</span>
+        <span class="cuenta-stat-value">${formatPeso(stats.totalVendido)}</span>
+      </div>
+      <div class="cuenta-stat-card">
+        <span class="cuenta-stat-label">Total cobrado</span>
+        <span class="cuenta-stat-value">${formatPeso(stats.totalCobrado)}</span>
+      </div>
+      <div class="cuenta-stat-card cuenta-stat-card--accent">
+        <span class="cuenta-stat-label">Por cobrar</span>
+        <span class="cuenta-stat-value">${formatPeso(stats.totalPorCobrar)}</span>
+      </div>
+      <div class="cuenta-stat-card">
+        <span class="cuenta-stat-label">Clientas activas</span>
+        <span class="cuenta-stat-value cuenta-stat-value--num">${stats.clientasActivas}</span>
+      </div>
+      <div class="cuenta-stat-card">
+        <span class="cuenta-stat-label">Prendas en inventario</span>
+        <span class="cuenta-stat-value cuenta-stat-value--num">${stats.prendas}</span>
+      </div>
+    </div>
+
+    <div class="cuenta-actions">
+      <button class="cuenta-action-btn" id="btnEditarPerfil">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        Editar perfil
+      </button>
+      <button class="cuenta-action-btn cuenta-action-btn--danger" id="btnCerrarSesion">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        Cerrar sesión
+      </button>
     </div>`;
+
+  container.querySelector("#btnEditarPerfil").addEventListener("click", openPerfilEdit);
+  container.querySelector("#btnCerrarSesion").addEventListener("click", openCerrarSesion);
+}
+
+// ── Sheet: editar perfil ────────────────────────────────────────────────────
+
+function createPerfilEditSheet() {
+  const overlay = document.createElement("div");
+  overlay.className = "order-detail-overlay";
+  overlay.id = "perfilEditOverlay";
+  overlay.innerHTML = `
+    <div class="order-detail-sheet">
+      <div class="detail-sheet-handle-row"><div class="sheet-drag-handle"></div></div>
+      <div class="sheet-topbar">
+        <button class="btn-sheet-close" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="sheet-body">
+        <h3 class="cart-title" style="margin-bottom:1.25rem">Editar perfil</h3>
+        <form id="perfilForm" class="cliente-form">
+          <div class="form-group">
+            <label class="form-label" for="fPerfilNombre">Nombre</label>
+            <input class="form-input" id="fPerfilNombre" name="nombre" type="text" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="fPerfilCredito">Crédito por devoluciones ($)</label>
+            <input class="form-input" id="fPerfilCredito" name="credito" type="number" min="0" step="1" placeholder="0">
+          </div>
+          <button type="submit" class="btn-save-cliente">Guardar cambios</button>
+        </form>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  overlay.querySelector(".btn-sheet-close").addEventListener("click", () => overlay.classList.remove("open"));
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.classList.remove("open"); });
+
+  overlay.querySelector("#perfilForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const data = new FormData(e.target);
+    perfil.nombre  = data.get("nombre").trim() || perfil.nombre;
+    perfil.credito = parseFloat(data.get("credito")) || 0;
+    savePerfil();
+    overlay.classList.remove("open");
+    renderCuenta();
+  });
+}
+
+function openPerfilEdit() {
+  const overlay = document.getElementById("perfilEditOverlay");
+  overlay.querySelector("#fPerfilNombre").value  = perfil.nombre;
+  overlay.querySelector("#fPerfilCredito").value = perfil.credito || "";
+  overlay.classList.add("open");
+}
+
+// ── Sheet: cerrar sesión ────────────────────────────────────────────────────
+
+function createCerrarSesionSheet() {
+  const overlay = document.createElement("div");
+  overlay.className = "order-detail-overlay";
+  overlay.id = "cerrarSesionOverlay";
+  overlay.innerHTML = `
+    <div class="order-detail-sheet">
+      <div class="detail-sheet-handle-row"><div class="sheet-drag-handle"></div></div>
+      <div class="sheet-topbar">
+        <button class="btn-sheet-close" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="sheet-body" style="text-align:center;padding:1rem 1.25rem 2rem">
+        <p style="font-size:3rem;margin-bottom:0.5rem">👋</p>
+        <h3 class="cart-title" style="margin-bottom:0.5rem">¿Cerrar sesión?</h3>
+        <p style="color:#666;font-size:0.9375rem;margin-bottom:1.75rem">Tus datos se conservan en este dispositivo.</p>
+        <button class="btn-save-cliente" id="btnConfirmarCerrar" style="background:#130016;color:#fff;margin-bottom:0.75rem">Sí, cerrar sesión</button>
+        <button class="btn-cerrar-abono" id="btnCancelarCerrar">Cancelar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  overlay.querySelector(".btn-sheet-close").addEventListener("click", () => overlay.classList.remove("open"));
+  overlay.querySelector("#btnCancelarCerrar").addEventListener("click", () => overlay.classList.remove("open"));
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.classList.remove("open"); });
+
+  overlay.querySelector("#btnConfirmarCerrar").addEventListener("click", () => {
+    overlay.classList.remove("open");
+    navigate("catalogo");
+  });
+}
+
+function openCerrarSesion() {
+  document.getElementById("cerrarSesionOverlay").classList.add("open");
 }
 
 // ── Render: Cobros ──────────────────────────────────────────────────────────
@@ -1452,6 +1641,7 @@ function showView(viewId) {
   });
 
   if (viewId === "cobros") renderCobros();
+  if (viewId === "cuenta") renderCuenta();
 }
 
 function getViewFromHash() {
@@ -1479,6 +1669,7 @@ window.addEventListener("hashchange", () => {
 
 loadClientes();
 loadInventario();
+loadPerfil();
 renderCatalog();
 renderPedidos();
 renderClientes();
@@ -1490,10 +1681,12 @@ createVentaFormSheet();
 createCobrosDetailSheet();
 createAbonoFormSheet();
 createCartSheet();
+createPerfilEditSheet();
+createCerrarSesionSheet();
 document.getElementById("cartBtn").addEventListener("click", openCartSheet);
 renderCobros();
 renderMisPrendas();
-renderSection("cuenta",   "Cuenta");
+renderCuenta();
 showView(getViewFromHash());
 
 if ("serviceWorker" in navigator) {
