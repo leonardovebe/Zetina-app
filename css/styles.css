@@ -1802,3 +1802,94 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .btn-registrar-abono:active { opacity: 0.85; }
+
+/* ── Confirmación de abono ───────────────────────────────────────────────── */
+.abono-conf {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 0.5rem;
+}
+
+.abono-conf-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.abono-conf-title {
+  font-family: var(--font-heading);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #130016;
+}
+
+.abono-conf-detalle {
+  font-size: 0.9375rem;
+  color: #555;
+}
+
+.abono-conf-saldo {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-radius: 0.875rem;
+  margin: 0.25rem 0;
+}
+
+.abono-conf-saldo--ok   { background: #CCB8DD; }
+.abono-conf-saldo--debe { background: #DEFF00; }
+
+.abono-conf-saldo-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #130016;
+}
+
+.abono-conf-saldo-val {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 800;
+  color: #130016;
+}
+
+.btn-wa-comprobante {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1rem;
+  background: #7b5b9e;
+  color: #fff;
+  border-radius: 0.875rem;
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  text-decoration: none;
+  margin-top: 0.25rem;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease;
+}
+
+.btn-wa-comprobante:active { opacity: 0.85; }
+
+.btn-wa-comprobante svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+.btn-cerrar-abono {
+  width: 100%;
+  padding: 0.75rem;
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  color: #888;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}

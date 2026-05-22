@@ -1190,44 +1190,53 @@ function createAbonoFormSheet() {
   overlay.innerHTML = `
     <div class="order-detail-sheet">
       <div class="sheet-drag-handle"></div>
-      <div class="sheet-body">
-        <h3 class="cart-title" style="margin-bottom:1.25rem">Registrar abono</h3>
-        <form id="abonoForm" class="cliente-form">
-          <div class="form-group">
-            <label class="form-label" for="fFechaAbono">Fecha</label>
-            <input class="form-input" id="fFechaAbono" name="fecha" type="date" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="fMontoAbono">Monto del abono</label>
-            <input class="form-input" id="fMontoAbono" name="monto" type="number"
-                   min="1" step="1" placeholder="Ej. 200" required>
-          </div>
-          <button type="submit" class="btn-save-cliente">Guardar abono</button>
-        </form>
-      </div>
+      <div class="sheet-body" id="abonoSheetBody"></div>
     </div>`;
   document.body.appendChild(overlay);
-
   overlay.addEventListener("click", (e) => {
-    if (e.target === overlay) overlay.classList.remove("open");
+    if (e.target === overlay) {
+      overlay.classList.remove("open");
+      const id = parseInt(overlay.dataset.clienteId);
+      if (id) { openCobrosDetail(id); renderCobros(); }
+    }
   });
+}
 
-  overlay.querySelector("#abonoForm").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const clienteId = parseInt(overlay.dataset.clienteId);
-    const c = clientes.find((cl) => cl.id === clienteId);
-    if (!c) return;
-    if (!c.pagos) c.pagos = [];
-    const data = new FormData(e.target);
-    c.pagos.push({
-      id: Date.now(),
-      fecha: data.get("fecha"),
-      monto: parseFloat(data.get("monto")) || 0,
-    });
-    saveClientes();
+function _showAbonoConfirmacion(overlay, c, monto, fecha) {
+  const totalPrendas = (c.compras || []).reduce((s, comp) => s + comp.monto, 0);
+  const totalPagado  = (c.pagos   || []).reduce((s, p)    => s + p.monto,    0);
+  const saldo = totalPrendas - totalPagado;
+  const alCorriente = saldo <= 0;
+
+  const saldoTexto = alCorriente
+    ? "¡Tu cuenta está al corriente! ✨ Gracias por tu pago."
+    : `Tu saldo restante es ${formatPeso(saldo)}.`;
+
+  const mensaje =
+    `Hola ${c.nombre}, registré tu abono de ${formatPeso(monto)} con fecha ${formatFecha(fecha)}.\n\n` +
+    saldoTexto;
+
+  const waUrl = `https://wa.me/52${c.telefono}?text=${encodeURIComponent(mensaje)}`;
+
+  document.getElementById("abonoSheetBody").innerHTML = `
+    <div class="abono-conf">
+      <div class="abono-conf-icon">✅</div>
+      <p class="abono-conf-title">Abono registrado</p>
+      <p class="abono-conf-detalle">${formatPeso(monto)} · ${formatFecha(fecha)}</p>
+      <div class="abono-conf-saldo ${alCorriente ? "abono-conf-saldo--ok" : "abono-conf-saldo--debe"}">
+        <span class="abono-conf-saldo-label">Saldo restante</span>
+        <span class="abono-conf-saldo-val">${alCorriente ? "Al corriente" : formatPeso(saldo)}</span>
+      </div>
+      <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-wa-comprobante">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${WA_PATH}"/></svg>
+        Enviar comprobante por WhatsApp
+      </a>
+      <button class="btn-cerrar-abono">Cerrar</button>
+    </div>`;
+
+  document.querySelector(".btn-cerrar-abono").addEventListener("click", () => {
     overlay.classList.remove("open");
-    e.target.reset();
-    openCobrosDetail(clienteId);
+    openCobrosDetail(c.id);
     renderCobros();
   });
 }
@@ -1235,9 +1244,37 @@ function createAbonoFormSheet() {
 function openAbonoForm(clienteId) {
   const overlay = document.getElementById("abonoFormOverlay");
   overlay.dataset.clienteId = clienteId;
+
+  document.getElementById("abonoSheetBody").innerHTML = `
+    <h3 class="cart-title" style="margin-bottom:1.25rem">Registrar abono</h3>
+    <form id="abonoForm" class="cliente-form">
+      <div class="form-group">
+        <label class="form-label" for="fFechaAbono">Fecha</label>
+        <input class="form-input" id="fFechaAbono" name="fecha" type="date" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="fMontoAbono">Monto del abono</label>
+        <input class="form-input" id="fMontoAbono" name="monto" type="number"
+               min="1" step="1" placeholder="Ej. 200" required>
+      </div>
+      <button type="submit" class="btn-save-cliente">Guardar abono</button>
+    </form>`;
+
   overlay.querySelector("#fFechaAbono").value = new Date().toISOString().split("T")[0];
-  overlay.querySelector("#fMontoAbono").value = "";
   overlay.classList.add("open");
+
+  overlay.querySelector("#abonoForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const c = clientes.find((cl) => cl.id === parseInt(overlay.dataset.clienteId));
+    if (!c) return;
+    if (!c.pagos) c.pagos = [];
+    const data = new FormData(e.target);
+    const fecha = data.get("fecha");
+    const monto = parseFloat(data.get("monto")) || 0;
+    c.pagos.push({ id: Date.now(), fecha, monto });
+    saveClientes();
+    _showAbonoConfirmacion(overlay, c, monto, fecha);
+  });
 }
 
 // ── Navegación ──────────────────────────────────────────────────────────────
