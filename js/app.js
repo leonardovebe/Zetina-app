@@ -475,8 +475,8 @@ let clientes = [
     fechaCumpleanos: "1995-03-15",
     notas: "Prefiere colores oscuros. Paga puntualmente.",
     compras: [
-      { id: 101, prenda: "Blusa Satinada Manga Larga", marca: "ZARA",       fecha: "2026-05-10", monto: 350 },
-      { id: 102, prenda: "Vestido Floral Midi",         marca: "ZARA WOMAN", fecha: "2026-05-18", monto: 580 },
+      { id: 101, prendaId: 1, prenda: "Blusa Satinada Manga Larga", marca: "ZARA",       fecha: "2026-05-10", monto: 350 },
+      { id: 102, prendaId: 3, prenda: "Vestido Floral Midi",         marca: "ZARA WOMAN", fecha: "2026-05-18", monto: 580 },
     ],
     pagos: [
       { id: 201, fecha: "2026-05-10", monto: 350 },
@@ -493,7 +493,7 @@ let clientes = [
     fechaCumpleanos: "1998-11-07",
     notas: "Le encantan los vestidos y blusas ligeras.",
     compras: [
-      { id: 103, prenda: "Pantalón Skinny de Mezclilla", marca: "BERSHKA", fecha: "2026-05-05", monto: 450 },
+      { id: 103, prendaId: 2, prenda: "Pantalón Skinny de Mezclilla", marca: "BERSHKA", fecha: "2026-05-05", monto: 450 },
     ],
     pagos: [
       { id: 203, fecha: "2026-05-05", monto: 450 },
@@ -509,8 +509,8 @@ let clientes = [
     fechaCumpleanos: "1990-07-22",
     notas: "Contactar solo por WhatsApp. Sin llamadas.",
     compras: [
-      { id: 104, prenda: "Chamarra de Cuero Sintético", marca: "PULL&BEAR", fecha: "2026-04-28", monto: 620 },
-      { id: 105, prenda: "Falda Plisada Mini",           marca: "H&M",       fecha: "2026-05-12", monto: 280 },
+      { id: 104, prendaId: 5, prenda: "Chamarra de Cuero Sintético", marca: "PULL&BEAR", fecha: "2026-04-28", monto: 620 },
+      { id: 105, prendaId: 4, prenda: "Falda Plisada Mini",           marca: "H&M",       fecha: "2026-05-12", monto: 280 },
     ],
     pagos: [
       { id: 204, fecha: "2026-04-30", monto: 300 },
@@ -984,12 +984,13 @@ function createVentaFormSheet() {
   overlay.querySelector("#ventaForm").addEventListener("submit", (e) => {
     e.preventDefault();
     const data = new FormData(e.target);
-    const [nombre, marca] = data.get("prendaKey").split("|");
+    const [prendaIdStr, nombre, marca] = data.get("prendaKey").split("|");
     const c = clientes.find((cl) => cl.id === currentVentaClienteId);
     if (!c) return;
     if (!c.pagos) c.pagos = [];
     c.compras.unshift({
       id: Date.now(),
+      prendaId: parseInt(prendaIdStr) || null,
       prenda: nombre,
       marca: marca || "",
       fecha: data.get("fecha"),
@@ -1008,7 +1009,7 @@ function openVentaForm(clienteId) {
   const select = document.getElementById("fPrenda");
   const prendas = getMisPrendas();
   select.innerHTML = prendas.length
-    ? prendas.map((p) => `<option value="${p.nombre}|${p.marca}">${p.emoji} ${p.nombre} — ${p.marca} | ID: ${formatZtId(p.id)}</option>`).join("")
+    ? prendas.map((p) => `<option value="${p.id}|${p.nombre}|${p.marca}">${p.emoji} ${p.nombre} — ${p.marca} | ID: ${formatZtId(p.id)}</option>`).join("")
     : `<option value="Otra prenda|">Sin prendas en inventario</option>`;
   document.getElementById("fFechaVenta").value = new Date().toISOString().split("T")[0];
   document.getElementById("ventaFormOverlay").classList.add("open");
@@ -1138,6 +1139,7 @@ function openCobrosDetail(id) {
     ? c.compras.map((comp) => `
         <div class="cta-row">
           <div class="cta-info">
+            ${comp.prendaId ? `<p class="cta-prenda-id">ID: ${formatZtId(comp.prendaId)}</p>` : ""}
             <p class="cta-nombre">${comp.prenda}</p>
             <p class="cta-meta">${comp.marca} · ${formatFecha(comp.fecha)}</p>
           </div>
