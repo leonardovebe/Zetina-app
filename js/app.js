@@ -1120,14 +1120,27 @@ function renderCobros() {
 
   container.innerHTML = `
     <div class="cobros-header">
-      <h2 class="catalog-title">Cobros</h2>
+      <h2 class="catalog-title">Cuentas</h2>
       <p class="catalog-subtitle">${clientes.length} clienta${clientes.length !== 1 ? "s" : ""}</p>
     </div>
     <div class="cobros-total-bar">
       <span class="cobros-total-label">Total por cobrar</span>
       <span class="cobros-total-value">${formatPeso(totalPorCobrar)}</span>
     </div>
-    <div class="cobros-list">${cards}</div>`;
+    <div class="clientes-search-row">
+      <input class="search-input" id="cuentasBusqueda" type="search"
+             placeholder="Buscar clienta…" autocomplete="off" autocorrect="off"
+             spellcheck="false">
+    </div>
+    <div class="cobros-list" id="cobrosListContainer">${cards}</div>`;
+
+  container.querySelector("#cuentasBusqueda").addEventListener("input", (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    container.querySelectorAll(".cobro-cliente-card").forEach((card) => {
+      const nombre = card.querySelector(".cobro-cliente-nombre").textContent.toLowerCase();
+      card.style.display = nombre.includes(q) ? "" : "none";
+    });
+  });
 
   container.querySelector(".cobros-list").addEventListener("click", (e) => {
     const card = e.target.closest(".cobro-cliente-card");
