@@ -216,66 +216,51 @@ const pedidos = [
 
 // ── Inventario de la vendedora ───────────────────────────────────────────────
 
-let inventario = [
-  {
-    id: 7,
-    nombre: "Top Floral de Gasa",
-    marca: "ZARA",
-    emoji: "👙",
-    tallaEtiqueta: "XS",
-    tallaReal: "34",
-    precioCosto: 165,
-    precioMin: 260,
-    precioMax: 320,
-    gradiente: "linear-gradient(150deg, #130016 0%, #855AA2 100%)",
-  },
-  {
-    id: 8,
-    nombre: "Pantalón Wide Leg Beige",
-    marca: "H&M",
-    emoji: "👖",
-    tallaEtiqueta: "M",
-    tallaReal: "38",
-    precioCosto: 245,
-    precioMin: 390,
-    precioMax: 480,
-    gradiente: "linear-gradient(150deg, #130016 0%, #CCB8DD 100%)",
-  },
-  {
-    id: 9,
-    nombre: "Vestido Satinado Midi Negro",
-    marca: "MANGO",
-    emoji: "👗",
-    tallaEtiqueta: "S",
-    tallaReal: "36",
-    precioCosto: 380,
-    precioMin: 600,
-    precioMax: 750,
-    gradiente: "linear-gradient(150deg, #855AA2 0%, #130016 100%)",
-  },
-  {
-    id: 10,
-    nombre: "Blazer Oversized Crema",
-    marca: "PULL&BEAR",
-    emoji: "🧥",
-    tallaEtiqueta: "L",
-    tallaReal: "40",
-    precioCosto: 420,
-    precioMin: 650,
-    precioMax: 800,
-    gradiente: "linear-gradient(150deg, #CCB8DD 0%, #130016 100%)",
-  },
-];
+let inventario = [];
 
-function saveInventario() {
-  try { localStorage.setItem("zetina_inventario", JSON.stringify(inventario)); } catch(e) {}
+async function loadInventario() {
+  if (!VENDEDORA_ID) return;
+  const { data } = await db
+    .from('prendas')
+    .select('*, fotos_prendas(*)')
+    .eq('vendedora_id', VENDEDORA_ID)
+    .eq('disponible', true)
+    .order('created_at', { ascending: false });
+  if (data) {
+    inventario = data.map(p => ({
+      id: p.id,
+      nombre: p.nombre,
+      marca: p.marca || '',
+      emoji: p.emoji || '👚',
+      tallaEtiqueta: p.talla_etiqueta || '',
+      tallaReal: p.talla_real || '',
+      precioCosto: p.precio_costo || 0,
+      precioMin: p.precio_min || 0,
+      precioMax: p.precio_max || 0,
+      gradiente: p.gradiente || 'linear-gradient(150deg, #130016 0%, #855AA2 100%)',
+      fotos: (p.fotos_prendas || []).map(f => ({ id: f.id, url: f.url })),
+    }));
+  }
 }
 
-function loadInventario() {
-  try {
-    const stored = localStorage.getItem("zetina_inventario");
-    if (stored) inventario = JSON.parse(stored); else saveInventario();
-  } catch(e) {}
+async function marcarVendida(prendaId) {
+  await db.from('prendas').update({ disponible: false }).eq('id', prendaId);
+}
+
+async function insertPrenda(prenda) {
+  const { data } = await db.from('prendas').insert([{
+    vendedora_id: VENDEDORA_ID,
+    nombre: prenda.nombre,
+    marca: prenda.marca,
+    emoji: prenda.emoji,
+    talla_etiqueta: prenda.tallaEtiqueta,
+    talla_real: prenda.tallaReal,
+    precio_costo: prenda.precioCosto,
+    precio_min: prenda.precioMin,
+    precio_max: prenda.precioMax,
+    gradiente: prenda.gradiente,
+  }]).select().single();
+  return data;
 }
 
 const ESTADO_CONFIG = {
@@ -298,7 +283,8 @@ function formatPeso(n) {
 }
 
 function formatZtId(id) {
-  return "ZT-" + String(id).padStart(3, "0");
+  const s = String(id);
+  return s.includes('-') ? 'ZT-' + s.slice(0, 8).toUpperCase() : 'ZT-' + s.padStart(3, '0');
 }
 
 function buildWhatsappUrl(p) {
@@ -1066,7 +1052,7 @@ function createVentaFormSheet() {
   });
   overlay.querySelector(".btn-sheet-close").addEventListener("click", () => overlay.classList.remove("open"));
 
-  overlay.querySelector("#ventaForm").addEventListener("submit", (e) => {
+  overlay.querySelector("#ventaForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const data = new FormData(e.target);
     const [prendaIdStr, nombre, marca] = data.get("prendaKey").split("|");
@@ -1075,17 +1061,16 @@ function createVentaFormSheet() {
     if (!c.pagos) c.pagos = [];
     c.compras.unshift({
       id: Date.now(),
-      prendaId: parseInt(prendaIdStr) || null,
+      prendaId: prendaIdStr || null,
       prenda: nombre,
       marca: marca || "",
       fecha: data.get("fecha"),
       monto: parseFloat(data.get("monto")) || 0,
     });
     saveClientes();
-    const prendaId = parseInt(prendaIdStr) || null;
-    if (prendaId) {
-      inventario = inventario.filter((p) => p.id !== prendaId);
-      saveInventario();
+    if (prendaIdStr) {
+      await marcarVendida(prendaIdStr);
+      inventario = inventario.filter((p) => p.id !== prendaIdStr);
       renderMisPrendas();
     }
     overlay.classList.remove("open");
@@ -1171,7 +1156,7 @@ function renderMisPrendas() {
     if (e.target.closest(".btn-inv-compartir")) return;
     const card = e.target.closest(".inv-card");
     if (!card) return;
-    openGaleria(parseInt(card.dataset.id));
+    openGaleria(card.dataset.id);
   };
 }
 
@@ -1215,19 +1200,23 @@ function createGaleriaSheet() {
   });
 
   document.getElementById("galeriaFileInput").addEventListener("change", (e) => {
-    const prendaId = parseInt(overlay.dataset.prendaId);
+    const prendaId = overlay.dataset.prendaId;
     const p = inventario.find((item) => item.id === prendaId);
     if (!p) return;
     if (!p.fotos) p.fotos = [];
     const files = Array.from(e.target.files);
     let loaded = 0;
-    files.forEach((file, idx) => {
+    files.forEach((file) => {
       const reader = new FileReader();
-      reader.onload = (ev) => {
-        p.fotos.push({ id: Date.now() + idx, url: ev.target.result });
+      reader.onload = async (ev) => {
+        const url = ev.target.result;
+        const { data: fotoData } = await db
+          .from('fotos_prendas')
+          .insert([{ prenda_id: prendaId, url }])
+          .select().single();
+        if (fotoData) p.fotos.push({ id: fotoData.id, url: fotoData.url });
         loaded++;
         if (loaded === files.length) {
-          saveInventario();
           refreshGaleriaCarousel(p);
           renderMisPrendas();
         }
@@ -1248,11 +1237,11 @@ function createGaleriaSheet() {
   carousel.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-action]");
     if (!btn) return;
-    const prendaId = parseInt(overlay.dataset.prendaId);
+    const prendaId = overlay.dataset.prendaId;
     const p = inventario.find((item) => item.id === prendaId);
     if (!p) return;
-    const fotoId = parseInt(btn.dataset.fotoId);
-    const foto = (p.fotos || []).find((f) => f.id === fotoId);
+    const fotoId = btn.dataset.fotoId;
+    const foto = (p.fotos || []).find((f) => String(f.id) === fotoId);
     if (!foto) return;
 
     if (btn.dataset.action === "descargar") {
@@ -1340,21 +1329,36 @@ function openGaleria(prendaId) {
 
 // ── Perfil (Mi Cuenta) ──────────────────────────────────────────────────────
 
-let perfil = {
-  nombre: "Vendedora Zetina",
-  credito: 0,
-};
+let VENDEDORA_ID = null;
+let perfil = { nombre: "Vendedora Zetina", credito: 0 };
 
-function loadPerfil() {
-  try {
-    const stored = localStorage.getItem("zetina_perfil");
-    if (stored) perfil = { ...perfil, ...JSON.parse(stored) };
-    else savePerfil();
-  } catch (e) {}
+async function loadPerfil() {
+  VENDEDORA_ID = localStorage.getItem('zetina_vendedora_id');
+  if (VENDEDORA_ID) {
+    const { data } = await db.from('vendedoras').select('*').eq('id', VENDEDORA_ID).single();
+    if (data) {
+      perfil = { nombre: data.nombre, credito: data.credito || 0, foto: data.foto_url || null };
+      return;
+    }
+  }
+  const { data } = await db
+    .from('vendedoras')
+    .insert([{ nombre: 'Vendedora Zetina', credito: 0 }])
+    .select().single();
+  if (data) {
+    VENDEDORA_ID = data.id;
+    localStorage.setItem('zetina_vendedora_id', VENDEDORA_ID);
+    perfil = { nombre: data.nombre, credito: data.credito || 0, foto: null };
+  }
 }
 
-function savePerfil() {
-  try { localStorage.setItem("zetina_perfil", JSON.stringify(perfil)); } catch (e) {}
+async function savePerfil() {
+  if (!VENDEDORA_ID) return;
+  await db.from('vendedoras').update({
+    nombre: perfil.nombre,
+    credito: perfil.credito || 0,
+    foto_url: perfil.foto || null,
+  }).eq('id', VENDEDORA_ID);
 }
 
 const NIVELES = ["Stylist", "Estrella", "Líder", "Directora"];
@@ -1465,9 +1469,9 @@ function renderCuenta() {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       perfil.foto = ev.target.result;
-      savePerfil();
+      await savePerfil();
       renderCuenta();
     };
     reader.readAsDataURL(file);
@@ -1511,12 +1515,12 @@ function createPerfilEditSheet() {
   overlay.querySelector(".btn-sheet-close").addEventListener("click", () => overlay.classList.remove("open"));
   overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.classList.remove("open"); });
 
-  overlay.querySelector("#perfilForm").addEventListener("submit", (e) => {
+  overlay.querySelector("#perfilForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const data = new FormData(e.target);
     perfil.nombre  = data.get("nombre").trim() || perfil.nombre;
     perfil.credito = parseFloat(data.get("credito")) || 0;
-    savePerfil();
+    await savePerfil();
     overlay.classList.remove("open");
     renderCuenta();
   });
@@ -1871,28 +1875,32 @@ window.addEventListener("hashchange", () => {
 
 // ── Init ────────────────────────────────────────────────────────────────────
 
-loadClientes();
-loadInventario();
-loadPerfil();
-renderCatalog();
-renderPedidos();
-renderClientes();
-createOrderDetailSheet();
-createClienteDetailSheet();
-createClienteFormSheet();
-createClienteEditSheet();
-createVentaFormSheet();
-createCobrosDetailSheet();
-createAbonoFormSheet();
-createCartSheet();
-createGaleriaSheet();
-createPerfilEditSheet();
-createCerrarSesionSheet();
-document.getElementById("cartBtn").addEventListener("click", openCartSheet);
-renderCobros();
-renderMisPrendas();
-renderCuenta();
-showView(getViewFromHash());
+(async () => {
+  loadClientes();
+  createOrderDetailSheet();
+  createClienteDetailSheet();
+  createClienteFormSheet();
+  createClienteEditSheet();
+  createVentaFormSheet();
+  createCobrosDetailSheet();
+  createAbonoFormSheet();
+  createCartSheet();
+  createGaleriaSheet();
+  createPerfilEditSheet();
+  createCerrarSesionSheet();
+  document.getElementById("cartBtn").addEventListener("click", openCartSheet);
+
+  await loadPerfil();
+  await loadInventario();
+
+  renderCatalog();
+  renderPedidos();
+  renderClientes();
+  renderCobros();
+  renderMisPrendas();
+  renderCuenta();
+  showView(getViewFromHash());
+})();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
