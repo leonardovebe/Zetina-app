@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#130016">
+  <meta name="robots" content="noindex,nofollow">
+  <title>ZETINA — Administrador</title>
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+
+  <!-- ── Pantalla de login del admin ─────────────────────────────────────── -->
+  <div id="adminLogin" class="admin-login-screen">
+    <div class="admin-login-inner">
+      <div class="admin-brand">
+        <img src="logopngBLANCO.png" alt="ZETINA" class="admin-logo">
+        <p class="admin-brand-sub">Panel de administrador</p>
+      </div>
+      <form id="adminLoginForm" class="admin-login-form" novalidate>
+        <div class="admin-field-wrap">
+          <label class="admin-label" for="adminPass">Contraseña de administrador</label>
+          <input class="admin-input" type="password" id="adminPass"
+                 autocomplete="current-password" placeholder="••••••••">
+        </div>
+        <p class="admin-login-error" id="adminLoginError"></p>
+        <button type="submit" class="admin-btn-primary">Entrar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Panel principal ─────────────────────────────────────────────────── -->
+  <div id="adminPanel" hidden>
+    <header class="admin-header">
+      <div class="admin-header-brand">
+        <img src="logopngBLANCO.png" alt="ZETINA" class="admin-header-logo">
+        <span class="admin-header-title">Administrador</span>
+      </div>
+      <button class="admin-btn-logout" id="adminLogout">Salir</button>
+    </header>
+
+    <main class="admin-main">
+      <div class="admin-section-header">
+        <h2 class="admin-section-title">Vendedoras</h2>
+        <button class="admin-btn-add" id="btnNuevaVendedora">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+               stroke-linecap="round" aria-hidden="true">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Nueva vendedora
+        </button>
+      </div>
+      <div id="vendedorasList" class="vendedoras-list">
+        <p class="admin-state-msg">Cargando…</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- ── Modal crear / editar vendedora ──────────────────────────────────── -->
+  <div id="vendedoraModal" class="admin-modal-overlay" hidden>
+    <div class="admin-modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="admin-modal-header">
+        <h3 class="admin-modal-title" id="modalTitle">Nueva vendedora</h3>
+        <button class="admin-modal-close" id="modalClose" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+               stroke-linecap="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <form id="vendedoraForm" class="admin-form" novalidate>
+        <div class="admin-field-wrap">
+          <label class="admin-label" for="fNombre">Nombre completo</label>
+          <input class="admin-input" id="fNombre" name="nombre" type="text"
+                 placeholder="Ej. Ana López" required autocomplete="off">
+        </div>
+        <div class="admin-field-wrap">
+          <label class="admin-label" for="fEmail">Correo electrónico</label>
+          <input class="admin-input" id="fEmail" name="email" type="email"
+                 placeholder="ana@correo.com" autocomplete="off">
+        </div>
+        <div class="admin-field-wrap">
+          <label class="admin-label" for="fTelefono">Teléfono</label>
+          <input class="admin-input" id="fTelefono" name="telefono" type="tel"
+                 placeholder="10 dígitos" autocomplete="off">
+        </div>
+        <div class="admin-field-wrap">
+          <label class="admin-label" for="fPassword">
+            Contraseña temporal
+          </label>
+          <input class="admin-input" id="fPassword" name="password" type="password"
+                 autocomplete="new-password">
+          <p class="admin-pass-hint" id="fPasswordHint" hidden>
+            Dejar vacío para no cambiar la contraseña actual.
+          </p>
+        </div>
+        <p class="admin-form-error" id="formError"></p>
+        <div class="admin-form-actions">
+          <button type="button" class="admin-btn-secondary" id="btnCancelar">Cancelar</button>
+          <button type="submit" class="admin-btn-primary" id="btnGuardar">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

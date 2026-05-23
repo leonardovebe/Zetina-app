@@ -187,7 +187,7 @@ function initLoginForm() {
     try {
       const { data, error } = await db
         .from('vendedoras')
-        .select('id, nombre, email, password_hash, credito, foto_url')
+        .select('id, nombre, email, password_hash, password_temporal, credito, foto_url')
         .eq('email', email)
         .single();
 
@@ -200,11 +200,18 @@ function initLoginForm() {
         throw new Error('Email o contraseña incorrectos');
       }
 
+      hideLoginScreen();
+      btn.disabled = false;
+      btn.textContent = 'Iniciar sesión';
+
+      if (data.password_temporal) {
+        showChangePasswordScreen({ id: data.id, nombre: data.nombre, credito: data.credito || 0, foto_url: data.foto_url });
+        return;
+      }
+
       saveSession(data);
       VENDEDORA_ID = data.id;
       perfil = { nombre: data.nombre, credito: data.credito || 0, foto: data.foto_url || null };
-
-      hideLoginScreen();
       await initApp();
     } catch (err) {
       errorEl.textContent = err.message;
@@ -212,6 +219,55 @@ function initLoginForm() {
       btn.textContent = 'Iniciar sesión';
     }
   });
+}
+
+function showChangePasswordScreen(userData) {
+  const screen = document.getElementById('changePasswordScreen');
+  screen.classList.remove('login-hidden');
+  document.getElementById('newPassword').value     = '';
+  document.getElementById('confirmPassword').value = '';
+  document.getElementById('changePasswordError').textContent = '';
+
+  document.getElementById('changePasswordForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const newPass     = document.getElementById('newPassword').value;
+    const confirmPass = document.getElementById('confirmPassword').value;
+    const errEl = document.getElementById('changePasswordError');
+    const btn   = document.getElementById('changePasswordBtn');
+
+    errEl.textContent = '';
+
+    if (newPass.length < 6) {
+      errEl.textContent = 'La contraseña debe tener al menos 6 caracteres';
+      return;
+    }
+    if (newPass !== confirmPass) {
+      errEl.textContent = 'Las contraseñas no coinciden';
+      return;
+    }
+
+    btn.disabled    = true;
+    btn.textContent = 'Guardando…';
+
+    try {
+      const hash = await hashPassword(newPass);
+      const { error } = await db.from('vendedoras')
+        .update({ password_hash: hash, password_temporal: false })
+        .eq('id', userData.id);
+
+      if (error) throw new Error('Error al guardar. Intenta de nuevo.');
+
+      screen.classList.add('login-hidden');
+      saveSession(userData);
+      VENDEDORA_ID = userData.id;
+      perfil = { nombre: userData.nombre, credito: userData.credito || 0, foto: userData.foto_url || null };
+      await initApp();
+    } catch (err) {
+      errEl.textContent = err.message;
+      btn.disabled    = false;
+      btn.textContent = 'Guardar contraseña';
+    }
+  };
 }
 
 // ── Catálogo desde Supabase ──────────────────────────────────────────────────

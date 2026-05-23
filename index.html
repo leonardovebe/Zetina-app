@@ -103,6 +103,34 @@
     </a>
   </nav>
 
+  <!-- Pantalla de cambio de contraseña temporal — se muestra tras primer login -->
+  <div id="changePasswordScreen" class="login-screen login-hidden">
+    <div class="login-inner">
+      <div class="login-brand">
+        <img src="logopngBLANCO.png" alt="ZETINA" class="login-logo">
+        <p class="login-tagline">MODA SELECTA</p>
+      </div>
+      <form id="changePasswordForm" class="login-form" novalidate autocomplete="off">
+        <p class="login-welcome">Elige tu contraseña</p>
+        <p class="chpass-hint">Por seguridad, crea una contraseña personal antes de continuar.</p>
+        <div class="login-fields">
+          <div class="login-field-wrap">
+            <label class="login-label" for="newPassword">Nueva contraseña</label>
+            <input class="login-input" type="password" id="newPassword"
+                   autocomplete="new-password" placeholder="Mínimo 6 caracteres">
+          </div>
+          <div class="login-field-wrap">
+            <label class="login-label" for="confirmPassword">Confirmar contraseña</label>
+            <input class="login-input" type="password" id="confirmPassword"
+                   autocomplete="new-password" placeholder="Repite tu contraseña">
+          </div>
+        </div>
+        <p class="login-error" id="changePasswordError"></p>
+        <button type="submit" class="login-submit" id="changePasswordBtn">Guardar contraseña</button>
+      </form>
+    </div>
+  </div>
+
   <!-- Pantalla de login — visible por defecto, se oculta al autenticar -->
   <div id="loginScreen" class="login-screen">
     <div class="login-inner">

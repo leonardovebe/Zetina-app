@@ -100,6 +100,10 @@ create table if not exists abonos (
 -- Ejecutar en Supabase → SQL Editor (una sola vez)
 alter table vendedoras add column if not exists password_hash text;
 
+-- ── Migración: contraseña temporal ────────────────────────────────────────────
+-- Indica si la vendedora debe cambiar su contraseña al primer inicio de sesión
+alter table vendedoras add column if not exists password_temporal boolean not null default false;
+
 -- ═══════════════════════════════════════════════════════
 --  Row Level Security — deshabilitado para uso inicial
 --  (habilitar cuando se agregue autenticación)
