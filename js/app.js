@@ -164,19 +164,23 @@ async function loadCatalogo() {
 
   if (error) { console.error('loadCatalogo:', error.message); return; }
 
-  catalogo = (data || []).map((p) => ({
-    id:            p.id,
-    nombre:        p.nombre,
-    marca:         p.marca     || '',
-    emoji:         p.emoji     || '👚',
-    tallaEtiqueta: p.talla_etiqueta || '',
-    tallaReal:     p.talla_real     || '',
-    precioCosto:   p.precio_costo   || 0,
-    precioMin:     p.precio_min     || 0,
-    precioMax:     p.precio_max     || 0,
-    gradiente:     p.gradiente || 'linear-gradient(150deg, #130016 0%, #855AA2 100%)',
-    foto:          fotoPublicUrl((p.fotos_prendas || [])[0]?.url),
-  }));
+  catalogo = (data || []).map((p) => {
+    const fotos = (p.fotos_prendas || []).map(f => fotoPublicUrl(f.url)).filter(Boolean);
+    return {
+      id:            p.id,
+      nombre:        p.nombre,
+      marca:         p.marca     || '',
+      emoji:         p.emoji     || '👚',
+      tallaEtiqueta: p.talla_etiqueta || '',
+      tallaReal:     p.talla_real     || '',
+      precioCosto:   p.precio_costo   || 0,
+      precioMin:     p.precio_min     || 0,
+      precioMax:     p.precio_max     || 0,
+      gradiente:     p.gradiente || 'linear-gradient(150deg, #130016 0%, #855AA2 100%)',
+      fotos,
+      foto:          fotos[0] || null,
+    };
+  });
 }
 
 // ── Datos de pedidos (compras de la vendedora a ZETINA) ─────────────────────
@@ -298,6 +302,113 @@ function buildWhatsappUrl(p) {
   return "https://wa.me/?text=" + encodeURIComponent(texto);
 }
 
+// ── Galería de fotos ────────────────────────────────────────────────────────
+
+const gallery = {
+  overlay: null, img: null, titleEl: null, dotsEl: null, waBtn: null, dlBtn: null,
+  fotos: [], current: 0, touchStartX: 0, prenda: null,
+
+  init() {
+    const el = document.createElement('div');
+    el.className = 'gallery-overlay';
+    el.innerHTML = `
+      <div class="gallery-header">
+        <div class="gallery-title" id="galleryTitle"></div>
+        <button class="gallery-close" id="galleryClose" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="gallery-stage" id="galleryStage">
+        <img class="gallery-img" id="galleryImg" src="" alt="">
+      </div>
+      <div class="gallery-footer">
+        <div class="gallery-dots" id="galleryDots"></div>
+        <div class="gallery-actions">
+          <a class="gallery-btn gallery-btn--wa" id="galleryWa" href="#" target="_blank" rel="noopener noreferrer">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${WA_PATH}"/></svg>
+            Compartir
+          </a>
+          <button class="gallery-btn gallery-btn--dl" id="galleryDl">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Descargar
+          </button>
+        </div>
+      </div>`;
+    document.body.appendChild(el);
+    this.overlay = el;
+    this.img     = document.getElementById('galleryImg');
+    this.titleEl = document.getElementById('galleryTitle');
+    this.dotsEl  = document.getElementById('galleryDots');
+    this.waBtn   = document.getElementById('galleryWa');
+    this.dlBtn   = document.getElementById('galleryDl');
+
+    document.getElementById('galleryClose').addEventListener('click', () => this.close());
+    this.dlBtn.addEventListener('click', () => this.download());
+
+    const stage = document.getElementById('galleryStage');
+    stage.addEventListener('touchstart', e => { this.touchStartX = e.touches[0].clientX; }, { passive: true });
+    stage.addEventListener('touchend', e => {
+      const dx = e.changedTouches[0].clientX - this.touchStartX;
+      if (Math.abs(dx) > 48) dx < 0 ? this.next() : this.prev();
+    });
+  },
+
+  open(prendaId) {
+    if (!this.overlay) this.init();
+    const p = catalogo.find(x => String(x.id) === String(prendaId));
+    if (!p) return;
+    this.prenda  = p;
+    this.fotos   = p.fotos && p.fotos.length ? p.fotos : (p.foto ? [p.foto] : []);
+    if (!this.fotos.length) return;
+    this.current = 0;
+    this.titleEl.textContent = p.nombre;
+    this.renderDots();
+    this.showPhoto();
+    this.overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  },
+
+  close() {
+    this.overlay.classList.remove('open');
+    document.body.style.overflow = '';
+  },
+
+  next() { if (this.current < this.fotos.length - 1) { this.current++; this.showPhoto(); } },
+  prev() { if (this.current > 0)                     { this.current--; this.showPhoto(); } },
+
+  showPhoto() {
+    const url = this.fotos[this.current];
+    this.img.src = url;
+    this.img.alt = this.prenda.nombre;
+    this.dotsEl.querySelectorAll('.gallery-dot').forEach((d, i) =>
+      d.classList.toggle('active', i === this.current));
+    this.waBtn.href = `https://wa.me/?text=${encodeURIComponent(this.prenda.nombre + ' - ' + this.prenda.marca + '\n' + url)}`;
+  },
+
+  renderDots() {
+    this.dotsEl.innerHTML = this.fotos.length > 1
+      ? this.fotos.map((_, i) => `<span class="gallery-dot${i === 0 ? ' active' : ''}"></span>`).join('')
+      : '';
+  },
+
+  async download() {
+    const url = this.fotos[this.current];
+    try {
+      const resp = await fetch(url);
+      const blob = await resp.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${this.prenda.nombre.replace(/\s+/g, '-')}-${this.current + 1}.jpg`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    } catch { window.open(url, '_blank'); }
+  },
+};
+
 // ── Render: Catálogo ────────────────────────────────────────────────────────
 
 function renderCatalog() {
@@ -323,7 +434,8 @@ function renderCatalog() {
 
     return `
       <article class="product-card">
-        <div class="product-image${p.foto ? ' product-image--foto' : ''}"
+        <div class="product-image${p.foto ? ' product-image--foto' : ''} product-image--clickable"
+             data-gallery-id="${p.id}"
              ${!p.foto ? `style="background:${p.gradiente}"` : ''}>
           ${p.foto
             ? `<img class="product-img" src="${p.foto}" alt="${p.nombre}" loading="lazy">`
@@ -384,6 +496,11 @@ function renderCatalog() {
     <div class="catalog-grid">${cards.join("")}</div>`;
 
   container.querySelector(".catalog-grid").addEventListener("click", (e) => {
+    const imgDiv = e.target.closest("[data-gallery-id]");
+    if (imgDiv && !e.target.closest(".btn-order") && !e.target.closest(".btn-whatsapp")) {
+      gallery.open(imgDiv.dataset.galleryId);
+      return;
+    }
     const btn = e.target.closest(".btn-order");
     if (!btn) return;
     const added = addToCarrito(btn.dataset.id);
