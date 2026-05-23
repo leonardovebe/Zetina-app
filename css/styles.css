@@ -1036,6 +1036,51 @@ h1, h2, h3, h4, h5, h6,
   flex-shrink: 0;
 }
 
+.btn-confirmar-pedido {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.875rem 1rem;
+  background: #DEFF00;
+  color: #130016;
+  border: none;
+  border-radius: 0.875rem;
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease;
+}
+
+.btn-confirmar-pedido:active {
+  opacity: 0.85;
+}
+
+.btn-confirmar-pedido:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.btn-confirmar-pedido svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+.cart-error {
+  margin-top: 0.625rem;
+  padding: 0.625rem 0.875rem;
+  background: rgba(255, 60, 60, 0.12);
+  color: #ff5c5c;
+  border-radius: 0.625rem;
+  font-size: 0.875rem;
+  text-align: center;
+  line-height: 1.4;
+}
+
 .cart-empty {
   display: flex;
   flex-direction: column;

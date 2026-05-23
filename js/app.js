@@ -21,6 +21,34 @@ function totalCarrito() {
   return carrito.reduce((sum, p) => sum + p.precioCosto, 0);
 }
 
+async function confirmarPedido() {
+  if (!carrito.length || !VENDEDORA_ID) throw new Error('Carrito vacío o sesión inválida');
+  const total = totalCarrito();
+
+  const { data: pedido, error: errPedido } = await db
+    .from('pedidos')
+    .insert([{ vendedora_id: VENDEDORA_ID, total, estado: 'En proceso' }])
+    .select()
+    .single();
+
+  if (errPedido) throw new Error(errPedido.message);
+
+  const detalles = carrito.map(p => ({
+    pedido_id: pedido.id,
+    prenda_id: p.id,
+    cantidad:  1,
+    precio:    p.precioCosto,
+  }));
+
+  const { error: errDetalles } = await db
+    .from('detalle_pedidos')
+    .insert(detalles);
+
+  if (errDetalles) throw new Error(errDetalles.message);
+
+  return pedido;
+}
+
 function updateCartBadge() {
   const btn = document.getElementById("cartBtn");
   const badge = document.getElementById("cartBadge");
@@ -84,11 +112,11 @@ function refreshCartSheet() {
       <span class="cart-total-label">Total a pagar a ZETINA</span>
       <span class="cart-total-value">${formatPeso(totalCarrito())}</span>
     </div>
-    <a href="${buildCartWhatsappUrl()}" target="_blank" rel="noopener noreferrer"
-       class="btn-cart-whatsapp">
+    <button class="btn-confirmar-pedido" id="btnConfirmarPedido">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${WA_PATH}"/></svg>
-      Enviar pedido por WhatsApp
-    </a>`;
+      Confirmar pedido
+    </button>
+    <p class="cart-error" id="cartError" hidden></p>`;
 }
 
 function openCartSheet() {
@@ -122,7 +150,31 @@ function createCartSheet() {
   });
   overlay.querySelector(".btn-sheet-close").addEventListener("click", closeCartSheet);
 
-  overlay.querySelector("#cartSheetBody").addEventListener("click", (e) => {
+  overlay.querySelector("#cartSheetBody").addEventListener("click", async (e) => {
+    if (e.target.closest("#btnConfirmarPedido")) {
+      const btn = document.getElementById("btnConfirmarPedido");
+      const errEl = document.getElementById("cartError");
+      if (errEl) errEl.hidden = true;
+      const waUrl = buildCartWhatsappUrl();
+      btn.disabled = true;
+      btn.textContent = "Guardando pedido…";
+      try {
+        await confirmarPedido();
+        clearCarrito();
+        closeCartSheet();
+        await loadPedidos();
+        renderPedidos();
+        window.open(waUrl, "_blank", "noopener,noreferrer");
+      } catch (err) {
+        btn.disabled = false;
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${WA_PATH}"/></svg> Confirmar pedido`;
+        if (errEl) {
+          errEl.textContent = "No se pudo guardar el pedido. Verifica tu conexión e intenta de nuevo.";
+          errEl.hidden = false;
+        }
+      }
+      return;
+    }
     if (e.target.closest("#cartClearBtn")) {
       clearCarrito();
       closeCartSheet();
@@ -317,38 +369,35 @@ async function loadCatalogo() {
 
 // ── Datos de pedidos (compras de la vendedora a ZETINA) ─────────────────────
 
-const pedidos = [
-  {
-    id: 1,
-    numero: "001",
-    fecha: "2026-05-20",
-    estado: "En proceso",
-    prendas: [
-      { id: 1, nombre: "Blusa Satinada Manga Larga",    marca: "ZARA",      emoji: "👚", precio: 185 },
-      { id: 2, nombre: "Pantalón Skinny de Mezclilla",  marca: "BERSHKA",   emoji: "👖", precio: 245 },
-      { id: 4, nombre: "Falda Plisada Mini",            marca: "H&M",       emoji: "🩱", precio: 178 },
-    ],
-  },
-  {
-    id: 2,
-    numero: "002",
-    fecha: "2026-05-14",
-    estado: "En camino",
-    prendas: [
-      { id: 3, nombre: "Vestido Floral Midi",           marca: "ZARA WOMAN",  emoji: "👗", precio: 320 },
-      { id: 5, nombre: "Chamarra de Cuero Sintético",   marca: "PULL&BEAR",   emoji: "🧥", precio: 415 },
-    ],
-  },
-  {
-    id: 3,
-    numero: "003",
-    fecha: "2026-05-05",
-    estado: "Entregado",
-    prendas: [
-      { id: 6, nombre: "Top Crop de Encaje",            marca: "ZARA",        emoji: "👙", precio: 155 },
-    ],
-  },
-];
+let pedidosDB = [];
+
+async function loadPedidos() {
+  if (!VENDEDORA_ID) return;
+  const { data, error } = await db
+    .from('pedidos')
+    .select(`id, total, estado, created_at,
+             detalle_pedidos ( id, cantidad, precio, prendas ( id, nombre, marca, emoji ) )`)
+    .eq('vendedora_id', VENDEDORA_ID)
+    .order('created_at', { ascending: false });
+
+  if (error) { console.error('loadPedidos:', error.message); return; }
+
+  const count = (data || []).length;
+  pedidosDB = (data || []).map((p, idx) => ({
+    id:     p.id,
+    numero: String(count - idx).padStart(3, '0'),
+    fecha:  p.created_at.split('T')[0],
+    estado: p.estado,
+    total:  p.total,
+    prendas: (p.detalle_pedidos || []).map(d => ({
+      id:     d.prendas?.id     || '',
+      nombre: d.prendas?.nombre || 'Prenda',
+      marca:  d.prendas?.marca  || '',
+      emoji:  d.prendas?.emoji  || '👚',
+      precio: d.precio,
+    })),
+  }));
+}
 
 // ── Inventario de la vendedora ───────────────────────────────────────────────
 
@@ -679,10 +728,10 @@ function createOrderDetailSheet() {
 }
 
 function openOrderDetail(id) {
-  const p = pedidos.find((o) => o.id === id);
+  const p = pedidosDB.find((o) => o.id === id);
   if (!p) return;
   const { bg, color } = ESTADO_CONFIG[p.estado] || { bg: "#eee", color: "#333" };
-  const total = p.prendas.reduce((sum, pr) => sum + pr.precio, 0);
+  const total = p.total;
   const countLabel = p.prendas.length === 1 ? "1 prenda" : `${p.prendas.length} prendas`;
 
   const items = p.prendas.map((pr) => `
@@ -723,9 +772,22 @@ function closeOrderDetail() {
 function renderPedidos() {
   const container = document.querySelector("#pedidos .view-content");
 
-  const orderCards = pedidos.map((p) => {
+  if (!pedidosDB.length) {
+    container.innerHTML = `
+      <div class="pedidos-header">
+        <h2 class="catalog-title">Mis Pedidos</h2>
+        <p class="catalog-subtitle">Sin pedidos realizados</p>
+      </div>
+      <div class="catalog-empty">
+        <p class="catalog-empty-icon">📦</p>
+        <p class="catalog-empty-text">Aún no has hecho pedidos.<br>Agrega prendas al carrito para comenzar.</p>
+      </div>`;
+    return;
+  }
+
+  const orderCards = pedidosDB.map((p) => {
     const { bg, color } = ESTADO_CONFIG[p.estado] || { bg: "#eee", color: "#333" };
-    const total = p.prendas.reduce((sum, pr) => sum + pr.precio, 0);
+    const total = p.total;
     const countLabel = p.prendas.length === 1 ? "1 prenda" : `${p.prendas.length} prendas`;
 
     const itemRows = p.prendas.map((pr) => `
@@ -757,7 +819,7 @@ function renderPedidos() {
   container.innerHTML = `
     <div class="pedidos-header">
       <h2 class="catalog-title">Mis Pedidos</h2>
-      <p class="catalog-subtitle">${pedidos.length} pedidos realizados a ZETINA</p>
+      <p class="catalog-subtitle">${pedidosDB.length} pedido${pedidosDB.length !== 1 ? 's' : ''} realizados a ZETINA</p>
     </div>
     <div class="pedidos-filters">
       <button class="filter-btn active" data-filter="todos">Todos</button>
@@ -784,7 +846,7 @@ function renderPedidos() {
   container.querySelector(".orders-list").addEventListener("click", (e) => {
     const card = e.target.closest(".order-card");
     if (!card) return;
-    openOrderDetail(parseInt(card.dataset.id));
+    openOrderDetail(card.dataset.id);
   });
 }
 
@@ -2132,7 +2194,7 @@ async function initApp() {
     '<div class="catalog-loading"><span>Cargando catálogo…</span></div>';
 
   await loadPerfil();
-  await Promise.all([loadCatalogo(), loadInventario()]);
+  await Promise.all([loadCatalogo(), loadInventario(), loadPedidos()]);
 
   renderCatalog();
   renderPedidos();
@@ -2141,6 +2203,18 @@ async function initApp() {
   renderMisPrendas();
   renderCuenta();
   showView(getViewFromHash());
+
+  db.channel(`pedidos-rt-${VENDEDORA_ID}`)
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'pedidos',
+      filter: `vendedora_id=eq.${VENDEDORA_ID}`,
+    }, async () => {
+      await loadPedidos();
+      renderPedidos();
+    })
+    .subscribe();
 }
 
 (async () => {
