@@ -138,6 +138,82 @@ function createCartSheet() {
   });
 }
 
+// ── Auth / Sesión ────────────────────────────────────────────────────────────
+
+const SESSION_KEY = 'zetina_session';
+
+function getSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function saveSession(v) {
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ id: v.id, nombre: v.nombre }));
+  localStorage.setItem('zetina_vendedora_id', v.id);
+}
+
+function clearSession() {
+  localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem('zetina_vendedora_id');
+}
+
+async function hashPassword(password) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function showLoginScreen() {
+  document.getElementById('loginScreen').classList.remove('login-hidden');
+}
+
+function hideLoginScreen() {
+  document.getElementById('loginScreen').classList.add('login-hidden');
+}
+
+function initLoginForm() {
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email    = document.getElementById('loginEmail').value.trim().toLowerCase();
+    const password = document.getElementById('loginPassword').value;
+    const errorEl  = document.getElementById('loginError');
+    const btn      = document.getElementById('loginBtn');
+
+    errorEl.textContent = '';
+    btn.disabled = true;
+    btn.textContent = 'Verificando…';
+
+    try {
+      const { data, error } = await db
+        .from('vendedoras')
+        .select('id, nombre, email, password_hash, credito, foto_url')
+        .eq('email', email)
+        .single();
+
+      if (error || !data || !data.password_hash) {
+        throw new Error('Email o contraseña incorrectos');
+      }
+
+      const hash = await hashPassword(password);
+      if (hash !== data.password_hash) {
+        throw new Error('Email o contraseña incorrectos');
+      }
+
+      saveSession(data);
+      VENDEDORA_ID = data.id;
+      perfil = { nombre: data.nombre, credito: data.credito || 0, foto: data.foto_url || null };
+
+      hideLoginScreen();
+      await initApp();
+    } catch (err) {
+      errorEl.textContent = err.message;
+      btn.disabled = false;
+      btn.textContent = 'Iniciar sesión';
+    }
+  });
+}
+
 // ── Catálogo desde Supabase ──────────────────────────────────────────────────
 
 let catalogo = [];
@@ -1465,22 +1541,10 @@ let VENDEDORA_ID = null;
 let perfil = { nombre: "Vendedora Zetina", credito: 0 };
 
 async function loadPerfil() {
-  VENDEDORA_ID = localStorage.getItem('zetina_vendedora_id');
-  if (VENDEDORA_ID) {
-    const { data } = await db.from('vendedoras').select('*').eq('id', VENDEDORA_ID).single();
-    if (data) {
-      perfil = { nombre: data.nombre, credito: data.credito || 0, foto: data.foto_url || null };
-      return;
-    }
-  }
-  const { data } = await db
-    .from('vendedoras')
-    .insert([{ nombre: 'Vendedora Zetina', credito: 0 }])
-    .select().single();
+  if (!VENDEDORA_ID) return;
+  const { data } = await db.from('vendedoras').select('*').eq('id', VENDEDORA_ID).single();
   if (data) {
-    VENDEDORA_ID = data.id;
-    localStorage.setItem('zetina_vendedora_id', VENDEDORA_ID);
-    perfil = { nombre: data.nombre, credito: data.credito || 0, foto: null };
+    perfil = { nombre: data.nombre, credito: data.credito || 0, foto: data.foto_url || null };
   }
 }
 
@@ -1696,8 +1760,8 @@ function createCerrarSesionSheet() {
   overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.classList.remove("open"); });
 
   overlay.querySelector("#btnConfirmarCerrar").addEventListener("click", () => {
-    overlay.classList.remove("open");
-    navigate("catalogo");
+    clearSession();
+    location.reload();
   });
 }
 
@@ -2007,6 +2071,22 @@ window.addEventListener("hashchange", () => {
 
 // ── Init ────────────────────────────────────────────────────────────────────
 
+async function initApp() {
+  document.querySelector("#catalogo .view-content").innerHTML =
+    '<div class="catalog-loading"><span>Cargando catálogo…</span></div>';
+
+  await loadPerfil();
+  await Promise.all([loadCatalogo(), loadInventario()]);
+
+  renderCatalog();
+  renderPedidos();
+  renderClientes();
+  renderCobros();
+  renderMisPrendas();
+  renderCuenta();
+  showView(getViewFromHash());
+}
+
 (async () => {
   loadClientes();
   createOrderDetailSheet();
@@ -2022,19 +2102,15 @@ window.addEventListener("hashchange", () => {
   createCerrarSesionSheet();
   document.getElementById("cartBtn").addEventListener("click", openCartSheet);
 
-  document.querySelector("#catalogo .view-content").innerHTML =
-    '<div class="catalog-loading"><span>Cargando catálogo…</span></div>';
+  initLoginForm();
 
-  await loadPerfil();
-  await Promise.all([loadCatalogo(), loadInventario()]);
+  const session = getSession();
+  if (!session) return; // login screen ya está visible por defecto
 
-  renderCatalog();
-  renderPedidos();
-  renderClientes();
-  renderCobros();
-  renderMisPrendas();
-  renderCuenta();
-  showView(getViewFromHash());
+  VENDEDORA_ID = session.id;
+  perfil = { nombre: session.nombre, credito: 0, foto: null };
+  hideLoginScreen();
+  await initApp();
 })();
 
 if ("serviceWorker" in navigator) {

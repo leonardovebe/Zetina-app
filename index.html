@@ -103,6 +103,35 @@
     </a>
   </nav>
 
+  <!-- Pantalla de login — visible por defecto, se oculta al autenticar -->
+  <div id="loginScreen" class="login-screen">
+    <div class="login-inner">
+      <div class="login-brand">
+        <img src="logopngBLANCO.png" alt="ZETINA" class="login-logo">
+        <p class="login-tagline">MODA SELECTA</p>
+      </div>
+      <form id="loginForm" class="login-form" novalidate autocomplete="on">
+        <p class="login-welcome">Bienvenida</p>
+        <div class="login-fields">
+          <div class="login-field-wrap">
+            <label class="login-label" for="loginEmail">Correo electrónico</label>
+            <input class="login-input" type="email" id="loginEmail"
+                   name="email" autocomplete="email" inputmode="email"
+                   placeholder="tu@correo.com">
+          </div>
+          <div class="login-field-wrap">
+            <label class="login-label" for="loginPassword">Contraseña</label>
+            <input class="login-input" type="password" id="loginPassword"
+                   name="password" autocomplete="current-password"
+                   placeholder="••••••••">
+          </div>
+        </div>
+        <p class="login-error" id="loginError"></p>
+        <button type="submit" class="login-submit" id="loginBtn">Iniciar sesión</button>
+      </form>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase-config.js"></script>
   <script src="js/app.js" defer></script>

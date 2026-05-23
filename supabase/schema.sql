@@ -96,6 +96,10 @@ create table if not exists abonos (
   created_at timestamptz not null default now()
 );
 
+-- ── Migración: contraseña de vendedoras ──────────────────────────────────────
+-- Ejecutar en Supabase → SQL Editor (una sola vez)
+alter table vendedoras add column if not exists password_hash text;
+
 -- ═══════════════════════════════════════════════════════
 --  Row Level Security — deshabilitado para uso inicial
 --  (habilitar cuando se agregue autenticación)
