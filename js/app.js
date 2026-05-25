@@ -34,6 +34,7 @@ async function confirmarPedido() {
 
   const detalles = carrito.map(p => ({
     pedido_id: pedido.id,
+    prenda_id: p.id,
     nombre:    p.nombre,
     marca:     p.marca,
     emoji:     p.emoji,
