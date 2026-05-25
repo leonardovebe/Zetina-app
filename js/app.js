@@ -406,19 +406,23 @@ async function loadPedidos() {
 // ── Inventario de la vendedora ───────────────────────────────────────────────
 
 let inventario = [];
+let devoluciones = []; // prenda_ids con estado "Pendiente"
 
 async function loadInventario() {
   if (!VENDEDORA_ID) return;
-  const { data } = await db
-    .from('prendas')
-    .select('*, fotos_prendas(*)')
+  const { data, error } = await db
+    .from('inventario_vendedoras')
+    .select('id, prenda_id, pedido_id, fecha_entrega, prendas(*, fotos_prendas(*))')
     .eq('vendedora_id', VENDEDORA_ID)
-    .eq('disponible', true)
+    .eq('estado', 'activo')
     .order('created_at', { ascending: false });
-  if (data) {
-    inventario = data.map(p => ({
-      id: p.id,
-      nombre: p.nombre,
+  if (error) { console.error('loadInventario:', error.message); return; }
+  inventario = (data || []).map(inv => {
+    const p = inv.prendas || {};
+    return {
+      id: inv.prenda_id,
+      invId: inv.id,
+      nombre: p.nombre || '',
       marca: p.marca || '',
       emoji: p.emoji || '👚',
       tallaEtiqueta: p.talla_etiqueta || '',
@@ -428,8 +432,19 @@ async function loadInventario() {
       precioMax: p.precio_max || 0,
       gradiente: p.gradiente || 'linear-gradient(150deg, #130016 0%, #855AA2 100%)',
       fotos: (p.fotos_prendas || []).map(f => ({ id: f.id, url: f.url })),
-    }));
-  }
+      fechaEntrega: inv.fecha_entrega,
+    };
+  });
+}
+
+async function loadDevoluciones() {
+  if (!VENDEDORA_ID) return;
+  const { data } = await db
+    .from('devoluciones')
+    .select('prenda_id')
+    .eq('vendedora_id', VENDEDORA_ID)
+    .eq('estado', 'Pendiente');
+  devoluciones = (data || []).map(d => d.prenda_id);
 }
 
 async function marcarVendida(prendaId) {
@@ -1424,6 +1439,91 @@ function openVentaForm(clienteId) {
   document.getElementById("ventaFormOverlay").classList.add("open");
 }
 
+// ── Devoluciones ────────────────────────────────────────────────────────────
+
+function createDevolucionSheet() {
+  if (document.getElementById("devolucionOverlay")) return;
+  const overlay = document.createElement("div");
+  overlay.id = "devolucionOverlay";
+  overlay.className = "venta-form-overlay";
+  overlay.innerHTML = `
+    <div class="order-detail-sheet">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-topbar">
+        <button class="btn-sheet-close" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="sheet-body">
+        <h3 class="cart-title" style="margin-bottom:0.25rem">Reportar devolución</h3>
+        <p class="devolucion-prenda-info" id="devolucionPrendaInfo"></p>
+        <form id="devolucionForm" class="cliente-form">
+          <div class="form-group">
+            <label class="form-label" for="fMotivo">Motivo</label>
+            <select class="form-select" id="fMotivo" name="motivo" required>
+              <option value="">Selecciona un motivo…</option>
+              <option value="cambio_talla">Cambio de talla</option>
+              <option value="defecto">Defecto</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="fNota">Nota adicional (opcional)</label>
+            <textarea class="form-textarea" id="fNota" name="nota" placeholder="Describe el problema…"></textarea>
+          </div>
+          <button type="submit" class="btn-save-cliente">Enviar solicitud</button>
+        </form>
+        <div class="devolucion-confirmacion" id="devolucionConfirmacion">
+          <span class="devolucion-check" aria-hidden="true">✅</span>
+          <p class="devolucion-msg">Tu solicitud fue enviada, ZETINA te contactará por WhatsApp para coordinar el envío</p>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.classList.remove("open");
+  });
+  overlay.querySelector(".btn-sheet-close").addEventListener("click", () => overlay.classList.remove("open"));
+
+  overlay.querySelector("#devolucionForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector("button[type=submit]");
+    btn.disabled = true;
+    btn.textContent = "Enviando…";
+    const formData = new FormData(e.target);
+    const prendaId = overlay.dataset.prendaId;
+    const { error } = await db.from("devoluciones").insert([{
+      prenda_id: prendaId,
+      vendedora_id: VENDEDORA_ID,
+      motivo: formData.get("motivo"),
+      nota: formData.get("nota") || null,
+      estado: "Pendiente",
+    }]);
+    btn.disabled = false;
+    btn.textContent = "Enviar solicitud";
+    if (error) { console.error("devolucion:", error.message); return; }
+    if (!devoluciones.includes(prendaId)) devoluciones.push(prendaId);
+    renderMisPrendas();
+    overlay.querySelector("#devolucionForm").style.display = "none";
+    overlay.querySelector("#devolucionConfirmacion").style.display = "flex";
+    e.target.reset();
+    setTimeout(() => overlay.classList.remove("open"), 3500);
+  });
+}
+
+function openDevolucionForm(prendaId) {
+  const overlay = document.getElementById("devolucionOverlay");
+  overlay.dataset.prendaId = prendaId;
+  const p = inventario.find(x => x.id === prendaId);
+  document.getElementById("devolucionPrendaInfo").textContent = p ? `${p.emoji} ${p.nombre} — ${p.marca}` : "";
+  overlay.querySelector("#devolucionForm").style.display = "";
+  overlay.querySelector("#devolucionConfirmacion").style.display = "none";
+  overlay.querySelector("#fMotivo").value = "";
+  overlay.querySelector("#fNota").value = "";
+  overlay.classList.add("open");
+}
+
 // ── Render: Mis Prendas ─────────────────────────────────────────────────────
 
 function buildInvCard(p) {
@@ -1431,11 +1531,13 @@ function buildInvCard(p) {
   const ganMax = p.precioMax - p.precioCosto;
   const waUrl = buildWhatsappUrl(p);
   const nFotos = (p.fotos || []).length;
+  const pendiente = devoluciones.includes(p.id);
   return `
     <article class="inv-card" data-id="${p.id}" role="button" tabindex="0">
       <div class="inv-card-img" style="background:${p.gradiente}">
         <span class="inv-card-emoji" aria-hidden="true">${p.emoji}</span>
         ${nFotos > 0 ? `<span class="inv-card-foto-badge">${nFotos}</span>` : ""}
+        ${pendiente ? `<span class="inv-devolucion-badge">Devolución pendiente</span>` : ""}
       </div>
       <div class="inv-card-body">
         <p class="inv-card-id">ID: ${formatZtId(p.id)}</p>
@@ -1451,6 +1553,7 @@ function buildInvCard(p) {
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${WA_PATH}"/></svg>
           Compartir
         </a>
+        ${!pendiente ? `<button class="btn-inv-devolucion" data-devolucion="${p.id}">Reportar devolución</button>` : ""}
       </div>
     </article>`;
 }
@@ -1487,6 +1590,8 @@ function renderMisPrendas() {
 
   container.onclick = (e) => {
     if (e.target.closest(".btn-inv-compartir")) return;
+    const devBtn = e.target.closest(".btn-inv-devolucion");
+    if (devBtn) { openDevolucionForm(devBtn.dataset.devolucion); return; }
     const card = e.target.closest(".inv-card");
     if (!card) return;
     openGaleria(card.dataset.id);
@@ -2201,7 +2306,7 @@ async function initApp() {
     '<div class="catalog-loading"><span>Cargando catálogo…</span></div>';
 
   await loadPerfil();
-  await Promise.all([loadCatalogo(), loadInventario(), loadPedidos()]);
+  await Promise.all([loadCatalogo(), loadInventario(), loadPedidos(), loadDevoluciones()]);
 
   renderCatalog();
   renderPedidos();
@@ -2242,6 +2347,7 @@ async function initApp() {
   createClienteFormSheet();
   createClienteEditSheet();
   createVentaFormSheet();
+  createDevolucionSheet();
   createCobrosDetailSheet();
   createAbonoFormSheet();
   createCartSheet();

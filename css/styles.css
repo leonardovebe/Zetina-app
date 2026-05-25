@@ -2294,6 +2294,75 @@ h1, h2, h3, h4, h5, h6,
   line-height: 1;
 }
 
+.inv-devolucion-badge {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #FF6B35;
+  color: #fff;
+  font-family: var(--font-heading);
+  font-size: 0.5625rem;
+  font-weight: 700;
+  padding: 0.1875rem 0.5rem;
+  border-radius: 999px;
+  line-height: 1;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+.btn-inv-devolucion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.4375rem 0.625rem;
+  background: transparent;
+  color: #FF6B35;
+  border: 1.5px solid #FF6B35;
+  border-radius: 0.625rem;
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 0.375rem;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease;
+}
+
+.btn-inv-devolucion:active { opacity: 0.75; }
+
+.devolucion-prenda-info {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: #855AA2;
+  font-weight: 600;
+  margin-bottom: 1.25rem;
+}
+
+.devolucion-confirmacion {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem 1rem 1rem;
+  text-align: center;
+}
+
+.devolucion-check {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.devolucion-msg {
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #130016;
+  line-height: 1.5;
+}
+
 /* ── Mi Cuenta ─────────────────────────────────────────────────────────────── */
 
 #cuenta .view-content {
