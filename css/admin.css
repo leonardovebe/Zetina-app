@@ -655,6 +655,34 @@ html, body {
   font-weight: 600;
 }
 
+.ap-foot-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.ap-eliminar-btn {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 80, 80, 0.08);
+  border: 1.5px solid rgba(255, 80, 80, 0.3);
+  color: #ff7b7b;
+  padding: 0.4375rem 0.875rem;
+  border-radius: 0.625rem;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.ap-eliminar-btn:hover {
+  background: rgba(255, 80, 80, 0.18);
+  border-color: rgba(255, 80, 80, 0.55);
+}
+.ap-eliminar-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* ── Toast de notificación ────────────────────────────────────────────────── */
 .admin-toast {
   position: fixed;

@@ -230,7 +230,7 @@ async function loadPedidosTodos() {
     .select(`
       id, estado, created_at,
       vendedoras ( id, nombre ),
-      detalle_pedidos ( id, nombre, marca, emoji, precio )
+      detalle_pedidos ( id, prenda_id, nombre, marca, emoji, precio )
     `)
     .order('created_at', { ascending: false });
 
@@ -257,6 +257,7 @@ async function loadPedidosTodos() {
         emoji:  d.emoji  || '👚',
         precio: d.precio,
       })),
+      prendaIds: detalles.map(d => d.prenda_id).filter(Boolean),
     };
   });
 
@@ -313,13 +314,19 @@ function renderPedidosAdmin() {
         <div class="ap-prendas">${prendaRows || '<p class="ap-sin-prendas">Sin prendas</p>'}</div>
         <div class="ap-card-foot">
           <span class="ap-total">Total: <strong>${fmtPeso(p.total)}</strong></span>
-          ${accion}
+          <div class="ap-foot-actions">
+            ${accion}
+            <button class="ap-eliminar-btn" data-id="${p.id}">Eliminar</button>
+          </div>
         </div>
       </article>`;
   }).join('');
 
   list.querySelectorAll('.ap-estado-btn').forEach(btn => {
     btn.addEventListener('click', () => cambiarEstado(btn.dataset.id, btn.dataset.estado));
+  });
+  list.querySelectorAll('.ap-eliminar-btn').forEach(btn => {
+    btn.addEventListener('click', () => eliminarPedido(btn.dataset.id));
   });
 }
 
@@ -337,8 +344,36 @@ async function cambiarEstado(pedidoId, nuevoEstado) {
     return;
   }
 
+  if (nuevoEstado === 'En camino') {
+    const p = pedidosAdmin.find(x => x.id === pedidoId);
+    if (p && p.prendaIds.length) {
+      await db.from('prendas').update({ disponible: false }).in('id', p.prendaIds);
+    }
+  }
+
   const p = pedidosAdmin.find(x => x.id === pedidoId);
   if (p) p.estado = nuevoEstado;
+  renderPedidosAdmin();
+}
+
+async function eliminarPedido(pedidoId) {
+  const elBtn = document.querySelector(`.ap-eliminar-btn[data-id="${pedidoId}"]`);
+  if (elBtn) { elBtn.disabled = true; elBtn.textContent = 'Eliminando…'; }
+
+  const p = pedidosAdmin.find(x => x.id === pedidoId);
+  if (p && p.prendaIds.length) {
+    await db.from('prendas').update({ disponible: true }).in('id', p.prendaIds);
+  }
+
+  const { error } = await db.from('pedidos').delete().eq('id', pedidoId);
+  if (error) {
+    if (elBtn) { elBtn.disabled = false; elBtn.textContent = 'Eliminar'; }
+    return;
+  }
+
+  pedidosAdmin = pedidosAdmin.filter(x => x.id !== pedidoId);
+  const sub = document.getElementById('pedidosSubtitle');
+  if (sub) sub.textContent = `${pedidosAdmin.length} pedido${pedidosAdmin.length !== 1 ? 's' : ''} en total`;
   renderPedidosAdmin();
 }
 
