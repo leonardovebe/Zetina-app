@@ -1520,7 +1520,7 @@ function createDevolucionSheet() {
       `Motivo: ${motivoLabel}`,
       nota ? `Nota: ${nota}` : null,
     ].filter(Boolean).join("\n");
-    window.open(`https://wa.me/525579346962?text=${encodeURIComponent(waTexto)}`, "_blank");
+    window.location.href = `https://wa.me/525579346962?text=${encodeURIComponent(waTexto)}`;
 
     overlay.querySelector("#devolucionForm").style.display = "none";
     overlay.querySelector("#devolucionConfirmacion").style.display = "flex";
