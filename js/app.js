@@ -1494,24 +1494,15 @@ function createDevolucionSheet() {
     const btn = e.target.querySelector("button[type=submit]");
     btn.disabled = true;
     btn.textContent = "Enviando…";
+
     const formData = new FormData(e.target);
     const prendaId = overlay.dataset.prendaId;
-    const { error } = await db.from("devoluciones").insert([{
-      prenda_id: prendaId,
-      vendedora_id: VENDEDORA_ID,
-      motivo: formData.get("motivo"),
-      nota: formData.get("nota") || null,
-      estado: "Pendiente",
-    }]);
-    btn.disabled = false;
-    btn.textContent = "Enviar solicitud";
-    if (error) { console.error("devolucion:", error.message); return; }
-    if (!devoluciones.includes(prendaId)) devoluciones.push(prendaId);
-    renderMisPrendas();
+    const motivo = formData.get("motivo");
+    const nota = formData.get("nota") || null;
 
+    // Construir mensaje WA antes del await para tenerlo listo siempre
     const p = inventario.find(x => x.id === prendaId);
-    const motivoLabel = { cambio_talla: "Cambio de talla", defecto: "Defecto", otro: "Otro" }[formData.get("motivo")] || formData.get("motivo");
-    const nota = formData.get("nota");
+    const motivoLabel = { cambio_talla: "Cambio de talla", defecto: "Defecto", otro: "Otro" }[motivo] || motivo;
     const waTexto = [
       `Hola ZETINA, quiero reportar una devolución:`,
       `Vendedora: ${perfil.nombre}`,
@@ -1520,12 +1511,29 @@ function createDevolucionSheet() {
       `Motivo: ${motivoLabel}`,
       nota ? `Nota: ${nota}` : null,
     ].filter(Boolean).join("\n");
-    window.location.href = `https://wa.me/525579346962?text=${encodeURIComponent(waTexto)}`;
+    const waUrl = `https://wa.me/525579346962?text=${encodeURIComponent(waTexto)}`;
 
+    // Guardar en Supabase (error no bloquea el flujo)
+    const { error } = await db.from("devoluciones").insert([{
+      prenda_id: prendaId,
+      vendedora_id: VENDEDORA_ID,
+      motivo,
+      nota,
+      estado: "Pendiente",
+    }]);
+
+    btn.disabled = false;
+    btn.textContent = "Enviar solicitud";
+
+    if (!error && !devoluciones.includes(prendaId)) devoluciones.push(prendaId);
+    if (!error) renderMisPrendas();
+    if (error) console.error("devolucion insert:", error.message);
+
+    // Abrir WhatsApp siempre, haya o no error en Supabase
+    e.target.reset();
     overlay.querySelector("#devolucionForm").style.display = "none";
     overlay.querySelector("#devolucionConfirmacion").style.display = "flex";
-    e.target.reset();
-    setTimeout(() => overlay.classList.remove("open"), 3500);
+    window.location.href = waUrl;
   });
 }
 
