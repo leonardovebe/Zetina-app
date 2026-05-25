@@ -410,13 +410,19 @@ let devoluciones = []; // prenda_ids con estado "Pendiente"
 
 async function loadInventario() {
   if (!VENDEDORA_ID) return;
+  console.log('[Zetina App] loadInventario — VENDEDORA_ID:', VENDEDORA_ID);
+
   const { data, error } = await db
     .from('inventario_vendedoras')
     .select('id, prenda_id, pedido_id, fecha_entrega, prendas(*, fotos_prendas(*))')
     .eq('vendedora_id', VENDEDORA_ID)
     .eq('estado', 'activo')
     .order('created_at', { ascending: false });
-  if (error) { console.error('loadInventario:', error.message); return; }
+
+  console.log('[Zetina App] inventario_vendedoras respuesta — data:', data, '| error:', error);
+
+  if (error) { console.error('[Zetina App] loadInventario error:', error); return; }
+
   inventario = (data || []).map(inv => {
     const p = inv.prendas || {};
     return {
@@ -435,6 +441,8 @@ async function loadInventario() {
       fechaEntrega: inv.fecha_entrega,
     };
   });
+
+  console.log('[Zetina App] inventario mapeado:', inventario);
 }
 
 async function loadDevoluciones() {
