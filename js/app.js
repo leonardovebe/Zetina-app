@@ -23,11 +23,10 @@ function totalCarrito() {
 
 async function confirmarPedido() {
   if (!carrito.length || !VENDEDORA_ID) throw new Error('Carrito vacío o sesión inválida');
-  const total = totalCarrito();
 
   const { data: pedido, error: errPedido } = await db
     .from('pedidos')
-    .insert([{ vendedora_id: VENDEDORA_ID, total, estado: 'En proceso' }])
+    .insert([{ vendedora_id: VENDEDORA_ID, estado: 'En proceso' }])
     .select()
     .single();
 
@@ -35,8 +34,9 @@ async function confirmarPedido() {
 
   const detalles = carrito.map(p => ({
     pedido_id: pedido.id,
-    prenda_id: p.id,
-    cantidad:  1,
+    nombre:    p.nombre,
+    marca:     p.marca,
+    emoji:     p.emoji,
     precio:    p.precioCosto,
   }));
 
@@ -375,28 +375,31 @@ async function loadPedidos() {
   if (!VENDEDORA_ID) return;
   const { data, error } = await db
     .from('pedidos')
-    .select(`id, total, estado, created_at,
-             detalle_pedidos ( id, cantidad, precio, prendas ( id, nombre, marca, emoji ) )`)
+    .select(`id, estado, created_at,
+             detalle_pedidos ( id, nombre, marca, emoji, precio )`)
     .eq('vendedora_id', VENDEDORA_ID)
     .order('created_at', { ascending: false });
 
   if (error) { console.error('loadPedidos:', error.message); return; }
 
   const count = (data || []).length;
-  pedidosDB = (data || []).map((p, idx) => ({
-    id:     p.id,
-    numero: String(count - idx).padStart(3, '0'),
-    fecha:  p.created_at.split('T')[0],
-    estado: p.estado,
-    total:  p.total,
-    prendas: (p.detalle_pedidos || []).map(d => ({
-      id:     d.prendas?.id     || '',
-      nombre: d.prendas?.nombre || 'Prenda',
-      marca:  d.prendas?.marca  || '',
-      emoji:  d.prendas?.emoji  || '👚',
-      precio: d.precio,
-    })),
-  }));
+  pedidosDB = (data || []).map((p, idx) => {
+    const detalles = p.detalle_pedidos || [];
+    return {
+      id:     p.id,
+      numero: String(count - idx).padStart(3, '0'),
+      fecha:  p.created_at.split('T')[0],
+      estado: p.estado,
+      total:  detalles.reduce((sum, d) => sum + (d.precio || 0), 0),
+      prendas: detalles.map(d => ({
+        id:     d.id,
+        nombre: d.nombre || 'Prenda',
+        marca:  d.marca  || '',
+        emoji:  d.emoji  || '👚',
+        precio: d.precio,
+      })),
+    };
+  });
 }
 
 // ── Inventario de la vendedora ───────────────────────────────────────────────

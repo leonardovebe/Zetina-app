@@ -43,21 +43,53 @@
       <button class="admin-btn-logout" id="adminLogout">Salir</button>
     </header>
 
+    <nav class="admin-tabs" role="tablist" aria-label="Secciones del panel">
+      <button class="admin-tab active" data-tab="vendedoras" role="tab"
+              aria-selected="true" aria-controls="tabVendedoras">Vendedoras</button>
+      <button class="admin-tab" data-tab="pedidos" role="tab"
+              aria-selected="false" aria-controls="tabPedidos">
+        Pedidos
+        <span id="pedidosNewDot" class="admin-tab-dot" hidden></span>
+      </button>
+    </nav>
+
     <main class="admin-main">
-      <div class="admin-section-header">
-        <h2 class="admin-section-title">Vendedoras</h2>
-        <button class="admin-btn-add" id="btnNuevaVendedora">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-               stroke-linecap="round" aria-hidden="true">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          Nueva vendedora
-        </button>
+
+      <!-- ── Tab: Vendedoras ─────────────────────────────────────────────── -->
+      <div id="tabVendedoras" class="admin-tab-panel" role="tabpanel">
+        <div class="admin-section-header">
+          <h2 class="admin-section-title">Vendedoras</h2>
+          <button class="admin-btn-add" id="btnNuevaVendedora">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                 stroke-linecap="round" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Nueva vendedora
+          </button>
+        </div>
+        <div id="vendedorasList" class="vendedoras-list">
+          <p class="admin-state-msg">Cargando…</p>
+        </div>
       </div>
-      <div id="vendedorasList" class="vendedoras-list">
-        <p class="admin-state-msg">Cargando…</p>
+
+      <!-- ── Tab: Pedidos ────────────────────────────────────────────────── -->
+      <div id="tabPedidos" class="admin-tab-panel" role="tabpanel" hidden>
+        <div class="admin-section-header">
+          <h2 class="admin-section-title">Todos los pedidos</h2>
+          <span id="pedidosSubtitle" class="admin-section-sub"></span>
+        </div>
+        <div id="pedidosList" class="pedidos-admin-list">
+          <p class="admin-state-msg">Cargando pedidos…</p>
+        </div>
       </div>
+
     </main>
+  </div>
+
+  <!-- ── Toast de nuevo pedido ───────────────────────────────────────────── -->
+  <div id="adminToast" class="admin-toast" hidden aria-live="polite">
+    <span class="admin-toast-icon" aria-hidden="true">🔔</span>
+    <span id="adminToastMsg" class="admin-toast-msg"></span>
   </div>
 
   <!-- ── Modal crear / editar vendedora ──────────────────────────────────── -->
