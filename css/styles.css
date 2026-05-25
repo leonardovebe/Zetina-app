@@ -2164,14 +2164,14 @@ h1, h2, h3, h4, h5, h6,
 .galeria-img-wrap {
   flex: 1;
   min-height: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
   background: #f5f0f8;
   overflow: hidden;
 }
 
 .galeria-img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: contain;

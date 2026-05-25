@@ -410,25 +410,17 @@ let devoluciones = []; // prenda_ids con estado "Pendiente"
 
 async function loadInventario() {
   if (!VENDEDORA_ID) return;
-  console.log('[Zetina App] loadInventario — VENDEDORA_ID:', VENDEDORA_ID);
-
   const { data, error } = await db
     .from('inventario_vendedoras')
     .select('id, prenda_id, pedido_id, fecha_entrega, prendas(*, fotos_prendas(*))')
     .eq('vendedora_id', VENDEDORA_ID)
     .eq('estado', 'activo')
     .order('created_at', { ascending: false });
-
-  console.log('[Zetina App] inventario_vendedoras respuesta — data:', data, '| error:', error);
-
-  if (error) { console.error('[Zetina App] loadInventario error:', error); return; }
+  if (error) { console.error('loadInventario:', error); return; }
 
   inventario = (data || []).map(inv => {
     const p = inv.prendas || {};
-    const fotosRaw = p.fotos_prendas || [];
-    console.log(`[Zetina App] prenda "${p.nombre}" — fotos_prendas raw (${fotosRaw.length}):`, fotosRaw.map(f => f.url));
-    const fotos = fotosRaw.map(f => ({ id: f.id, url: fotoPublicUrl(f.url) })).filter(f => f.url);
-    console.log(`[Zetina App] prenda "${p.nombre}" — URLs resueltas:`, fotos.map(f => f.url));
+    const fotos = (p.fotos_prendas || []).map(f => ({ id: f.id, url: fotoPublicUrl(f.url) })).filter(f => f.url);
     return {
       id: inv.prenda_id,
       invId: inv.id,
@@ -446,7 +438,6 @@ async function loadInventario() {
     };
   });
 
-  console.log('[Zetina App] inventario mapeado:', inventario);
 }
 
 async function loadDevoluciones() {
@@ -1706,9 +1697,6 @@ function refreshGaleriaCarousel(p) {
   const dots     = document.getElementById("galeriaDots");
   const fotos    = p.fotos || [];
 
-  console.log(`[Zetina App] Galería "${p.nombre}" — ${fotos.length} foto(s):`);
-  fotos.forEach((f, i) => console.log(`  [${i}] id=${f.id} url=${f.url}`));
-
   if (fotos.length === 0) {
     carousel.innerHTML = `
       <div class="galeria-empty">
@@ -1719,12 +1707,10 @@ function refreshGaleriaCarousel(p) {
     return;
   }
 
-  carousel.innerHTML = fotos.map((foto, i) => `
+  carousel.innerHTML = fotos.map((foto) => `
     <div class="galeria-slide">
       <div class="galeria-img-wrap">
-        <img class="galeria-img" src="${foto.url}" alt=""
-          onload="console.log('[Zetina App] ✅ foto ${i} cargada:', this.src)"
-          onerror="console.error('[Zetina App] ❌ foto ${i} falló:', this.src)">
+        <img class="galeria-img" src="${foto.url}" alt="">
       </div>
       <div class="galeria-slide-actions">
         <button class="btn-galeria-action btn-galeria-dl" data-action="descargar" data-foto-id="${foto.id}">
