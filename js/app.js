@@ -164,7 +164,7 @@ function createCartSheet() {
         closeCartSheet();
         await loadPedidos();
         renderPedidos();
-        window.open(waUrl, "_blank", "noopener,noreferrer");
+        window.open(waUrl, "_blank");
       } catch (err) {
         btn.disabled = false;
         btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${WA_PATH}"/></svg> Confirmar pedido`;
