@@ -453,9 +453,10 @@ async function insertPrenda(prenda) {
 }
 
 const ESTADO_CONFIG = {
+  "En proceso": { bg: "#855AA2", color: "#ffffff" },
+  "Pagado":     { bg: "#FF9500", color: "#ffffff" },
   "En camino":  { bg: "#CCB8DD", color: "#130016" },
   "Entregado":  { bg: "#DEFF00", color: "#130016" },
-  "En proceso": { bg: "#855AA2", color: "#ffffff" },
 };
 
 const MESES_ES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
@@ -827,6 +828,7 @@ function renderPedidos() {
     </div>
     <div class="pedidos-filters">
       <button class="filter-btn active" data-filter="todos">Todos</button>
+      <button class="filter-btn" data-filter="pagados">Pagados</button>
       <button class="filter-btn" data-filter="en-camino">En camino</button>
       <button class="filter-btn" data-filter="entregados">Entregados</button>
     </div>
@@ -841,6 +843,7 @@ function renderPedidos() {
     container.querySelectorAll(".order-card").forEach((card) => {
       const estado = card.dataset.estado;
       let visible = true;
+      if (filter === "pagados")    visible = estado === "Pagado";
       if (filter === "en-camino")  visible = estado === "En camino";
       if (filter === "entregados") visible = estado === "Entregado";
       card.style.display = visible ? "" : "none";
