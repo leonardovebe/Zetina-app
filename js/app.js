@@ -1517,6 +1517,20 @@ function createDevolucionSheet() {
     if (error) { console.error("devolucion:", error.message); return; }
     if (!devoluciones.includes(prendaId)) devoluciones.push(prendaId);
     renderMisPrendas();
+
+    const p = inventario.find(x => x.id === prendaId);
+    const motivoLabel = { cambio_talla: "Cambio de talla", defecto: "Defecto", otro: "Otro" }[formData.get("motivo")] || formData.get("motivo");
+    const nota = formData.get("nota");
+    const waTexto = [
+      `Hola ZETINA, quiero reportar una devolución:`,
+      `Vendedora: ${perfil.nombre}`,
+      `ID prenda: ${formatZtId(prendaId)}`,
+      `Prenda: ${p ? p.nombre : prendaId}`,
+      `Motivo: ${motivoLabel}`,
+      nota ? `Nota: ${nota}` : null,
+    ].filter(Boolean).join("\n");
+    window.open(`https://wa.me/525579346962?text=${encodeURIComponent(waTexto)}`, "_blank");
+
     overlay.querySelector("#devolucionForm").style.display = "none";
     overlay.querySelector("#devolucionConfirmacion").style.display = "flex";
     e.target.reset();
