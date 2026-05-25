@@ -437,7 +437,7 @@ async function loadInventario() {
       precioMin: p.precio_min || 0,
       precioMax: p.precio_max || 0,
       gradiente: p.gradiente || 'linear-gradient(150deg, #130016 0%, #855AA2 100%)',
-      fotos: (p.fotos_prendas || []).map(f => ({ id: f.id, url: f.url })),
+      fotos: (p.fotos_prendas || []).map(f => ({ id: f.id, url: fotoPublicUrl(f.url) })).filter(f => f.url),
       fechaEntrega: inv.fecha_entrega,
     };
   });
@@ -1538,13 +1538,16 @@ function buildInvCard(p) {
   const ganMin = p.precioMin - p.precioCosto;
   const ganMax = p.precioMax - p.precioCosto;
   const waUrl = buildWhatsappUrl(p);
-  const nFotos = (p.fotos || []).length;
+  const fotos = p.fotos || [];
+  const primeraFoto = fotos.find(f => f.url);
   const pendiente = devoluciones.includes(p.id);
   return `
     <article class="inv-card" data-id="${p.id}" role="button" tabindex="0">
       <div class="inv-card-img" style="background:${p.gradiente}">
-        <span class="inv-card-emoji" aria-hidden="true">${p.emoji}</span>
-        ${nFotos > 0 ? `<span class="inv-card-foto-badge">${nFotos}</span>` : ""}
+        ${primeraFoto
+          ? `<img class="inv-card-foto" src="${primeraFoto.url}" alt="${p.nombre}" loading="lazy">`
+          : `<span class="inv-card-emoji" aria-hidden="true">${p.emoji}</span>`}
+        ${fotos.length > 1 ? `<span class="inv-card-foto-badge">${fotos.length}</span>` : ""}
         ${pendiente ? `<span class="inv-devolucion-badge">Devolución pendiente</span>` : ""}
       </div>
       <div class="inv-card-body">
@@ -1621,56 +1624,17 @@ function createGaleriaSheet() {
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
         </button>
-        <button class="btn-add-foto" id="btnAddFoto">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-            <circle cx="12" cy="13" r="4"/>
-          </svg>
-          Agregar foto
-        </button>
       </div>
       <div class="galeria-prenda-info" id="galeriaPrendaInfo"></div>
       <div class="galeria-carousel-wrap">
         <div class="galeria-carousel" id="galeriaCarousel"></div>
         <div class="galeria-dots" id="galeriaDots"></div>
       </div>
-      <input type="file" id="galeriaFileInput" accept="image/*" multiple hidden>
     </div>`;
   document.body.appendChild(overlay);
 
   overlay.querySelector(".btn-sheet-close").addEventListener("click", () => overlay.classList.remove("open"));
   overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.classList.remove("open"); });
-
-  document.getElementById("btnAddFoto").addEventListener("click", () => {
-    document.getElementById("galeriaFileInput").click();
-  });
-
-  document.getElementById("galeriaFileInput").addEventListener("change", (e) => {
-    const prendaId = overlay.dataset.prendaId;
-    const p = inventario.find((item) => item.id === prendaId);
-    if (!p) return;
-    if (!p.fotos) p.fotos = [];
-    const files = Array.from(e.target.files);
-    let loaded = 0;
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = async (ev) => {
-        const url = ev.target.result;
-        const { data: fotoData } = await db
-          .from('fotos_prendas')
-          .insert([{ prenda_id: prendaId, url }])
-          .select().single();
-        if (fotoData) p.fotos.push({ id: fotoData.id, url: fotoData.url });
-        loaded++;
-        if (loaded === files.length) {
-          refreshGaleriaCarousel(p);
-          renderMisPrendas();
-        }
-      };
-      reader.readAsDataURL(file);
-    });
-    e.target.value = "";
-  });
 
   const carousel = document.getElementById("galeriaCarousel");
   carousel.addEventListener("scroll", () => {
@@ -1728,7 +1692,7 @@ function refreshGaleriaCarousel(p) {
     carousel.innerHTML = `
       <div class="galeria-empty">
         <p class="galeria-empty-icon">📷</p>
-        <p class="galeria-empty-text">Toca "Agregar foto" para añadir imágenes de esta prenda</p>
+        <p class="galeria-empty-text">Esta prenda aún no tiene fotos</p>
       </div>`;
     dots.innerHTML = "";
     return;

@@ -1629,6 +1629,15 @@ h1, h2, h3, h4, h5, h6,
   align-items: center;
   justify-content: center;
   position: relative;
+  overflow: hidden;
+}
+
+.inv-card-foto {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .inv-card-emoji {
@@ -2106,30 +2115,6 @@ h1, h2, h3, h4, h5, h6,
   max-height: 92vh !important;
 }
 
-.btn-add-foto {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.4rem 0.875rem 0.4rem 0.625rem;
-  background: #130016;
-  color: #DEFF00;
-  border: none;
-  border-radius: 999px;
-  font-family: var(--font-body);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: opacity 0.15s ease;
-}
-
-.btn-add-foto:active { opacity: 0.8; }
-
-.btn-add-foto svg {
-  width: 1rem;
-  height: 1rem;
-  flex-shrink: 0;
-}
 
 .galeria-prenda-info {
   padding: 0.25rem 1.25rem 0.5rem;
