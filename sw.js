@@ -1,4 +1,4 @@
-const CACHE_NAME = "zetina-v10";
+const CACHE_NAME = "zetina-v11";
 const ASSETS = [
   "./",
   "./index.html",
