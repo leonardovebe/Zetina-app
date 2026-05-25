@@ -2219,6 +2219,17 @@ async function initApp() {
       renderPedidos();
     })
     .subscribe();
+
+  db.channel('prendas-catalogo-rt')
+    .on('postgres_changes', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'prendas',
+    }, async () => {
+      await loadCatalogo();
+      renderCatalogo();
+    })
+    .subscribe();
 }
 
 (async () => {
