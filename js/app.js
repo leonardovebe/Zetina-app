@@ -425,6 +425,10 @@ async function loadInventario() {
 
   inventario = (data || []).map(inv => {
     const p = inv.prendas || {};
+    const fotosRaw = p.fotos_prendas || [];
+    console.log(`[Zetina App] prenda "${p.nombre}" — fotos_prendas raw (${fotosRaw.length}):`, fotosRaw.map(f => f.url));
+    const fotos = fotosRaw.map(f => ({ id: f.id, url: fotoPublicUrl(f.url) })).filter(f => f.url);
+    console.log(`[Zetina App] prenda "${p.nombre}" — URLs resueltas:`, fotos.map(f => f.url));
     return {
       id: inv.prenda_id,
       invId: inv.id,
@@ -437,7 +441,7 @@ async function loadInventario() {
       precioMin: p.precio_min || 0,
       precioMax: p.precio_max || 0,
       gradiente: p.gradiente || 'linear-gradient(150deg, #130016 0%, #855AA2 100%)',
-      fotos: (p.fotos_prendas || []).map(f => ({ id: f.id, url: fotoPublicUrl(f.url) })).filter(f => f.url),
+      fotos,
       fechaEntrega: inv.fecha_entrega,
     };
   });
@@ -1688,6 +1692,9 @@ function refreshGaleriaCarousel(p) {
   const dots     = document.getElementById("galeriaDots");
   const fotos    = p.fotos || [];
 
+  console.log(`[Zetina App] Galería "${p.nombre}" — ${fotos.length} foto(s):`);
+  fotos.forEach((f, i) => console.log(`  [${i}] id=${f.id} url=${f.url}`));
+
   if (fotos.length === 0) {
     carousel.innerHTML = `
       <div class="galeria-empty">
@@ -1698,10 +1705,12 @@ function refreshGaleriaCarousel(p) {
     return;
   }
 
-  carousel.innerHTML = fotos.map((foto) => `
+  carousel.innerHTML = fotos.map((foto, i) => `
     <div class="galeria-slide">
       <div class="galeria-img-wrap">
-        <img class="galeria-img" src="${foto.url}" alt="" loading="lazy">
+        <img class="galeria-img" src="${foto.url}" alt=""
+          onload="console.log('[Zetina App] ✅ foto ${i} cargada:', this.src)"
+          onerror="console.error('[Zetina App] ❌ foto ${i} falló:', this.src)">
       </div>
       <div class="galeria-slide-actions">
         <button class="btn-galeria-action btn-galeria-dl" data-action="descargar" data-foto-id="${foto.id}">
