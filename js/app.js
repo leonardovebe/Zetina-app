@@ -877,59 +877,7 @@ function renderPedidos() {
 
 // ── Datos de clientes ────────────────────────────────────────────────────────
 
-let clientes = [
-  {
-    id: 1,
-    nombre: "María González",
-    telefono: "5512345678",
-    tallaRopa: "M",
-    tallaPantalon: "30",
-    tallaCalzado: "24",
-    fechaCumpleanos: "1995-03-15",
-    notas: "Prefiere colores oscuros. Paga puntualmente.",
-    compras: [
-      { id: 101, prendaId: 1, prenda: "Blusa Satinada Manga Larga", marca: "ZARA",       fecha: "2026-05-10", monto: 350 },
-      { id: 102, prendaId: 3, prenda: "Vestido Floral Midi",         marca: "ZARA WOMAN", fecha: "2026-05-18", monto: 580 },
-    ],
-    pagos: [
-      { id: 201, fecha: "2026-05-10", monto: 350 },
-      { id: 202, fecha: "2026-05-20", monto: 100 },
-    ],
-  },
-  {
-    id: 2,
-    nombre: "Sofía Ramírez",
-    telefono: "5598765432",
-    tallaRopa: "S",
-    tallaPantalon: "28",
-    tallaCalzado: "22.5",
-    fechaCumpleanos: "1998-11-07",
-    notas: "Le encantan los vestidos y blusas ligeras.",
-    compras: [
-      { id: 103, prendaId: 2, prenda: "Pantalón Skinny de Mezclilla", marca: "BERSHKA", fecha: "2026-05-05", monto: 450 },
-    ],
-    pagos: [
-      { id: 203, fecha: "2026-05-05", monto: 450 },
-    ],
-  },
-  {
-    id: 3,
-    nombre: "Lucía Hernández",
-    telefono: "5567891234",
-    tallaRopa: "L",
-    tallaPantalon: "32",
-    tallaCalzado: "25",
-    fechaCumpleanos: "1990-07-22",
-    notas: "Contactar solo por WhatsApp. Sin llamadas.",
-    compras: [
-      { id: 104, prendaId: 5, prenda: "Chamarra de Cuero Sintético", marca: "PULL&BEAR", fecha: "2026-04-28", monto: 620 },
-      { id: 105, prendaId: 4, prenda: "Falda Plisada Mini",           marca: "H&M",       fecha: "2026-05-12", monto: 280 },
-    ],
-    pagos: [
-      { id: 204, fecha: "2026-04-30", monto: 300 },
-    ],
-  },
-];
+let clientes = [];
 
 const AVATAR_PALETTES = [
   { bg: "#855AA2", color: "#fff"     },
@@ -938,7 +886,8 @@ const AVATAR_PALETTES = [
 ];
 
 function avatarPalette(id) {
-  return AVATAR_PALETTES[(id - 1) % AVATAR_PALETTES.length];
+  const hash = String(id).split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  return AVATAR_PALETTES[hash % AVATAR_PALETTES.length];
 }
 
 function iniciales(nombre) {
@@ -959,20 +908,26 @@ function formatCumpleanos(iso) {
   return `${parseInt(d)} de ${MESES_FULL[parseInt(m) - 1]}`;
 }
 
-function saveClientes() {
-  try { localStorage.setItem("zetina_clientes", JSON.stringify(clientes)); } catch(e) {}
-}
-
-function loadClientes() {
-  try {
-    const stored = localStorage.getItem("zetina_clientes");
-    if (stored) { clientes = JSON.parse(stored); } else { saveClientes(); }
-  } catch(e) {}
-  let changed = false;
-  clientes.forEach((c, ci) => c.compras.forEach((comp, cj) => {
-    if (!comp.id) { comp.id = Date.now() + ci * 100 + cj; changed = true; }
-  }));
-  if (changed) saveClientes();
+async function loadClientes() {
+  const { data, error } = await db
+    .from('clientes')
+    .select('*')
+    .eq('vendedora_id', VENDEDORA_ID)
+    .order('created_at', { ascending: false });
+  if (!error && data) {
+    clientes = data.map((row) => ({
+      id: row.id,
+      nombre: row.nombre,
+      telefono: row.telefono || '',
+      tallaRopa: row.talla_ropa || '',
+      tallaPantalon: row.talla_pantalon || '',
+      tallaCalzado: row.talla_calzado || '',
+      fechaCumpleanos: row.fecha_cumpleanos || '',
+      notas: row.notas || '',
+      compras: [],
+      pagos: [],
+    }));
+  }
 }
 
 // ── Render: Clientes ─────────────────────────────────────────────────────────
@@ -1002,9 +957,12 @@ function renderClientesList(container, query = "") {
     : clientes;
   const list = container.querySelector(".clientes-list");
   if (!list) return;
+  const emptyMsg = query
+    ? "Sin resultados"
+    : "Aún no tienes clientes registradas";
   list.innerHTML = filtered.length
     ? filtered.map(buildClienteCard).join("")
-    : `<div class="clientes-empty"><p class="clientes-empty-text">Sin resultados</p></div>`;
+    : `<div class="clientes-empty"><p class="clientes-empty-text">${emptyMsg}</p></div>`;
 }
 
 function renderClientes() {
@@ -1039,7 +997,7 @@ function renderClientes() {
   container.querySelector("#btnAddCliente").addEventListener("click", openClienteForm);
   container.querySelector(".clientes-list").addEventListener("click", (e) => {
     const card = e.target.closest(".cliente-card");
-    if (card) openClienteDetail(parseInt(card.dataset.id));
+    if (card) openClienteDetail(card.dataset.id);
   });
 }
 
@@ -1076,12 +1034,23 @@ function createClienteDetailSheet() {
     overlay.classList.remove("open");
   });
   overlay.querySelector(".btn-edit-detail").addEventListener("click", () => {
-    const id = parseInt(overlay.dataset.currentId);
+    const id = overlay.dataset.currentId;
     if (id) openClienteEdit(id);
   });
-  overlay.querySelector(".sheet-body").addEventListener("click", (e) => {
-    const btn = e.target.closest(".btn-registrar-venta");
-    if (btn) openVentaForm(parseInt(btn.dataset.id));
+  overlay.querySelector(".sheet-body").addEventListener("click", async (e) => {
+    const ventaBtn = e.target.closest(".btn-registrar-venta");
+    if (ventaBtn) openVentaForm(ventaBtn.dataset.id);
+    const delBtn = e.target.closest(".btn-eliminar-cliente");
+    if (delBtn) {
+      if (!confirm("¿Eliminar esta clienta? Esta acción no se puede deshacer.")) return;
+      const id = delBtn.dataset.id;
+      const { error } = await db.from('clientes').delete().eq('id', id);
+      if (!error) {
+        clientes = clientes.filter((cl) => cl.id !== id);
+        overlay.classList.remove("open");
+        renderClientes();
+      }
+    }
   });
 }
 
@@ -1152,7 +1121,10 @@ function openClienteDetail(id) {
     <p class="sheet-section-label">
       Historial de compras (${c.compras.length})
     </p>
-    <div class="compras-list">${comprasHTML}</div>`;
+    <div class="compras-list">${comprasHTML}</div>
+    <button class="btn-eliminar-cliente" data-id="${c.id}">
+      Eliminar clienta
+    </button>`;
 
   const detailOverlay = document.getElementById("clienteDetailOverlay");
   detailOverlay.dataset.currentId = c.id;
@@ -1226,21 +1198,37 @@ function createClienteFormSheet() {
   });
   overlay.querySelector(".btn-sheet-close").addEventListener("click", () => overlay.classList.remove("open"));
 
-  overlay.querySelector("#clienteForm").addEventListener("submit", (e) => {
+  overlay.querySelector("#clienteForm").addEventListener("submit", async (e) => {
     e.preventDefault();
+    const btn = e.target.querySelector("button[type=submit]");
+    btn.disabled = true;
+    btn.textContent = "Guardando…";
     const data = new FormData(e.target);
-    clientes.unshift({
-      id: Date.now(),
+    const { data: row, error } = await db.from('clientes').insert({
+      vendedora_id: VENDEDORA_ID,
       nombre: data.get("nombre").trim(),
       telefono: data.get("telefono").trim(),
-      tallaRopa: data.get("tallaRopa"),
-      tallaPantalon: data.get("tallaPantalon").trim(),
-      tallaCalzado: data.get("tallaCalzado").trim(),
-      fechaCumpleanos: data.get("fechaCumpleanos") || "",
+      talla_ropa: data.get("tallaRopa"),
+      talla_pantalon: data.get("tallaPantalon").trim(),
+      talla_calzado: data.get("tallaCalzado").trim(),
+      fecha_cumpleanos: data.get("fechaCumpleanos") || null,
       notas: data.get("notas").trim(),
+    }).select().single();
+    btn.disabled = false;
+    btn.textContent = "Guardar clienta";
+    if (error || !row) return;
+    clientes.unshift({
+      id: row.id,
+      nombre: row.nombre,
+      telefono: row.telefono || '',
+      tallaRopa: row.talla_ropa || '',
+      tallaPantalon: row.talla_pantalon || '',
+      tallaCalzado: row.talla_calzado || '',
+      fechaCumpleanos: row.fecha_cumpleanos || '',
+      notas: row.notas || '',
       compras: [],
+      pagos: [],
     });
-    saveClientes();
     overlay.classList.remove("open");
     e.target.reset();
     renderClientes();
@@ -1318,20 +1306,36 @@ function createClienteEditSheet() {
   });
   overlay.querySelector(".btn-sheet-close").addEventListener("click", () => overlay.classList.remove("open"));
 
-  overlay.querySelector("#clienteEditForm").addEventListener("submit", (e) => {
+  overlay.querySelector("#clienteEditForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const id = parseInt(overlay.dataset.editId);
-    const c = clientes.find((cl) => cl.id === id);
-    if (!c) return;
+    const btn = e.target.querySelector("button[type=submit]");
+    btn.disabled = true;
+    btn.textContent = "Guardando…";
+    const id = overlay.dataset.editId;
     const data = new FormData(e.target);
-    c.nombre = data.get("nombre").trim();
-    c.telefono = data.get("telefono").trim();
-    c.tallaRopa = data.get("tallaRopa");
-    c.tallaPantalon = data.get("tallaPantalon").trim();
-    c.tallaCalzado = data.get("tallaCalzado").trim();
-    c.fechaCumpleanos = data.get("fechaCumpleanos") || "";
-    c.notas = data.get("notas").trim();
-    saveClientes();
+    const updates = {
+      nombre: data.get("nombre").trim(),
+      telefono: data.get("telefono").trim(),
+      talla_ropa: data.get("tallaRopa"),
+      talla_pantalon: data.get("tallaPantalon").trim(),
+      talla_calzado: data.get("tallaCalzado").trim(),
+      fecha_cumpleanos: data.get("fechaCumpleanos") || null,
+      notas: data.get("notas").trim(),
+    };
+    const { error } = await db.from('clientes').update(updates).eq('id', id);
+    btn.disabled = false;
+    btn.textContent = "Guardar cambios";
+    if (error) return;
+    const c = clientes.find((cl) => cl.id === id);
+    if (c) {
+      c.nombre = updates.nombre;
+      c.telefono = updates.telefono;
+      c.tallaRopa = updates.talla_ropa;
+      c.tallaPantalon = updates.talla_pantalon;
+      c.tallaCalzado = updates.talla_calzado;
+      c.fechaCumpleanos = updates.fecha_cumpleanos || '';
+      c.notas = updates.notas;
+    }
     overlay.classList.remove("open");
     renderClientes();
     openClienteDetail(id);
@@ -1418,7 +1422,6 @@ function createVentaFormSheet() {
       fecha: data.get("fecha"),
       monto: parseFloat(data.get("monto")) || 0,
     });
-    saveClientes();
     if (prendaIdStr) {
       await marcarVendida(prendaIdStr);
       inventario = inventario.filter((p) => p.id !== prendaIdStr);
@@ -2055,7 +2058,7 @@ function renderCobros() {
 
   container.querySelector(".cobros-list").addEventListener("click", (e) => {
     const card = e.target.closest(".cobro-cliente-card");
-    if (card) openCobrosDetail(parseInt(card.dataset.id));
+    if (card) openCobrosDetail(card.dataset.id);
   });
 }
 
@@ -2081,7 +2084,7 @@ function createCobrosDetailSheet() {
   overlay.querySelector(".btn-sheet-close").addEventListener("click", () => overlay.classList.remove("open"));
   overlay.querySelector(".sheet-body").addEventListener("click", (e) => {
     if (e.target.closest(".btn-registrar-abono")) {
-      openAbonoForm(parseInt(overlay.dataset.clienteId));
+      openAbonoForm(overlay.dataset.clienteId);
     }
   });
 }
@@ -2163,7 +2166,7 @@ function createAbonoFormSheet() {
 
   function closeAbono() {
     overlay.classList.remove("open");
-    const id = parseInt(overlay.dataset.clienteId);
+    const id = overlay.dataset.clienteId;
     if (id) { openCobrosDetail(id); renderCobros(); }
   }
 
@@ -2236,14 +2239,13 @@ function openAbonoForm(clienteId) {
 
   overlay.querySelector("#abonoForm").addEventListener("submit", (e) => {
     e.preventDefault();
-    const c = clientes.find((cl) => cl.id === parseInt(overlay.dataset.clienteId));
+    const c = clientes.find((cl) => cl.id === overlay.dataset.clienteId);
     if (!c) return;
     if (!c.pagos) c.pagos = [];
     const data = new FormData(e.target);
     const fecha = data.get("fecha");
     const monto = parseFloat(data.get("monto")) || 0;
     c.pagos.push({ id: Date.now(), fecha, monto });
-    saveClientes();
     _showAbonoConfirmacion(overlay, c, monto, fecha);
   });
 }
@@ -2295,7 +2297,7 @@ async function initApp() {
     '<div class="catalog-loading"><span>Cargando catálogo…</span></div>';
 
   await loadPerfil();
-  await Promise.all([loadCatalogo(), loadInventario(), loadPedidos(), loadDevoluciones()]);
+  await Promise.all([loadCatalogo(), loadInventario(), loadPedidos(), loadDevoluciones(), loadClientes()]);
 
   renderCatalog();
   renderPedidos();
@@ -2330,7 +2332,6 @@ async function initApp() {
 }
 
 (async () => {
-  loadClientes();
   createOrderDetailSheet();
   createClienteDetailSheet();
   createClienteFormSheet();
