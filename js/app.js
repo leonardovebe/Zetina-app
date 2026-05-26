@@ -1580,8 +1580,6 @@ function openDevolucionForm(prendaId) {
 // ── Render: Mis Prendas ─────────────────────────────────────────────────────
 
 function buildInvCard(p) {
-  const ganMin = p.precioMin - p.precioCosto;
-  const ganMax = p.precioMax - p.precioCosto;
   const waUrl = buildWhatsappUrl(p);
   const fotos = p.fotos || [];
   const primeraFoto = fotos.find(f => f.url);
@@ -1603,8 +1601,7 @@ function buildInvCard(p) {
           <span class="inv-talla-chip">Etq&nbsp;<strong>${p.tallaEtiqueta}</strong></span>
           <span class="inv-talla-chip">Real&nbsp;<strong>${p.tallaReal}</strong></span>
         </div>
-        <p class="inv-precio-rango">${formatPeso(p.precioMin)} – ${formatPeso(p.precioMax)}</p>
-        <p class="inv-ganancia">+${formatPeso(ganMin)} – +${formatPeso(ganMax)}</p>
+        <p class="inv-precio-rango">Precio: ${formatPeso(p.precioMax)}</p>
         <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-inv-compartir">
           <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${WA_PATH}"/></svg>
           Compartir
