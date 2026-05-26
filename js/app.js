@@ -820,7 +820,7 @@ function renderPedidos() {
       </div>
       <div class="catalog-empty">
         <p class="catalog-empty-icon">📦</p>
-        <p class="catalog-empty-text">Aún no has hecho pedidos.<br>Agrega prendas al carrito para comenzar.</p>
+        <p class="catalog-empty-text">Aún no tienes pedidos</p>
       </div>`;
     return;
   }
