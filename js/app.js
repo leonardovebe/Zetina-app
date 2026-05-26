@@ -1432,68 +1432,79 @@ function createVentaFormSheet() {
   overlay.querySelector(".btn-sheet-close").addEventListener("click", () => overlay.classList.remove("open"));
 
   overlay.querySelector("#ventaForm").addEventListener("submit", async (e) => {
+    console.log('[ventaForm] submit disparado');
     e.preventDefault();
-    const btn = e.target.querySelector("button[type=submit]");
-    const errEl = document.getElementById("ventaFormError");
-    errEl.style.display = "none";
+    const form  = e.target;
+    const btn   = form.querySelector("button[type=submit]");
+    const errEl = form.querySelector("#ventaFormError");
+
+    const showErr = (msg) => {
+      console.error('[ventaForm]', msg);
+      if (errEl) { errEl.textContent = msg; errEl.style.display = "block"; }
+    };
+
+    if (errEl) errEl.style.display = "none";
     btn.disabled = true;
     btn.textContent = "Guardando…";
 
-    const formData = new FormData(e.target);
-    const parts = formData.get("prendaKey").split("|");
-    const prendaIdStr = parts[0] || '';
-    const nombre      = parts[1] || '';
-    const marca       = parts[2] || '';
-    const UUID_RE     = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const prendaId    = UUID_RE.test(prendaIdStr) ? prendaIdStr : null;
+    try {
+      const formData   = new FormData(form);
+      const parts      = formData.get("prendaKey").split("|");
+      const prendaIdStr = parts[0] || '';
+      const nombre      = parts[1] || '';
+      const marca       = parts[2] || '';
+      const UUID_RE     = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const prendaId    = UUID_RE.test(prendaIdStr) ? prendaIdStr : null;
 
-    const c = clientes.find((cl) => cl.id === currentVentaClienteId);
-    if (!c) {
-      console.error('[ventaForm] Clienta no encontrada, id:', currentVentaClienteId);
-      btn.disabled = false; btn.textContent = "Guardar venta"; return;
+      const c = clientes.find((cl) => cl.id === currentVentaClienteId);
+      if (!c) {
+        showErr('Clienta no encontrada, id: ' + currentVentaClienteId);
+        btn.disabled = false; btn.textContent = "Guardar venta"; return;
+      }
+
+      const payload = {
+        cliente_id:    currentVentaClienteId,
+        vendedora_id:  VENDEDORA_ID,
+        prenda_id:     prendaId,
+        nombre_prenda: nombre,
+        marca,
+        fecha:  formData.get("fecha"),
+        monto:  parseFloat(formData.get("monto")) || 0,
+        estado: 'pendiente',
+      };
+      console.log('[ventaForm] payload:', payload);
+
+      const { data: venta, error } = await db.from('ventas').insert(payload).select().single();
+
+      btn.disabled = false;
+      btn.textContent = "Guardar venta";
+
+      if (error) {
+        showErr(`Error Supabase (${error.code}): ${error.message}`);
+        return;
+      }
+      if (!venta) {
+        showErr('Sin respuesta de Supabase. Intenta de nuevo.');
+        return;
+      }
+
+      console.log('[ventaForm] guardado:', venta);
+      c.compras.unshift({ id: venta.id, prendaId: venta.prenda_id, prenda: venta.nombre_prenda || nombre, marca: venta.marca || '', fecha: venta.fecha, monto: venta.monto });
+      if (prendaId) {
+        await marcarVendida(prendaId);
+        inventario = inventario.filter((p) => p.id !== prendaId);
+        renderMisPrendas();
+      }
+      overlay.classList.remove("open");
+      form.reset();
+      openClienteDetail(currentVentaClienteId);
+      renderCobros();
+    } catch (err) {
+      console.error('[ventaForm] excepción inesperada:', err);
+      btn.disabled = false;
+      btn.textContent = "Guardar venta";
+      showErr('Error inesperado: ' + err.message);
     }
-
-    const payload = {
-      cliente_id:   currentVentaClienteId,
-      vendedora_id: VENDEDORA_ID,
-      prenda_id:    prendaId,
-      nombre_prenda: nombre,
-      marca,
-      fecha:  formData.get("fecha"),
-      monto:  parseFloat(formData.get("monto")) || 0,
-      estado: 'pendiente',
-    };
-    console.log('[ventaForm] Insertando:', payload);
-
-    const { data: venta, error } = await db.from('ventas').insert(payload).select().single();
-
-    btn.disabled = false;
-    btn.textContent = "Guardar venta";
-
-    if (error) {
-      console.error('[ventaForm] Error Supabase:', error.code, error.message, error.details);
-      errEl.textContent = `Error al guardar: ${error.message}`;
-      errEl.style.display = "block";
-      return;
-    }
-    if (!venta) {
-      console.error('[ventaForm] Insert sin respuesta de Supabase');
-      errEl.textContent = "No se recibió respuesta. Intenta de nuevo.";
-      errEl.style.display = "block";
-      return;
-    }
-
-    console.log('[ventaForm] Venta guardada:', venta);
-    c.compras.unshift({ id: venta.id, prendaId: venta.prenda_id, prenda: venta.nombre_prenda || nombre, marca: venta.marca || '', fecha: venta.fecha, monto: venta.monto });
-    if (prendaId) {
-      await marcarVendida(prendaId);
-      inventario = inventario.filter((p) => p.id !== prendaId);
-      renderMisPrendas();
-    }
-    overlay.classList.remove("open");
-    e.target.reset();
-    openClienteDetail(currentVentaClienteId);
-    renderCobros();
   });
 }
 
