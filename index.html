@@ -18,15 +18,57 @@
   <link rel="stylesheet" href="css/styles.css">
   <!-- OneSignal Push Notifications -->
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <style>
+    [data-notif-responded] .onesignal-bell-container { display: none !important; }
+  </style>
   <script>
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     OneSignalDeferred.push(async function(OneSignal) {
       await OneSignal.init({
         appId: "a2f3738d-e19b-4555-8eaa-02986bd16437",
         safari_web_id: "web.onesignal.auto.28be2e0f-48c0-43fd-877a-95cc3c6fc0d9",
+        promptOptions: {
+          slidedown: {
+            prompts: [{
+              type: "push",
+              autoPrompt: true,
+              text: {
+                actionMessage: "Activa las notificaciones, ¡no te pierdas las mejores prendas!",
+                acceptButton: "Activar",
+                cancelButton: "Ahora no"
+              }
+            }]
+          }
+        },
         notifyButton: {
           enable: true,
         },
+      });
+
+      function hideBellIfResponded() {
+        const perm = (typeof Notification !== 'undefined') ? Notification.permission : 'default';
+        if (perm === 'granted' || perm === 'denied') {
+          document.documentElement.setAttribute('data-notif-responded', 'true');
+        }
+      }
+
+      hideBellIfResponded();
+
+      // Oculta la campanita en cuanto aparece en el DOM si ya respondió
+      const bellObserver = new MutationObserver(() => {
+        if (document.documentElement.hasAttribute('data-notif-responded')) {
+          const bell = document.querySelector('.onesignal-bell-container');
+          if (bell) { bell.style.display = 'none'; bellObserver.disconnect(); }
+        }
+      });
+      bellObserver.observe(document.body, { childList: true, subtree: true });
+
+      OneSignal.Notifications.addEventListener('permissionChange', () => {
+        hideBellIfResponded();
+        const bell = document.querySelector('.onesignal-bell-container');
+        if (bell && document.documentElement.hasAttribute('data-notif-responded')) {
+          bell.style.display = 'none';
+        }
       });
     });
   </script>
