@@ -47,6 +47,11 @@ async function confirmarPedido() {
 
   if (errDetalles) throw new Error(errDetalles.message);
 
+  const prendaIds = carrito.map((p) => p.id).filter(Boolean);
+  if (prendaIds.length) {
+    await db.from('prendas').update({ disponible: false }).in('id', prendaIds);
+  }
+
   return pedido;
 }
 
@@ -163,8 +168,9 @@ function createCartSheet() {
         await confirmarPedido();
         clearCarrito();
         closeCartSheet();
-        await loadPedidos();
+        await Promise.all([loadPedidos(), loadCatalogo()]);
         renderPedidos();
+        renderCatalog();
         window.open(waUrl, "_blank");
       } catch (err) {
         btn.disabled = false;

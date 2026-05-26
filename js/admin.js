@@ -344,13 +344,6 @@ async function cambiarEstado(pedidoId, nuevoEstado) {
     return;
   }
 
-  if (nuevoEstado === 'En camino') {
-    const p = pedidosAdmin.find(x => x.id === pedidoId);
-    if (p && p.prendaIds.length) {
-      await db.from('prendas').update({ disponible: false }).in('id', p.prendaIds);
-    }
-  }
-
   const p = pedidosAdmin.find(x => x.id === pedidoId);
   if (p) p.estado = nuevoEstado;
   renderPedidosAdmin();
