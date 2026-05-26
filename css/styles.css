@@ -2827,10 +2827,11 @@ h1, h2, h3, h4, h5, h6,
 
 .login-welcome {
   font-family: var(--font-heading);
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: #fff;
   margin: 0 0 1.5rem;
+  text-align: center;
 }
 
 .login-fields {
