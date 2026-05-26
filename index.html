@@ -24,18 +24,22 @@
     #onesignal-bell-container { display: none !important; }
   </style>
   <script>
-    /*
-     * Aplica colores Zetina al slidedown de OneSignal.
-     *
-     * Estrategia:
-     *  1. MutationObserver detecta la inserción del contenedor.
-     *  2. Se aplica background-color a TODOS los divs hijos (el dialogo
-     *     visible es un div hijo con su propio bg blanco).
-     *  3. Se aplica color de texto solo a elementos de texto (no botones).
-     *  4. Los hijos internos de cada botón también se sobreescriben.
-     *  5. Se re-aplica 3 veces con delays (200 ms / 600 ms / 1200 ms)
-     *     para cubrir el render asíncrono de botones de OneSignal.
-     */
+    /* ── Lógica de reintento tras rechazo ─────────────────────────────────
+     * Si la vendedora toca "Ahora no", se guarda la marca de tiempo en
+     * localStorage. El prompt vuelve a aparecer 24 h después (86 400 s).
+     * Si ya concedió o denegó el permiso nativo, no se vuelve a mostrar.
+     * ─────────────────────────────────────────────────────────────────── */
+    var _NOTIF_KEY  = 'zetina_notif_dismissed';
+    var _RETRY_MS   = 86400000; // 24 h en ms
+
+    function _canPrompt() {
+      var perm = (typeof Notification !== 'undefined') ? Notification.permission : 'default';
+      if (perm !== 'default') return false;          // ya decidió
+      var ts = localStorage.getItem(_NOTIF_KEY);
+      return !ts || (Date.now() - Number(ts)) >= _RETRY_MS;
+    }
+
+    /* ── Colores y estilos del slidedown ──────────────────────────────── */
     (function () {
       var C = {
         bg:        '#130016',
@@ -51,14 +55,16 @@
       var CANCEL_SEL = '#onesignal-slidedown-cancel-button, button.secondary, [id*="cancel"]';
       var MSG_SEL    = '.slidedown-body-message, [class*="message"], p';
 
+      var _cancelListened = false;
+
       function paint(root) {
-        /* Fondo en root y en todos los divs hijos (cubre el dialog interno) */
+        /* Fondo en root y en todos los divs hijos */
         root.style.setProperty('background-color', C.bg, 'important');
         root.querySelectorAll('div').forEach(function (el) {
           el.style.setProperty('background-color', C.bg, 'important');
         });
 
-        /* Color blanco base en todos los elementos de texto no-botón */
+        /* Texto base blanco */
         root.querySelectorAll('span, p, h1, h2, h3, h4, label, small').forEach(function (el) {
           el.style.setProperty('color', C.title, 'important');
         });
@@ -80,15 +86,23 @@
         }
 
         /* Botón Ahora no */
-        var cancel = root.querySelector(CANCEL_SEL);
-        if (cancel) {
-          cancel.style.setProperty('background-color', C.btnNo,    'important');
-          cancel.style.setProperty('color',            C.btnNoTxt, 'important');
-          cancel.style.setProperty('border-color',     C.btnNo,    'important');
-          cancel.querySelectorAll('*').forEach(function (el) {
+        var cancelBtn = root.querySelector(CANCEL_SEL);
+        if (cancelBtn) {
+          cancelBtn.style.setProperty('background-color', C.btnNo,    'important');
+          cancelBtn.style.setProperty('color',            C.btnNoTxt, 'important');
+          cancelBtn.style.setProperty('border-color',     C.btnNo,    'important');
+          cancelBtn.querySelectorAll('*').forEach(function (el) {
             el.style.setProperty('background-color', C.btnNo,    'important');
             el.style.setProperty('color',            C.btnNoTxt, 'important');
           });
+
+          /* Listener de rechazo — se adjunta una sola vez */
+          if (!_cancelListened) {
+            _cancelListened = true;
+            cancelBtn.addEventListener('click', function () {
+              localStorage.setItem(_NOTIF_KEY, String(Date.now()));
+            }, { once: true });
+          }
         }
       }
 
@@ -106,6 +120,7 @@
       }).observe(document.documentElement, { childList: true, subtree: true });
     })();
 
+    /* ── Inicialización de OneSignal ──────────────────────────────────── */
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     OneSignalDeferred.push(async function (OneSignal) {
       await OneSignal.init({
@@ -127,11 +142,10 @@
         notifyButton: { enable: false },
       });
 
-      /* Muestra el slidedown a los 60 s solo si el permiso no fue decidido.
-         Al aceptar, OneSignal solicita el permiso nativo de iOS. */
+      /* Muestra el slidedown a los 60 s.
+         Solo si el permiso no fue decidido y no fue rechazado en las últimas 24 h. */
       setTimeout(async () => {
-        const perm = (typeof Notification !== 'undefined') ? Notification.permission : 'default';
-        if (perm === 'default') {
+        if (_canPrompt()) {
           try { await OneSignal.Slidedown.promptPush(); } catch (e) {}
         }
       }, 60000);
