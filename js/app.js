@@ -2379,7 +2379,7 @@ async function initApp() {
       table: 'prendas',
     }, async () => {
       await loadCatalogo();
-      renderCatalogo();
+      renderCatalog();
     })
     .subscribe();
 }
