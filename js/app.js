@@ -1464,13 +1464,11 @@ function createVentaFormSheet() {
 
       const payload = {
         cliente_id:    currentVentaClienteId,
-        vendedora_id:  VENDEDORA_ID,
         prenda_id:     prendaId,
         nombre_prenda: nombre,
         marca,
         fecha:  formData.get("fecha"),
         monto:  parseFloat(formData.get("monto")) || 0,
-        estado: 'pendiente',
       };
       console.log('[ventaForm] payload:', payload);
 
@@ -2332,7 +2330,6 @@ function openAbonoForm(clienteId) {
     const monto = parseFloat(data.get("monto")) || 0;
     const { data: abono, error } = await db.from('abonos').insert({
       cliente_id: clienteId,
-      vendedora_id: VENDEDORA_ID,
       monto,
       fecha,
     }).select().single();
