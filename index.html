@@ -20,35 +20,64 @@
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <style>
     /* Ocultar campanita de OneSignal permanentemente */
-    .onesignal-bell-container { display: none !important; }
-    /* Slidedown prompt — colores Zetina */
-    #onesignal-slidedown-container,
-    #onesignal-slidedown-dialog,
-    .onesignal-slidedown-container,
-    .onesignal-slidedown-dialog {
-      background-color: #130016 !important;
-      color: #fff !important;
-    }
-    #onesignal-slidedown-container *,
-    .onesignal-slidedown-container * { color: #fff !important; }
-    #onesignal-slidedown-allow-button,
-    .slidedown-button.primary,
-    .onesignal-slidedown-container button.primary {
-      background-color: #DEFF00 !important;
-      color: #130016 !important;
-      border-color: #DEFF00 !important;
-    }
-    #onesignal-slidedown-cancel-button,
-    .slidedown-button.secondary,
-    .onesignal-slidedown-container button.secondary {
-      background-color: #855AA2 !important;
-      color: #fff !important;
-      border-color: #855AA2 !important;
-    }
+    .onesignal-bell-container,
+    #onesignal-bell-container { display: none !important; }
   </style>
   <script>
+    /* Aplica colores Zetina al slidedown en cuanto aparece en el DOM.
+       Se usan inline styles con setProperty('…','…','important') para
+       superar la especificidad del stylesheet propio de OneSignal. */
+    (function () {
+      var COLORS = {
+        bg:        '#130016',
+        text:      '#ffffff',
+        btnOk:     '#DEFF00',
+        btnOkText: '#130016',
+        btnNo:     '#855AA2',
+        btnNoText: '#ffffff',
+      };
+
+      function styleSlidedown(root) {
+        root.style.setProperty('background-color', COLORS.bg,   'important');
+        root.style.setProperty('color',            COLORS.text, 'important');
+
+        root.querySelectorAll('*').forEach(function (el) {
+          el.style.setProperty('color', COLORS.text, 'important');
+        });
+
+        var allow = root.querySelector(
+          '#onesignal-slidedown-allow-button, button.primary, .primary'
+        );
+        if (allow) {
+          allow.style.setProperty('background-color', COLORS.btnOk,     'important');
+          allow.style.setProperty('color',            COLORS.btnOkText, 'important');
+          allow.style.setProperty('border-color',     COLORS.btnOk,     'important');
+        }
+
+        var cancel = root.querySelector(
+          '#onesignal-slidedown-cancel-button, button.secondary, .secondary'
+        );
+        if (cancel) {
+          cancel.style.setProperty('background-color', COLORS.btnNo,     'important');
+          cancel.style.setProperty('color',            COLORS.btnNoText, 'important');
+          cancel.style.setProperty('border-color',     COLORS.btnNo,     'important');
+        }
+      }
+
+      new MutationObserver(function (_, obs) {
+        var root = document.querySelector(
+          '#onesignal-slidedown-container, .onesignal-slidedown-container'
+        );
+        if (!root) return;
+        obs.disconnect();
+        styleSlidedown(root);
+        /* Re-aplica después de que OneSignal termine de renderizar los botones */
+        setTimeout(function () { styleSlidedown(root); }, 150);
+      }).observe(document.documentElement, { childList: true, subtree: true });
+    })();
+
     window.OneSignalDeferred = window.OneSignalDeferred || [];
-    OneSignalDeferred.push(async function(OneSignal) {
+    OneSignalDeferred.push(async function (OneSignal) {
       await OneSignal.init({
         appId: "a2f3738d-e19b-4555-8eaa-02986bd16437",
         safari_web_id: "web.onesignal.auto.28be2e0f-48c0-43fd-877a-95cc3c6fc0d9",
@@ -68,9 +97,8 @@
         notifyButton: { enable: false },
       });
 
-      // Muestra el slidedown personalizado a los 60 s.
-      // Solo si el permiso aún no ha sido decidido.
-      // Al aceptar, OneSignal dispara internamente el prompt nativo de iOS.
+      /* Muestra el slidedown a los 60 s solo si el permiso no fue decidido.
+         Al aceptar, OneSignal solicita el permiso nativo de iOS. */
       setTimeout(async () => {
         const perm = (typeof Notification !== 'undefined') ? Notification.permission : 'default';
         if (perm === 'default') {
