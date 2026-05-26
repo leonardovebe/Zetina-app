@@ -1420,6 +1420,7 @@ function createVentaFormSheet() {
             <input class="form-input" id="fFechaVenta" name="fecha" type="date" required>
           </div>
           <button type="submit" class="btn-save-cliente">Guardar venta</button>
+          <p id="ventaFormError" style="display:none;color:#e53e3e;font-size:0.875rem;margin-top:0.5rem;text-align:center"></p>
         </form>
       </div>
     </div>`;
@@ -1433,29 +1434,60 @@ function createVentaFormSheet() {
   overlay.querySelector("#ventaForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const btn = e.target.querySelector("button[type=submit]");
+    const errEl = document.getElementById("ventaFormError");
+    errEl.style.display = "none";
     btn.disabled = true;
     btn.textContent = "Guardando…";
-    const data = new FormData(e.target);
-    const [prendaIdStr, nombre, marca] = data.get("prendaKey").split("|");
+
+    const formData = new FormData(e.target);
+    const parts = formData.get("prendaKey").split("|");
+    const prendaIdStr = parts[0] || '';
+    const nombre      = parts[1] || '';
+    const marca       = parts[2] || '';
+    const UUID_RE     = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const prendaId    = UUID_RE.test(prendaIdStr) ? prendaIdStr : null;
+
     const c = clientes.find((cl) => cl.id === currentVentaClienteId);
-    if (!c) { btn.disabled = false; btn.textContent = "Guardar venta"; return; }
-    const { data: venta, error } = await db.from('ventas').insert({
-      cliente_id: currentVentaClienteId,
+    if (!c) {
+      console.error('[ventaForm] Clienta no encontrada, id:', currentVentaClienteId);
+      btn.disabled = false; btn.textContent = "Guardar venta"; return;
+    }
+
+    const payload = {
+      cliente_id:   currentVentaClienteId,
       vendedora_id: VENDEDORA_ID,
-      prenda_id: prendaIdStr || null,
+      prenda_id:    prendaId,
       nombre_prenda: nombre,
-      marca: marca || '',
-      fecha: data.get("fecha"),
-      monto: parseFloat(data.get("monto")) || 0,
+      marca,
+      fecha:  formData.get("fecha"),
+      monto:  parseFloat(formData.get("monto")) || 0,
       estado: 'pendiente',
-    }).select().single();
+    };
+    console.log('[ventaForm] Insertando:', payload);
+
+    const { data: venta, error } = await db.from('ventas').insert(payload).select().single();
+
     btn.disabled = false;
     btn.textContent = "Guardar venta";
-    if (error || !venta) return;
-    c.compras.unshift({ id: venta.id, prendaId: venta.prenda_id, prenda: venta.nombre_prenda, marca: venta.marca || '', fecha: venta.fecha, monto: venta.monto });
-    if (prendaIdStr) {
-      await marcarVendida(prendaIdStr);
-      inventario = inventario.filter((p) => p.id !== prendaIdStr);
+
+    if (error) {
+      console.error('[ventaForm] Error Supabase:', error.code, error.message, error.details);
+      errEl.textContent = `Error al guardar: ${error.message}`;
+      errEl.style.display = "block";
+      return;
+    }
+    if (!venta) {
+      console.error('[ventaForm] Insert sin respuesta de Supabase');
+      errEl.textContent = "No se recibió respuesta. Intenta de nuevo.";
+      errEl.style.display = "block";
+      return;
+    }
+
+    console.log('[ventaForm] Venta guardada:', venta);
+    c.compras.unshift({ id: venta.id, prendaId: venta.prenda_id, prenda: venta.nombre_prenda || nombre, marca: venta.marca || '', fecha: venta.fecha, monto: venta.monto });
+    if (prendaId) {
+      await marcarVendida(prendaId);
+      inventario = inventario.filter((p) => p.id !== prendaId);
       renderMisPrendas();
     }
     overlay.classList.remove("open");
