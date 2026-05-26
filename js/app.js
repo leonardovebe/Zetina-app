@@ -1937,8 +1937,7 @@ function getCuentaStats() {
     totalCobrado += (c.pagos   || []).reduce((s, p)    => s + p.monto,    0);
   });
   const totalPorCobrar = Math.max(0, totalVendido - totalCobrado);
-  const clientasActivas = clientes.filter((c) => (c.compras || []).length > 0).length;
-  return { totalVendido, totalCobrado, totalPorCobrar, clientasActivas, prendas: inventario.length };
+  return { totalVendido, totalCobrado, totalPorCobrar, totalClientas: clientes.length, prendas: inventario.length };
 }
 
 function renderCuenta() {
@@ -1982,8 +1981,8 @@ function renderCuenta() {
         <span class="cuenta-stat-value">${formatPeso(stats.totalPorCobrar)}</span>
       </div>
       <div class="cuenta-stat-card">
-        <span class="cuenta-stat-label">Clientas activas</span>
-        <span class="cuenta-stat-value cuenta-stat-value--num">${stats.clientasActivas}</span>
+        <span class="cuenta-stat-label">Clientas</span>
+        <span class="cuenta-stat-value cuenta-stat-value--num">${stats.totalClientas}</span>
       </div>
       <div class="cuenta-stat-card">
         <span class="cuenta-stat-label">Prendas en inventario</span>
