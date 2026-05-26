@@ -930,6 +930,23 @@ async function loadClientes() {
   }
 }
 
+async function loadCobrosData() {
+  const clienteIds = clientes.map((c) => c.id);
+  if (!clienteIds.length) return;
+  const [{ data: ventas }, { data: abonos }] = await Promise.all([
+    db.from('ventas').select('*').in('cliente_id', clienteIds).order('fecha', { ascending: false }),
+    db.from('abonos').select('*').in('cliente_id', clienteIds).order('fecha', { ascending: false }),
+  ]);
+  clientes.forEach((c) => {
+    c.compras = (ventas || [])
+      .filter((v) => v.cliente_id === c.id)
+      .map((v) => ({ id: v.id, prendaId: v.prenda_id || null, prenda: v.nombre_prenda || '', marca: v.marca || '', fecha: v.fecha || '', monto: v.monto || 0 }));
+    c.pagos = (abonos || [])
+      .filter((a) => a.cliente_id === c.id)
+      .map((a) => ({ id: a.id, fecha: a.fecha || '', monto: a.monto || 0 }));
+  });
+}
+
 // ── Render: Clientes ─────────────────────────────────────────────────────────
 
 function buildClienteCard(c) {
@@ -1409,19 +1426,27 @@ function createVentaFormSheet() {
 
   overlay.querySelector("#ventaForm").addEventListener("submit", async (e) => {
     e.preventDefault();
+    const btn = e.target.querySelector("button[type=submit]");
+    btn.disabled = true;
+    btn.textContent = "Guardando…";
     const data = new FormData(e.target);
     const [prendaIdStr, nombre, marca] = data.get("prendaKey").split("|");
     const c = clientes.find((cl) => cl.id === currentVentaClienteId);
-    if (!c) return;
-    if (!c.pagos) c.pagos = [];
-    c.compras.unshift({
-      id: Date.now(),
-      prendaId: prendaIdStr || null,
-      prenda: nombre,
-      marca: marca || "",
+    if (!c) { btn.disabled = false; btn.textContent = "Guardar venta"; return; }
+    const { data: venta, error } = await db.from('ventas').insert({
+      cliente_id: currentVentaClienteId,
+      vendedora_id: VENDEDORA_ID,
+      prenda_id: prendaIdStr || null,
+      nombre_prenda: nombre,
+      marca: marca || '',
       fecha: data.get("fecha"),
       monto: parseFloat(data.get("monto")) || 0,
-    });
+      estado: 'pendiente',
+    }).select().single();
+    btn.disabled = false;
+    btn.textContent = "Guardar venta";
+    if (error || !venta) return;
+    c.compras.unshift({ id: venta.id, prendaId: venta.prenda_id, prenda: venta.nombre_prenda, marca: venta.marca || '', fecha: venta.fecha, monto: venta.monto });
     if (prendaIdStr) {
       await marcarVendida(prendaIdStr);
       inventario = inventario.filter((p) => p.id !== prendaIdStr);
@@ -1996,6 +2021,17 @@ function openCerrarSesion() {
 function renderCobros() {
   const container = document.querySelector("#cobros .view-content");
 
+  if (!clientes.length) {
+    container.innerHTML = `
+      <div class="cobros-header">
+        <h2 class="catalog-title">Cuentas</h2>
+      </div>
+      <div class="clientes-empty">
+        <p class="clientes-empty-text">Aún no tienes cuentas registradas</p>
+      </div>`;
+    return;
+  }
+
   const totalPorCobrar = clientes.reduce((sum, c) => {
     const tp   = (c.compras || []).reduce((s, comp) => s + comp.monto, 0);
     const tpag = (c.pagos   || []).reduce((s, p)    => s + p.monto,    0);
@@ -2237,15 +2273,28 @@ function openAbonoForm(clienteId) {
   overlay.querySelector("#fFechaAbono").value = new Date().toISOString().split("T")[0];
   overlay.classList.add("open");
 
-  overlay.querySelector("#abonoForm").addEventListener("submit", (e) => {
+  overlay.querySelector("#abonoForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const c = clientes.find((cl) => cl.id === overlay.dataset.clienteId);
-    if (!c) return;
-    if (!c.pagos) c.pagos = [];
+    const btn = e.target.querySelector("button[type=submit]");
+    btn.disabled = true;
+    btn.textContent = "Guardando…";
+    const clienteId = overlay.dataset.clienteId;
+    const c = clientes.find((cl) => cl.id === clienteId);
+    if (!c) { btn.disabled = false; btn.textContent = "Guardar abono"; return; }
     const data = new FormData(e.target);
     const fecha = data.get("fecha");
     const monto = parseFloat(data.get("monto")) || 0;
-    c.pagos.push({ id: Date.now(), fecha, monto });
+    const { data: abono, error } = await db.from('abonos').insert({
+      cliente_id: clienteId,
+      vendedora_id: VENDEDORA_ID,
+      monto,
+      fecha,
+    }).select().single();
+    btn.disabled = false;
+    btn.textContent = "Guardar abono";
+    if (error || !abono) return;
+    if (!c.pagos) c.pagos = [];
+    c.pagos.push({ id: abono.id, fecha: abono.fecha, monto: abono.monto });
     _showAbonoConfirmacion(overlay, c, monto, fecha);
   });
 }
@@ -2298,6 +2347,7 @@ async function initApp() {
 
   await loadPerfil();
   await Promise.all([loadCatalogo(), loadInventario(), loadPedidos(), loadDevoluciones(), loadClientes()]);
+  await loadCobrosData();
 
   renderCatalog();
   renderPedidos();
