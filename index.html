@@ -10,8 +10,8 @@
   <meta name="apple-mobile-web-app-title" content="ZETINA">
   <title>ZETINA</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
-  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&family=Poppins:wght@400;500&display=swap" rel="stylesheet">
@@ -20,6 +20,21 @@
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <style>
     [data-notif-responded] .onesignal-bell-container { display: none !important; }
+    /* OneSignal slidedown prompt — colores Zetina */
+    #onesignal-slidedown-dialog,
+    .onesignal-slidedown-container { background-color: #130016 !important; color: #fff !important; }
+    #onesignal-slidedown-dialog p,
+    .onesignal-slidedown-container .slidedown-body-message { color: #fff !important; }
+    #onesignal-slidedown-allow-button,
+    .slidedown-button.primary {
+      background-color: #DEFF00 !important; color: #130016 !important;
+      border-color: #DEFF00 !important;
+    }
+    #onesignal-slidedown-cancel-button,
+    .slidedown-button.secondary {
+      background-color: #855AA2 !important; color: #fff !important;
+      border-color: #855AA2 !important;
+    }
   </style>
   <script>
     window.OneSignalDeferred = window.OneSignalDeferred || [];
