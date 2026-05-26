@@ -1662,10 +1662,18 @@ function buildInvCard(p) {
           <span class="inv-talla-chip">Real&nbsp;<strong>${p.tallaReal}</strong></span>
         </div>
         <p class="inv-precio-rango">Precio: ${formatPeso(p.precioMax)}</p>
-        <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-inv-compartir">
-          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${WA_PATH}"/></svg>
-          Compartir
-        </a>
+        <div class="inv-card-actions">
+          <button class="btn-inv-info" data-info="${p.id}" aria-label="Ver descripción">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" width="14" height="14">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            Info
+          </button>
+          <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-inv-compartir">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${WA_PATH}"/></svg>
+            Compartir
+          </a>
+        </div>
         ${!pendiente ? `<button class="btn-inv-devolucion" data-devolucion="${p.id}">Reportar devolución</button>` : ""}
       </div>
     </article>`;
@@ -1703,6 +1711,12 @@ function renderMisPrendas() {
 
   container.onclick = (e) => {
     if (e.target.closest(".btn-inv-compartir")) return;
+    const infoBtn = e.target.closest(".btn-inv-info");
+    if (infoBtn) {
+      const p = inventario.find((x) => x.id === infoBtn.dataset.info);
+      if (p) openPrendaDetalle(p, true);
+      return;
+    }
     const devBtn = e.target.closest(".btn-inv-devolucion");
     if (devBtn) { openDevolucionForm(devBtn.dataset.devolucion); return; }
     const card = e.target.closest(".inv-card");
@@ -1713,6 +1727,75 @@ function renderMisPrendas() {
 }
 
 // ── Detalle de prenda (descripción) ─────────────────────────────────────────
+
+function buildDescripcionSections(rawDesc) {
+  const text = (rawDesc || '').trim();
+  if (!text) return `<p class="pd-empty">Sin descripción disponible</p>`;
+
+  const FICHA_RE = /^(material|composici[oó]n|cuidados?|instrucciones?|tela|tejido|lavado)\s*:/i;
+  const USO_RE   = /^c[oó]mo\s+(usar|combinar|llevarlo?|usarlo?)/i;
+
+  const lines     = text.split('\n');
+  const hasFicha  = lines.some(l => FICHA_RE.test(l.trim()));
+  const hasUso    = lines.some(l => USO_RE.test(l.trim()));
+
+  if (!hasFicha && !hasUso) {
+    return `<div class="pd-section"><p class="pd-section-text">${text.replace(/\n/g, '<br>')}</p></div>`;
+  }
+
+  const general = [], ficha = [], uso = [];
+  let mode = 'general';
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (USO_RE.test(line)) {
+      mode = 'uso';
+      const afterColon = line.includes(':') ? line.slice(line.indexOf(':') + 1).trim() : '';
+      if (afterColon) uso.push(afterColon);
+    } else if (FICHA_RE.test(line)) {
+      mode = 'ficha';
+      ficha.push(line);
+    } else if (mode === 'uso') {
+      uso.push(line);
+    } else if (mode === 'ficha') {
+      ficha.push(line);
+    } else {
+      general.push(line);
+    }
+  }
+
+  let html = '';
+
+  if (general.length) html += `
+    <div class="pd-section">
+      <h4 class="pd-section-title">Descripción general</h4>
+      <p class="pd-section-text">${general.join('<br>')}</p>
+    </div>`;
+
+  if (ficha.length) {
+    const rows = ficha.map(line => {
+      const idx = line.indexOf(':');
+      if (idx > 0) {
+        return `<div class="pd-ficha-row"><span class="pd-ficha-key">${line.slice(0, idx)}</span><span class="pd-ficha-val">${line.slice(idx + 1).trim()}</span></div>`;
+      }
+      return `<div class="pd-ficha-row"><span class="pd-ficha-val">${line}</span></div>`;
+    }).join('');
+    html += `
+      <div class="pd-section">
+        <h4 class="pd-section-title">Ficha técnica</h4>
+        <div class="pd-ficha">${rows}</div>
+      </div>`;
+  }
+
+  if (uso.length) html += `
+    <div class="pd-section">
+      <h4 class="pd-section-title">Cómo usar y combinar</h4>
+      <p class="pd-section-text">${uso.join('<br>')}</p>
+    </div>`;
+
+  return html || `<div class="pd-section"><p class="pd-section-text">${text.replace(/\n/g, '<br>')}</p></div>`;
+}
 
 function createPrendaDetalleSheet() {
   if (document.getElementById("prendaDetalleOverlay")) return;
@@ -1747,15 +1830,16 @@ function createPrendaDetalleSheet() {
 function openPrendaDetalle(p, fromInventario = false) {
   const overlay = document.getElementById("prendaDetalleOverlay");
   overlay.dataset.prendaId = p.id;
-  const desc = (p.descripcion || '').trim();
   document.getElementById("prendaDetalleBody").innerHTML = `
     <div class="pd-header">
       <span class="pd-marca">${p.marca}</span>
       <h3 class="pd-nombre">${p.nombre}</h3>
     </div>
-    ${desc
-      ? `<div class="pd-descripcion">${desc.replace(/\n/g, '<br>')}</div>`
-      : `<p class="pd-sin-desc">Esta prenda aún no tiene descripción.</p>`}
+    <div class="pd-chips">
+      <span class="pd-chip">Talla etiq. <strong>${p.tallaEtiqueta || '—'}</strong></span>
+      <span class="pd-chip">Talla real <strong>${p.tallaReal || '—'}</strong></span>
+    </div>
+    ${buildDescripcionSections(p.descripcion)}
     ${fromInventario && (p.fotos || []).length
       ? `<button class="btn-ver-fotos">
            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:18px;height:18px">

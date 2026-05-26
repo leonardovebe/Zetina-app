@@ -1751,6 +1751,38 @@ h1, h2, h3, h4, h5, h6,
   flex-shrink: 0;
 }
 
+.inv-card-actions {
+  display: flex;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+}
+
+.inv-card-actions .btn-inv-compartir {
+  flex: 1;
+  margin-top: 0;
+}
+
+.btn-inv-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.5rem 0.5rem;
+  background: transparent;
+  color: #855AA2;
+  border: 1.5px solid #855AA2;
+  border-radius: 0.625rem;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease;
+}
+
+.btn-inv-info:active { opacity: 0.75; }
+
 .inv-empty {
   grid-column: 1 / -1;
   text-align: center;
@@ -2977,3 +3009,83 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .btn-ver-fotos:active { opacity: 0.85; }
+
+/* ── Chips de talla (detalle de prenda) ────────────────────────────────────── */
+
+.pd-chips {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.pd-chip {
+  font-size: 0.75rem;
+  background: #f0eaf7;
+  color: #130016;
+  border-radius: 0.5rem;
+  padding: 0.25rem 0.625rem;
+}
+
+.pd-chip strong { font-weight: 700; }
+
+/* ── Secciones de descripción ──────────────────────────────────────────────── */
+
+.pd-section {
+  margin-bottom: 1.25rem;
+}
+
+.pd-section:last-of-type { margin-bottom: 0; }
+
+.pd-section-title {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  color: #855AA2;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.pd-section-text {
+  font-size: 0.9375rem;
+  color: #333;
+  line-height: 1.7;
+}
+
+.pd-empty {
+  font-size: 0.9375rem;
+  color: #aaa;
+  margin-bottom: 1.5rem;
+}
+
+/* ── Ficha técnica ─────────────────────────────────────────────────────────── */
+
+.pd-ficha {
+  border: 1.5px solid #e8e0f0;
+  border-radius: 0.625rem;
+  overflow: hidden;
+}
+
+.pd-ficha-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #f0eaf7;
+}
+
+.pd-ficha-row:last-child { border-bottom: none; }
+
+.pd-ficha-key {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #855AA2;
+  min-width: 5.5rem;
+  flex-shrink: 0;
+}
+
+.pd-ficha-val {
+  font-size: 0.875rem;
+  color: #333;
+  line-height: 1.4;
+}
