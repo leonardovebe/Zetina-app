@@ -1,11 +1,12 @@
-const CACHE_NAME = "zetina-v13";
+const CACHE_NAME = "zetina-v14";
 const ASSETS = [
   "./",
   "./index.html",
   "./css/styles.css",
   "./js/app.js",
   "./manifest.json",
-  "./icons/icon.svg"
+  "./icons/icon-192.png",
+  "./icons/icon-512.png"
 ];
 
 self.addEventListener("install", (event) => {
