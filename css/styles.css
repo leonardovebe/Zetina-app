@@ -1961,6 +1961,33 @@ h1, h2, h3, h4, h5, h6,
   color: #855AA2;
 }
 
+.cta-row-end {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.btn-delete-abono {
+  width: 1.625rem;
+  height: 1.625rem;
+  border-radius: 50%;
+  border: none;
+  background: #ffe5e5;
+  color: #c53030;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s;
+}
+
+.btn-delete-abono:active { background: #feb2b2; }
+
 .cta-subtotal {
   display: flex;
   align-items: center;
@@ -2890,3 +2917,61 @@ h1, h2, h3, h4, h5, h6,
   line-height: 1.5;
   margin-bottom: 1.25rem;
 }
+
+/* ── Detalle de prenda (descripción) ───────────────────────────────────────── */
+
+.pd-header {
+  margin-bottom: 1.25rem;
+}
+
+.pd-marca {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #855AA2;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+.pd-nombre {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #130016;
+  line-height: 1.2;
+}
+
+.pd-descripcion {
+  font-size: 0.9375rem;
+  color: #333;
+  line-height: 1.7;
+  margin-bottom: 1.5rem;
+  white-space: pre-wrap;
+}
+
+.pd-sin-desc {
+  font-size: 0.9rem;
+  color: #aaa;
+  margin-bottom: 1.5rem;
+}
+
+.btn-ver-fotos {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.875rem;
+  background: #130016;
+  color: #DEFF00;
+  border: none;
+  border-radius: 0.875rem;
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s;
+}
+
+.btn-ver-fotos:active { opacity: 0.85; }

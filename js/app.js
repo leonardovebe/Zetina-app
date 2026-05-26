@@ -349,7 +349,7 @@ async function loadCatalogo() {
   // y b) la columna puede no existir si el schema-admin.sql no se ejecutó todavía.
   const { data, error } = await db
     .from('prendas')
-    .select('id, nombre, marca, emoji, gradiente, talla_etiqueta, talla_real, precio_costo, precio_min, precio_max, fotos_prendas(url)')
+    .select('id, nombre, marca, emoji, gradiente, talla_etiqueta, talla_real, precio_costo, precio_min, precio_max, descripcion, fotos_prendas(url)')
     .eq('disponible', true)
     .order('created_at', { ascending: false });
 
@@ -368,6 +368,7 @@ async function loadCatalogo() {
       precioMin:     p.precio_min     || 0,
       precioMax:     p.precio_max     || 0,
       gradiente:     p.gradiente || 'linear-gradient(150deg, #130016 0%, #855AA2 100%)',
+      descripcion:   p.descripcion || '',
       fotos,
       foto:          fotos[0] || null,
     };
@@ -439,6 +440,7 @@ async function loadInventario() {
       precioMin: p.precio_min || 0,
       precioMax: p.precio_max || 0,
       gradiente: p.gradiente || 'linear-gradient(150deg, #130016 0%, #855AA2 100%)',
+      descripcion: p.descripcion || '',
       fotos,
       fechaEntrega: inv.fecha_entrega,
     };
@@ -643,7 +645,7 @@ function renderCatalog() {
     const idLabel = p.numero || formatZtId(p.id);
 
     return `
-      <article class="product-card">
+      <article class="product-card" data-id="${p.id}">
         <div class="product-image${p.foto ? ' product-image--foto' : ''} product-image--clickable"
              data-gallery-id="${p.id}"
              ${!p.foto ? `style="background:${p.gradiente}"` : ''}>
@@ -712,22 +714,31 @@ function renderCatalog() {
       return;
     }
     const btn = e.target.closest(".btn-order");
-    if (!btn) return;
-    const added = addToCarrito(btn.dataset.id);
-    if (added) {
-      btn.textContent = "✓ Agregado";
-      btn.style.background = "#DEFF00";
-      btn.style.color = "#130016";
-      btn.disabled = true;
-      setTimeout(() => {
-        btn.textContent = "Agregar al carrito";
-        btn.style.background = "";
-        btn.style.color = "";
-        btn.disabled = false;
-      }, 1400);
-    } else {
-      btn.textContent = "Ya en carrito";
-      setTimeout(() => { btn.textContent = "Agregar al carrito"; }, 1400);
+    if (btn) {
+      const added = addToCarrito(btn.dataset.id);
+      if (added) {
+        btn.textContent = "✓ Agregado";
+        btn.style.background = "#DEFF00";
+        btn.style.color = "#130016";
+        btn.disabled = true;
+        setTimeout(() => {
+          btn.textContent = "Agregar al carrito";
+          btn.style.background = "";
+          btn.style.color = "";
+          btn.disabled = false;
+        }, 1400);
+      } else {
+        btn.textContent = "Ya en carrito";
+        setTimeout(() => { btn.textContent = "Agregar al carrito"; }, 1400);
+      }
+      return;
+    }
+    if (!e.target.closest(".btn-whatsapp")) {
+      const card = e.target.closest(".product-card");
+      if (card) {
+        const p = catalogo.find((x) => x.id === card.dataset.id);
+        if (p) openPrendaDetalle(p, false);
+      }
     }
   });
 }
@@ -1696,8 +1707,66 @@ function renderMisPrendas() {
     if (devBtn) { openDevolucionForm(devBtn.dataset.devolucion); return; }
     const card = e.target.closest(".inv-card");
     if (!card) return;
-    openGaleria(card.dataset.id);
+    const p = inventario.find((x) => x.id === card.dataset.id);
+    if (p) openPrendaDetalle(p, true);
   };
+}
+
+// ── Detalle de prenda (descripción) ─────────────────────────────────────────
+
+function createPrendaDetalleSheet() {
+  if (document.getElementById("prendaDetalleOverlay")) return;
+  const overlay = document.createElement("div");
+  overlay.id = "prendaDetalleOverlay";
+  overlay.className = "order-detail-overlay";
+  overlay.innerHTML = `
+    <div class="order-detail-sheet">
+      <div class="detail-sheet-handle-row">
+        <div class="sheet-drag-handle"></div>
+      </div>
+      <div class="sheet-topbar">
+        <button class="btn-sheet-close" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="sheet-body" id="prendaDetalleBody"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.classList.remove("open");
+  });
+  overlay.querySelector(".btn-sheet-close").addEventListener("click", () => overlay.classList.remove("open"));
+  overlay.querySelector(".sheet-body").addEventListener("click", (e) => {
+    if (e.target.closest(".btn-ver-fotos")) {
+      overlay.classList.remove("open");
+      openGaleria(overlay.dataset.prendaId);
+    }
+  });
+}
+
+function openPrendaDetalle(p, fromInventario = false) {
+  const overlay = document.getElementById("prendaDetalleOverlay");
+  overlay.dataset.prendaId = p.id;
+  const desc = (p.descripcion || '').trim();
+  document.getElementById("prendaDetalleBody").innerHTML = `
+    <div class="pd-header">
+      <span class="pd-marca">${p.marca}</span>
+      <h3 class="pd-nombre">${p.nombre}</h3>
+    </div>
+    ${desc
+      ? `<div class="pd-descripcion">${desc.replace(/\n/g, '<br>')}</div>`
+      : `<p class="pd-sin-desc">Esta prenda aún no tiene descripción.</p>`}
+    ${fromInventario && (p.fotos || []).length
+      ? `<button class="btn-ver-fotos">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:18px;height:18px">
+             <rect x="3" y="3" width="18" height="18" rx="2"/>
+             <circle cx="8.5" cy="8.5" r="1.5"/>
+             <polyline points="21 15 16 10 5 21"/>
+           </svg>
+           Ver fotos
+         </button>`
+      : ''}`;
+  overlay.classList.add("open");
 }
 
 // ── Galería de fotos ────────────────────────────────────────────────────────
@@ -2164,9 +2233,23 @@ function createCobrosDetailSheet() {
     if (e.target === overlay) overlay.classList.remove("open");
   });
   overlay.querySelector(".btn-sheet-close").addEventListener("click", () => overlay.classList.remove("open"));
-  overlay.querySelector(".sheet-body").addEventListener("click", (e) => {
+  overlay.querySelector(".sheet-body").addEventListener("click", async (e) => {
     if (e.target.closest(".btn-registrar-abono")) {
       openAbonoForm(overlay.dataset.clienteId);
+      return;
+    }
+    const delBtn = e.target.closest(".btn-delete-abono");
+    if (delBtn) {
+      if (!confirm("¿Seguro que quieres eliminar este abono?")) return;
+      const abonoId   = delBtn.dataset.abonoId;
+      const clienteId = overlay.dataset.clienteId;
+      delBtn.disabled = true;
+      const { error } = await db.from('abonos').delete().eq('id', abonoId);
+      if (error) { delBtn.disabled = false; console.error('delete abono:', error); return; }
+      const c = clientes.find((cl) => cl.id === clienteId);
+      if (c) c.pagos = (c.pagos || []).filter((p) => p.id !== abonoId);
+      openCobrosDetail(clienteId);
+      renderCobros();
     }
   });
 }
@@ -2199,7 +2282,10 @@ function openCobrosDetail(id) {
             <p class="cta-nombre">Abono</p>
             <p class="cta-meta">${formatFecha(p.fecha)}</p>
           </div>
-          <span class="cta-monto cta-monto--abono">${formatPeso(p.monto)}</span>
+          <div class="cta-row-end">
+            <span class="cta-monto cta-monto--abono">${formatPeso(p.monto)}</span>
+            <button class="btn-delete-abono" data-abono-id="${p.id}" aria-label="Eliminar abono">✕</button>
+          </div>
         </div>`).join("")
     : `<p class="cta-empty">Sin abonos registrados</p>`;
 
@@ -2443,6 +2529,7 @@ async function initApp() {
   createAbonoFormSheet();
   createCartSheet();
   createGaleriaSheet();
+  createPrendaDetalleSheet();
   createPerfilEditSheet();
   createCerrarSesionSheet();
   document.getElementById("cartBtn").addEventListener("click", openCartSheet);
