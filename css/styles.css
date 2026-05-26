@@ -2157,6 +2157,7 @@ h1, h2, h3, h4, h5, h6,
 /* ── Galería de fotos ──────────────────────────────────────────────────────── */
 
 .galeria-sheet {
+  height: 92vh;
   max-height: 92vh !important;
 }
 
