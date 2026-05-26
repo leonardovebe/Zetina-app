@@ -1732,12 +1732,53 @@ function buildDescripcionSections(rawDesc) {
   const text = (rawDesc || '').trim();
   if (!text) return `<p class="pd-empty">Sin descripción disponible</p>`;
 
+  // El admin guarda la descripción como JSON estructurado
+  let parsed = null;
+  try { parsed = JSON.parse(text); } catch (_) {}
+
+  if (parsed && typeof parsed === 'object') {
+    const { general, material, composicion, cuidado, como_usar } = parsed;
+    let html = '';
+
+    if (general) html += `
+      <div class="pd-section">
+        <h4 class="pd-section-title">Descripción general</h4>
+        <p class="pd-section-text">${general.replace(/\n/g, '<br>')}</p>
+      </div>`;
+
+    const fichaItems = [
+      material    && { key: 'Material',    val: material },
+      composicion && { key: 'Composición', val: composicion },
+      cuidado     && { key: 'Cuidados',    val: cuidado },
+    ].filter(Boolean);
+
+    if (fichaItems.length) {
+      const rows = fichaItems.map(({ key, val }) =>
+        `<div class="pd-ficha-row"><span class="pd-ficha-key">${key}</span><span class="pd-ficha-val">${val}</span></div>`
+      ).join('');
+      html += `
+        <div class="pd-section">
+          <h4 class="pd-section-title">Ficha técnica</h4>
+          <div class="pd-ficha">${rows}</div>
+        </div>`;
+    }
+
+    if (como_usar) html += `
+      <div class="pd-section">
+        <h4 class="pd-section-title">Cómo usar y combinar</h4>
+        <p class="pd-section-text">${como_usar.replace(/\n/g, '<br>')}</p>
+      </div>`;
+
+    return html || `<div class="pd-section"><p class="pd-section-text">${text}</p></div>`;
+  }
+
+  // Fallback: texto libre — detectar marcadores si los hay
   const FICHA_RE = /^(material|composici[oó]n|cuidados?|instrucciones?|tela|tejido|lavado)\s*:/i;
   const USO_RE   = /^c[oó]mo\s+(usar|combinar|llevarlo?|usarlo?)/i;
 
-  const lines     = text.split('\n');
-  const hasFicha  = lines.some(l => FICHA_RE.test(l.trim()));
-  const hasUso    = lines.some(l => USO_RE.test(l.trim()));
+  const lines    = text.split('\n');
+  const hasFicha = lines.some(l => FICHA_RE.test(l.trim()));
+  const hasUso   = lines.some(l => USO_RE.test(l.trim()));
 
   if (!hasFicha && !hasUso) {
     return `<div class="pd-section"><p class="pd-section-text">${text.replace(/\n/g, '<br>')}</p></div>`;
@@ -1756,13 +1797,9 @@ function buildDescripcionSections(rawDesc) {
     } else if (FICHA_RE.test(line)) {
       mode = 'ficha';
       ficha.push(line);
-    } else if (mode === 'uso') {
-      uso.push(line);
-    } else if (mode === 'ficha') {
-      ficha.push(line);
-    } else {
-      general.push(line);
-    }
+    } else if (mode === 'uso')   { uso.push(line);     }
+    else if  (mode === 'ficha')  { ficha.push(line);   }
+    else                         { general.push(line); }
   }
 
   let html = '';
@@ -1776,10 +1813,9 @@ function buildDescripcionSections(rawDesc) {
   if (ficha.length) {
     const rows = ficha.map(line => {
       const idx = line.indexOf(':');
-      if (idx > 0) {
-        return `<div class="pd-ficha-row"><span class="pd-ficha-key">${line.slice(0, idx)}</span><span class="pd-ficha-val">${line.slice(idx + 1).trim()}</span></div>`;
-      }
-      return `<div class="pd-ficha-row"><span class="pd-ficha-val">${line}</span></div>`;
+      return idx > 0
+        ? `<div class="pd-ficha-row"><span class="pd-ficha-key">${line.slice(0, idx)}</span><span class="pd-ficha-val">${line.slice(idx + 1).trim()}</span></div>`
+        : `<div class="pd-ficha-row"><span class="pd-ficha-val">${line}</span></div>`;
     }).join('');
     html += `
       <div class="pd-section">
