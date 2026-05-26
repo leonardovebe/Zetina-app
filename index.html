@@ -21,18 +21,27 @@
   <style>
     [data-notif-responded] .onesignal-bell-container { display: none !important; }
     /* OneSignal slidedown prompt — colores Zetina */
+    #onesignal-slidedown-container,
     #onesignal-slidedown-dialog,
-    .onesignal-slidedown-container { background-color: #130016 !important; color: #fff !important; }
-    #onesignal-slidedown-dialog p,
-    .onesignal-slidedown-container .slidedown-body-message { color: #fff !important; }
+    .onesignal-slidedown-container,
+    .onesignal-slidedown-dialog {
+      background-color: #130016 !important;
+      color: #fff !important;
+    }
+    #onesignal-slidedown-container *,
+    .onesignal-slidedown-container * { color: #fff !important; }
     #onesignal-slidedown-allow-button,
-    .slidedown-button.primary {
-      background-color: #DEFF00 !important; color: #130016 !important;
+    .slidedown-button.primary,
+    .onesignal-slidedown-container button.primary {
+      background-color: #DEFF00 !important;
+      color: #130016 !important;
       border-color: #DEFF00 !important;
     }
     #onesignal-slidedown-cancel-button,
-    .slidedown-button.secondary {
-      background-color: #855AA2 !important; color: #fff !important;
+    .slidedown-button.secondary,
+    .onesignal-slidedown-container button.secondary {
+      background-color: #855AA2 !important;
+      color: #fff !important;
       border-color: #855AA2 !important;
     }
   </style>
@@ -51,6 +60,9 @@
                 actionMessage: "Activa las notificaciones, ¡no te pierdas las mejores prendas!",
                 acceptButton: "Activar",
                 cancelButton: "Ahora no"
+              },
+              delay: {
+                timeDelay: 60
               }
             }]
           }
