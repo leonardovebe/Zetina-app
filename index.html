@@ -19,8 +19,9 @@
   <!-- OneSignal Push Notifications -->
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <style>
-    [data-notif-responded] .onesignal-bell-container { display: none !important; }
-    /* OneSignal slidedown prompt — colores Zetina */
+    /* Ocultar campanita de OneSignal permanentemente */
+    .onesignal-bell-container { display: none !important; }
+    /* Slidedown prompt — colores Zetina */
     #onesignal-slidedown-container,
     #onesignal-slidedown-dialog,
     .onesignal-slidedown-container,
@@ -55,48 +56,27 @@
           slidedown: {
             prompts: [{
               type: "push",
-              autoPrompt: true,
+              autoPrompt: false,
               text: {
                 actionMessage: "Activa las notificaciones, ¡no te pierdas las mejores prendas!",
                 acceptButton: "Activar",
                 cancelButton: "Ahora no"
-              },
-              delay: {
-                timeDelay: 60
               }
             }]
           }
         },
-        notifyButton: {
-          enable: true,
-        },
+        notifyButton: { enable: false },
       });
 
-      function hideBellIfResponded() {
+      // Muestra el slidedown personalizado a los 60 s.
+      // Solo si el permiso aún no ha sido decidido.
+      // Al aceptar, OneSignal dispara internamente el prompt nativo de iOS.
+      setTimeout(async () => {
         const perm = (typeof Notification !== 'undefined') ? Notification.permission : 'default';
-        if (perm === 'granted' || perm === 'denied') {
-          document.documentElement.setAttribute('data-notif-responded', 'true');
+        if (perm === 'default') {
+          try { await OneSignal.Slidedown.promptPush(); } catch (e) {}
         }
-      }
-
-      hideBellIfResponded();
-
-      // Oculta la campanita en cuanto aparece en el DOM si ya respondió
-      const bellObserver = new MutationObserver(() => {
-        if (document.documentElement.hasAttribute('data-notif-responded')) {
-          const bell = document.querySelector('.onesignal-bell-container');
-          if (bell) { bell.style.display = 'none'; bellObserver.disconnect(); }
-        }
-      });
-      bellObserver.observe(document.body, { childList: true, subtree: true });
-
-      OneSignal.Notifications.addEventListener('permissionChange', () => {
-        hideBellIfResponded();
-        const bell = document.querySelector('.onesignal-bell-container');
-        if (bell && document.documentElement.hasAttribute('data-notif-responded')) {
-          bell.style.display = 'none';
-        }
-      });
+      }, 60000);
     });
   </script>
 </head>
