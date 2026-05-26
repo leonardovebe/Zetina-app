@@ -2264,13 +2264,18 @@ function _showAbonoConfirmacion(overlay, c, monto, fecha) {
   const saldo = totalPrendas - totalPagado;
   const alCorriente = saldo <= 0;
 
-  const saldoTexto = alCorriente
-    ? "¡Tu cuenta está al corriente! ✨ Gracias por tu pago."
-    : `Tu saldo restante es ${formatPeso(saldo)}.`;
+  const prendaReciente = (c.compras || [])[0];
+  const prendaLinea    = prendaReciente ? `Prenda: ${prendaReciente.prenda}\n` : '';
+  const saldoLinea     = alCorriente
+    ? "Saldo restante: ¡Al corriente! ✅"
+    : `Saldo restante: ${formatPeso(saldo)}`;
 
   const mensaje =
-    `Hola ${c.nombre}, registré tu abono de ${formatPeso(monto)} con fecha ${formatFecha(fecha)}.\n\n` +
-    saldoTexto;
+    `Hola ${c.nombre} 🌟\n\n` +
+    `Te confirmamos tu abono de ${formatPeso(monto)} el ${formatFecha(fecha)}.\n\n` +
+    prendaLinea +
+    saldoLinea + `\n\n` +
+    `¡Gracias por tu pago! 🙏`;
 
   const waUrl = `https://wa.me/52${c.telefono}?text=${encodeURIComponent(mensaje)}`;
 
