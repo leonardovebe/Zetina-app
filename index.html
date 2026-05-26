@@ -24,55 +24,85 @@
     #onesignal-bell-container { display: none !important; }
   </style>
   <script>
-    /* Aplica colores Zetina al slidedown en cuanto aparece en el DOM.
-       Se usan inline styles con setProperty('…','…','important') para
-       superar la especificidad del stylesheet propio de OneSignal. */
+    /*
+     * Aplica colores Zetina al slidedown de OneSignal.
+     *
+     * Estrategia:
+     *  1. MutationObserver detecta la inserción del contenedor.
+     *  2. Se aplica background-color a TODOS los divs hijos (el dialogo
+     *     visible es un div hijo con su propio bg blanco).
+     *  3. Se aplica color de texto solo a elementos de texto (no botones).
+     *  4. Los hijos internos de cada botón también se sobreescriben.
+     *  5. Se re-aplica 3 veces con delays (200 ms / 600 ms / 1200 ms)
+     *     para cubrir el render asíncrono de botones de OneSignal.
+     */
     (function () {
-      var COLORS = {
+      var C = {
         bg:        '#130016',
-        text:      '#ffffff',
+        title:     '#ffffff',
+        msg:       '#DEFF00',
         btnOk:     '#DEFF00',
-        btnOkText: '#130016',
+        btnOkTxt:  '#130016',
         btnNo:     '#855AA2',
-        btnNoText: '#ffffff',
+        btnNoTxt:  '#ffffff',
       };
 
-      function styleSlidedown(root) {
-        root.style.setProperty('background-color', COLORS.bg,   'important');
-        root.style.setProperty('color',            COLORS.text, 'important');
+      var ALLOW_SEL  = '#onesignal-slidedown-allow-button,  button.primary,   [id*="allow"]';
+      var CANCEL_SEL = '#onesignal-slidedown-cancel-button, button.secondary, [id*="cancel"]';
+      var MSG_SEL    = '.slidedown-body-message, [class*="message"], p';
 
-        root.querySelectorAll('*').forEach(function (el) {
-          el.style.setProperty('color', COLORS.text, 'important');
+      function paint(root) {
+        /* Fondo en root y en todos los divs hijos (cubre el dialog interno) */
+        root.style.setProperty('background-color', C.bg, 'important');
+        root.querySelectorAll('div').forEach(function (el) {
+          el.style.setProperty('background-color', C.bg, 'important');
         });
 
-        var allow = root.querySelector(
-          '#onesignal-slidedown-allow-button, button.primary, .primary'
-        );
+        /* Color blanco base en todos los elementos de texto no-botón */
+        root.querySelectorAll('span, p, h1, h2, h3, h4, label, small').forEach(function (el) {
+          el.style.setProperty('color', C.title, 'important');
+        });
+
+        /* Texto del mensaje en amarillo */
+        var msg = root.querySelector(MSG_SEL);
+        if (msg) msg.style.setProperty('color', C.msg, 'important');
+
+        /* Botón Activar */
+        var allow = root.querySelector(ALLOW_SEL);
         if (allow) {
-          allow.style.setProperty('background-color', COLORS.btnOk,     'important');
-          allow.style.setProperty('color',            COLORS.btnOkText, 'important');
-          allow.style.setProperty('border-color',     COLORS.btnOk,     'important');
+          allow.style.setProperty('background-color', C.btnOk,    'important');
+          allow.style.setProperty('color',            C.btnOkTxt, 'important');
+          allow.style.setProperty('border-color',     C.btnOk,    'important');
+          allow.querySelectorAll('*').forEach(function (el) {
+            el.style.setProperty('background-color', C.btnOk,    'important');
+            el.style.setProperty('color',            C.btnOkTxt, 'important');
+          });
         }
 
-        var cancel = root.querySelector(
-          '#onesignal-slidedown-cancel-button, button.secondary, .secondary'
-        );
+        /* Botón Ahora no */
+        var cancel = root.querySelector(CANCEL_SEL);
         if (cancel) {
-          cancel.style.setProperty('background-color', COLORS.btnNo,     'important');
-          cancel.style.setProperty('color',            COLORS.btnNoText, 'important');
-          cancel.style.setProperty('border-color',     COLORS.btnNo,     'important');
+          cancel.style.setProperty('background-color', C.btnNo,    'important');
+          cancel.style.setProperty('color',            C.btnNoTxt, 'important');
+          cancel.style.setProperty('border-color',     C.btnNo,    'important');
+          cancel.querySelectorAll('*').forEach(function (el) {
+            el.style.setProperty('background-color', C.btnNo,    'important');
+            el.style.setProperty('color',            C.btnNoTxt, 'important');
+          });
         }
       }
 
       new MutationObserver(function (_, obs) {
         var root = document.querySelector(
-          '#onesignal-slidedown-container, .onesignal-slidedown-container'
+          '#onesignal-slidedown-container, .onesignal-slidedown-container, ' +
+          '[id*="onesignal-slidedown"], [class*="onesignal-slidedown"]'
         );
         if (!root) return;
         obs.disconnect();
-        styleSlidedown(root);
-        /* Re-aplica después de que OneSignal termine de renderizar los botones */
-        setTimeout(function () { styleSlidedown(root); }, 150);
+        paint(root);
+        [200, 600, 1200].forEach(function (ms) {
+          setTimeout(function () { paint(root); }, ms);
+        });
       }).observe(document.documentElement, { childList: true, subtree: true });
     })();
 
