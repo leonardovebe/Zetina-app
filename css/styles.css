@@ -1667,7 +1667,7 @@ h1, h2, h3, h4, h5, h6,
 
 .inv-card-img {
   width: 100%;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 5;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2265,10 +2265,11 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .galeria-img-wrap {
-  flex: 1;
-  min-height: 0;
+  aspect-ratio: 4 / 5;
+  width: 100%;
+  flex-shrink: 0;
   position: relative;
-  background: #f5f0f8;
+  background: #130016;
   overflow: hidden;
 }
 
