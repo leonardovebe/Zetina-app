@@ -665,8 +665,9 @@ function renderCatalog() {
              data-gallery-id="${p.id}"
              ${!p.foto ? `style="background:${p.gradiente}"` : ''}>
           ${p.foto
-            ? `<img class="product-img" src="${toTransformUrl(p.foto, 400)}" alt="${p.nombre}" loading="lazy">`
+            ? `<img class="product-img" src="${p.foto}" alt="${p.nombre}" loading="lazy">`
             : `<span class="product-emoji" aria-hidden="true">${p.emoji}</span>`}
+          <button class="btn-info-badge" data-desc-id="${p.id}" type="button" aria-label="Ver descripción">i</button>
         </div>
         <div class="product-info">
           <div class="product-meta">
@@ -711,12 +712,6 @@ function renderCatalog() {
               Agregar al carrito
             </button>
           </div>
-          <button class="btn-descripcion" data-desc-id="${p.id}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" width="15" height="15">
-              <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
-            </svg>
-            Ver descripción
-          </button>
         </div>
       </article>`;
   });
@@ -729,9 +724,9 @@ function renderCatalog() {
     <div class="catalog-grid">${cards.join("")}</div>`;
 
   container.querySelector(".catalog-grid").addEventListener("click", (e) => {
-    const descBtn = e.target.closest(".btn-descripcion");
-    if (descBtn) {
-      const p = catalogo.find((x) => String(x.id) === descBtn.dataset.descId);
+    const infoBadge = e.target.closest(".btn-info-badge");
+    if (infoBadge) {
+      const p = catalogo.find((x) => String(x.id) === infoBadge.dataset.descId);
       if (p) openPrendaDetalle(p, false);
       return;
     }
@@ -1675,8 +1670,9 @@ function buildInvCard(p) {
     <article class="inv-card" data-id="${p.id}" role="button" tabindex="0">
       <div class="inv-card-img" style="background:${p.gradiente}">
         ${primeraFoto
-          ? `<img class="inv-card-foto" src="${toTransformUrl(primeraFoto.url, 400)}" alt="${p.nombre}" loading="lazy">`
+          ? `<img class="inv-card-foto" src="${primeraFoto.url}" alt="${p.nombre}" loading="lazy">`
           : `<span class="inv-card-emoji" aria-hidden="true">${p.emoji}</span>`}
+        <button class="btn-info-badge" data-desc-id="${p.id}" type="button" aria-label="Ver descripción">i</button>
         ${fotos.length > 1 ? `<span class="inv-card-foto-badge">${fotos.length}</span>` : ""}
         ${pendiente ? `<span class="inv-devolucion-badge">Devolución pendiente</span>` : ""}
       </div>
@@ -1738,6 +1734,12 @@ function renderMisPrendas() {
 
   container.onclick = (e) => {
     if (e.target.closest(".btn-inv-compartir")) return;
+    const infoBadge = e.target.closest(".btn-info-badge");
+    if (infoBadge) {
+      const p = inventario.find((x) => x.id === infoBadge.dataset.descId);
+      if (p) openPrendaDetalle(p, true);
+      return;
+    }
     const infoBtn = e.target.closest(".btn-inv-info");
     if (infoBtn) {
       const p = inventario.find((x) => x.id === infoBtn.dataset.info);
