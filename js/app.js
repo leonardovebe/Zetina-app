@@ -345,11 +345,11 @@ function fotoPublicUrl(raw) {
 }
 
 // Convierte cualquier URL de Supabase Storage al endpoint de transformación de imagen
-function toTransformUrl(url, width, quality = 80) {
+function toTransformUrl(url, width, quality = 80, resize = 'contain') {
   if (!url || url.startsWith('data:')) return url;
   const m = url.match(/^(https?:\/\/[^/]+\/storage\/v1\/)(?:object\/public|render\/image\/public)\/(.+?)(\?.*)?$/);
   if (!m) return url;
-  return `${m[1]}render/image/public/${m[2]}?width=${width}&quality=${quality}`;
+  return `${m[1]}render/image/public/${m[2]}?width=${width}&quality=${quality}&resize=${resize}`;
 }
 
 async function loadCatalogo() {
