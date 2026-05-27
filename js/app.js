@@ -344,6 +344,14 @@ function fotoPublicUrl(raw) {
   return `${FOTOS_URL}/${raw}`;             // path relativo → URL pública completa
 }
 
+// Convierte cualquier URL de Supabase Storage al endpoint de transformación de imagen
+function toTransformUrl(url, width, quality = 80) {
+  if (!url || url.startsWith('data:')) return url;
+  const m = url.match(/^(https?:\/\/[^/]+\/storage\/v1\/)(?:object\/public|render\/image\/public)\/(.+?)(\?.*)?$/);
+  if (!m) return url;
+  return `${m[1]}render/image/public/${m[2]}?width=${width}&quality=${quality}`;
+}
+
 async function loadCatalogo() {
   // No filtramos por 'baja' porque: a) cuando se da de baja también se pone disponible=false,
   // y b) la columna puede no existir si el schema-admin.sql no se ejecutó todavía.
@@ -594,11 +602,18 @@ const gallery = {
 
   showPhoto() {
     const url = this.fotos[this.current];
-    this.img.src = url;
+    this.img.src = toTransformUrl(url, 800);
     this.img.alt = this.prenda.nombre;
     this.dotsEl.querySelectorAll('.gallery-dot').forEach((d, i) =>
       d.classList.toggle('active', i === this.current));
     this.waBtn.href = `https://wa.me/?text=${encodeURIComponent(this.prenda.nombre + ' - ' + this.prenda.marca + '\n' + url)}`;
+    // Precargar imágenes adyacentes en segundo plano
+    [this.current - 1, this.current + 1].forEach((i) => {
+      if (i >= 0 && i < this.fotos.length) {
+        const pre = new Image();
+        pre.src = toTransformUrl(this.fotos[i], 800);
+      }
+    });
   },
 
   renderDots() {
@@ -650,7 +665,7 @@ function renderCatalog() {
              data-gallery-id="${p.id}"
              ${!p.foto ? `style="background:${p.gradiente}"` : ''}>
           ${p.foto
-            ? `<img class="product-img" src="${p.foto}" alt="${p.nombre}" loading="lazy">`
+            ? `<img class="product-img" src="${toTransformUrl(p.foto, 400)}" alt="${p.nombre}" loading="lazy">`
             : `<span class="product-emoji" aria-hidden="true">${p.emoji}</span>`}
         </div>
         <div class="product-info">
@@ -1648,7 +1663,7 @@ function buildInvCard(p) {
     <article class="inv-card" data-id="${p.id}" role="button" tabindex="0">
       <div class="inv-card-img" style="background:${p.gradiente}">
         ${primeraFoto
-          ? `<img class="inv-card-foto" src="${primeraFoto.url}" alt="${p.nombre}" loading="lazy">`
+          ? `<img class="inv-card-foto" src="${toTransformUrl(primeraFoto.url, 400)}" alt="${p.nombre}" loading="lazy">`
           : `<span class="inv-card-emoji" aria-hidden="true">${p.emoji}</span>`}
         ${fotos.length > 1 ? `<span class="inv-card-foto-badge">${fotos.length}</span>` : ""}
         ${pendiente ? `<span class="inv-devolucion-badge">Devolución pendiente</span>` : ""}
@@ -1917,11 +1932,26 @@ function createGaleriaSheet() {
   overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.classList.remove("open"); });
 
   const carousel = document.getElementById("galeriaCarousel");
+
+  function loadGaleriaSlide(idx) {
+    const slide = carousel.children[idx];
+    if (!slide) return;
+    const img = slide.querySelector('img[data-src]');
+    if (img) {
+      img.src = img.dataset.src;
+      img.removeAttribute('data-src');
+    }
+  }
+
   carousel.addEventListener("scroll", () => {
     if (!carousel.offsetWidth) return;
     const idx = Math.round(carousel.scrollLeft / carousel.offsetWidth);
     document.querySelectorAll(".galeria-dot").forEach((d, i) =>
       d.classList.toggle("galeria-dot--active", i === idx));
+    // Cargar slide actual y precargar adyacentes
+    loadGaleriaSlide(idx);
+    loadGaleriaSlide(idx - 1);
+    loadGaleriaSlide(idx + 1);
   }, { passive: true });
 
   carousel.addEventListener("click", (e) => {
@@ -1978,10 +2008,13 @@ function refreshGaleriaCarousel(p) {
     return;
   }
 
-  carousel.innerHTML = fotos.map((foto) => `
+  carousel.innerHTML = fotos.map((foto, i) => {
+    const transformUrl = toTransformUrl(foto.url, 800);
+    const imgAttr = i === 0 ? `src="${transformUrl}"` : `data-src="${transformUrl}"`;
+    return `
     <div class="galeria-slide">
       <div class="galeria-img-wrap">
-        <img class="galeria-img" src="${foto.url}" alt="">
+        <img class="galeria-img" ${imgAttr} alt="">
       </div>
       <div class="galeria-slide-actions">
         <button class="btn-galeria-action btn-galeria-dl" data-action="descargar" data-foto-id="${foto.id}">
@@ -1997,7 +2030,8 @@ function refreshGaleriaCarousel(p) {
           Compartir
         </button>
       </div>
-    </div>`).join("");
+    </div>`;
+  }).join("");
 
   dots.innerHTML = fotos.map((_, i) =>
     `<span class="galeria-dot${i === 0 ? " galeria-dot--active" : ""}"></span>`).join("");
@@ -2015,6 +2049,14 @@ function openGaleria(prendaId) {
 
   refreshGaleriaCarousel(p);
   overlay.classList.add("open");
+
+  // Precargar el segundo slide en segundo plano al abrir
+  const carousel = document.getElementById("galeriaCarousel");
+  const secondSlide = carousel.children[1];
+  if (secondSlide) {
+    const img = secondSlide.querySelector('img[data-src]');
+    if (img) { img.src = img.dataset.src; img.removeAttribute('data-src'); }
+  }
 }
 
 // ── Perfil (Mi Cuenta) ──────────────────────────────────────────────────────
