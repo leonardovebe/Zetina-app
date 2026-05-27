@@ -1920,6 +1920,35 @@ function openPrendaDetalle(p, fromInventario = false) {
 
 // ── Galería de fotos ────────────────────────────────────────────────────────
 
+let galeriaCurrentIdx = 0;
+let galeriaTotalSlides = 0;
+
+function loadGaleriaSlide(idx) {
+  const carousel = document.getElementById("galeriaCarousel");
+  if (!carousel) return;
+  const slide = carousel.children[idx];
+  if (!slide) return;
+  const img = slide.querySelector("img[data-src]");
+  if (img) { img.src = img.dataset.src; img.removeAttribute("data-src"); }
+}
+
+function goToGaleriaSlide(idx) {
+  if (idx < 0 || idx >= galeriaTotalSlides) return;
+  const carousel = document.getElementById("galeriaCarousel");
+  if (!carousel) return;
+  Array.from(carousel.children).forEach((slide, i) => {
+    slide.classList.remove("active", "prev");
+    if (i === idx) slide.classList.add("active");
+    else if (i < idx) slide.classList.add("prev");
+  });
+  galeriaCurrentIdx = idx;
+  document.querySelectorAll(".galeria-dot").forEach((d, i) =>
+    d.classList.toggle("galeria-dot--active", i === idx));
+  loadGaleriaSlide(idx - 1);
+  loadGaleriaSlide(idx);
+  loadGaleriaSlide(idx + 1);
+}
+
 function createGaleriaSheet() {
   const overlay = document.createElement("div");
   overlay.className = "order-detail-overlay";
@@ -1947,25 +1976,28 @@ function createGaleriaSheet() {
 
   const carousel = document.getElementById("galeriaCarousel");
 
-  function loadGaleriaSlide(idx) {
-    const slide = carousel.children[idx];
-    if (!slide) return;
-    const img = slide.querySelector('img[data-src]');
-    if (img) {
-      img.src = img.dataset.src;
-      img.removeAttribute('data-src');
-    }
-  }
+  // Touch swipe navigation
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let swiping = false;
 
-  carousel.addEventListener("scroll", () => {
-    if (!carousel.offsetWidth) return;
-    const idx = Math.round(carousel.scrollLeft / carousel.offsetWidth);
-    document.querySelectorAll(".galeria-dot").forEach((d, i) =>
-      d.classList.toggle("galeria-dot--active", i === idx));
-    // Cargar slide actual y precargar adyacentes
-    loadGaleriaSlide(idx);
-    loadGaleriaSlide(idx - 1);
-    loadGaleriaSlide(idx + 1);
+  carousel.addEventListener("touchstart", (e) => {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    swiping = false;
+  }, { passive: true });
+
+  carousel.addEventListener("touchmove", (e) => {
+    const dx = Math.abs(e.touches[0].clientX - touchStartX);
+    const dy = Math.abs(e.touches[0].clientY - touchStartY);
+    if (dx > dy && dx > 8) swiping = true;
+  }, { passive: true });
+
+  carousel.addEventListener("touchend", (e) => {
+    if (!swiping) return;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (dx < -40) goToGaleriaSlide(galeriaCurrentIdx + 1);
+    else if (dx > 40) goToGaleriaSlide(galeriaCurrentIdx - 1);
   }, { passive: true });
 
   carousel.addEventListener("click", (e) => {
@@ -2026,7 +2058,7 @@ function refreshGaleriaCarousel(p) {
     const transformUrl = toTransformUrl(foto.url, 800);
     const imgAttr = i === 0 ? `src="${transformUrl}"` : `data-src="${transformUrl}"`;
     return `
-    <div class="galeria-slide">
+    <div class="galeria-slide${i === 0 ? " active" : ""}">
       <div class="galeria-img-wrap">
         <img class="galeria-img" ${imgAttr} alt="">
       </div>
@@ -2047,6 +2079,9 @@ function refreshGaleriaCarousel(p) {
     </div>`;
   }).join("");
 
+  galeriaTotalSlides = fotos.length;
+  galeriaCurrentIdx = 0;
+
   dots.innerHTML = fotos.map((_, i) =>
     `<span class="galeria-dot${i === 0 ? " galeria-dot--active" : ""}"></span>`).join("");
 }
@@ -2063,14 +2098,7 @@ function openGaleria(prendaId) {
 
   refreshGaleriaCarousel(p);
   overlay.classList.add("open");
-
-  // Precargar el segundo slide en segundo plano al abrir
-  const carousel = document.getElementById("galeriaCarousel");
-  const secondSlide = carousel.children[1];
-  if (secondSlide) {
-    const img = secondSlide.querySelector('img[data-src]');
-    if (img) { img.src = img.dataset.src; img.removeAttribute('data-src'); }
-  }
+  loadGaleriaSlide(1);
 }
 
 // ── Perfil (Mi Cuenta) ──────────────────────────────────────────────────────
