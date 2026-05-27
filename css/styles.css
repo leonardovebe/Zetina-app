@@ -466,6 +466,28 @@ h1, h2, h3, h4, h5, h6,
   transform: scale(0.97);
 }
 
+.btn-descripcion {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.625rem;
+  margin-top: 0.5rem;
+  background: transparent;
+  color: #855AA2;
+  border: 1.5px solid #855AA2;
+  border-radius: 0.875rem;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease;
+}
+.btn-descripcion:active { opacity: 0.75; }
+.btn-descripcion svg { flex-shrink: 0; }
+
 .btn-whatsapp {
   background: #7b5b9e;
   color: #fff;

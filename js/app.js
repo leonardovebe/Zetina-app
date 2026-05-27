@@ -711,6 +711,12 @@ function renderCatalog() {
               Agregar al carrito
             </button>
           </div>
+          <button class="btn-descripcion" data-desc-id="${p.id}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" width="15" height="15">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            Ver descripción
+          </button>
         </div>
       </article>`;
   });
@@ -723,6 +729,12 @@ function renderCatalog() {
     <div class="catalog-grid">${cards.join("")}</div>`;
 
   container.querySelector(".catalog-grid").addEventListener("click", (e) => {
+    const descBtn = e.target.closest(".btn-descripcion");
+    if (descBtn) {
+      const p = catalogo.find((x) => String(x.id) === descBtn.dataset.descId);
+      if (p) openPrendaDetalle(p, false);
+      return;
+    }
     const imgDiv = e.target.closest("[data-gallery-id]");
     if (imgDiv && !e.target.closest(".btn-order") && !e.target.closest(".btn-whatsapp")) {
       gallery.open(imgDiv.dataset.galleryId);
@@ -1682,7 +1694,7 @@ function buildInvCard(p) {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" width="14" height="14">
               <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
             </svg>
-            Info
+            Ver descripción
           </button>
           <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-inv-compartir">
             <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${WA_PATH}"/></svg>
