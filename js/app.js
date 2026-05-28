@@ -2654,6 +2654,7 @@ function showView(viewId) {
     link.classList.toggle("active", link.dataset.view === viewId);
   });
 
+  if (viewId === "catalogo" && 'clearAppBadge' in navigator) navigator.clearAppBadge();
   if (viewId === "cobros") renderCobros();
   if (viewId === "cuenta") renderCuenta();
 }
