@@ -16,7 +16,7 @@
   --color-lavender: #CCB8DD;
   --font-body: 'Poppins', system-ui, -apple-system, sans-serif;
   --font-heading: 'Montserrat', system-ui, -apple-system, sans-serif;
-  --header-height: 3.5rem;
+  --header-height: 4.25rem;
   --nav-height: 5.25rem;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
