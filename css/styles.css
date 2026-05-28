@@ -42,7 +42,7 @@ body {
 /* Header */
 .app-header {
   flex-shrink: 0;
-  height: var(--header-height);
+  height: calc(var(--header-height) + env(safe-area-inset-top, 0px));
   padding: 0 1.25rem 0.625rem;
   padding-top: env(safe-area-inset-top, 0px);
   display: flex;
