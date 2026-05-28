@@ -698,7 +698,7 @@ function renderCatalog() {
               <span class="price-val price-ganancia">+${formatPeso(ganMin)} – +${formatPeso(ganMax)}</span>
             </div>
           </div>
-          <button class="btn-desc-catalogo" data-desc-id="${p.id}" type="button">Descripción</button>
+          <button class="btn-desc-catalogo" data-desc-id="${p.id}" type="button">Cómo vender</button>
           <div class="card-actions">
             <a href="${buildWhatsappUrl(p)}"
                target="_blank" rel="noopener noreferrer"
@@ -1876,6 +1876,7 @@ function createPrendaDetalleSheet() {
         <button class="btn-sheet-close" aria-label="Cerrar">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
+        <span class="pd-sheet-title" id="prendaDetalleTitle"></span>
       </div>
       <div class="sheet-body" id="prendaDetalleBody"></div>
     </div>`;
@@ -1895,6 +1896,8 @@ function createPrendaDetalleSheet() {
 function openPrendaDetalle(p, fromInventario = false) {
   const overlay = document.getElementById("prendaDetalleOverlay");
   overlay.dataset.prendaId = p.id;
+  document.getElementById("prendaDetalleTitle").textContent =
+    fromInventario ? 'Descripción' : 'Cómo vender esta prenda';
   document.getElementById("prendaDetalleBody").innerHTML = `
     <div class="pd-header">
       <span class="pd-marca">${p.marca}</span>
