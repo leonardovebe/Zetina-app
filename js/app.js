@@ -667,7 +667,6 @@ function renderCatalog() {
           ${p.foto
             ? `<img class="product-img" src="${p.foto}" alt="${p.nombre}" loading="lazy">`
             : `<span class="product-emoji" aria-hidden="true">${p.emoji}</span>`}
-          <button class="btn-info-badge" data-desc-id="${p.id}" type="button" aria-label="Ver descripción">i</button>
         </div>
         <div class="product-info">
           <div class="product-meta">
@@ -699,6 +698,7 @@ function renderCatalog() {
               <span class="price-val price-ganancia">+${formatPeso(ganMin)} – +${formatPeso(ganMax)}</span>
             </div>
           </div>
+          <button class="btn-desc-catalogo" data-desc-id="${p.id}" type="button">Descripción</button>
           <div class="card-actions">
             <a href="${buildWhatsappUrl(p)}"
                target="_blank" rel="noopener noreferrer"
@@ -724,9 +724,9 @@ function renderCatalog() {
     <div class="catalog-grid">${cards.join("")}</div>`;
 
   container.querySelector(".catalog-grid").addEventListener("click", (e) => {
-    const infoBadge = e.target.closest(".btn-info-badge");
-    if (infoBadge) {
-      const p = catalogo.find((x) => String(x.id) === infoBadge.dataset.descId);
+    const descBtn = e.target.closest(".btn-desc-catalogo");
+    if (descBtn) {
+      const p = catalogo.find((x) => String(x.id) === descBtn.dataset.descId);
       if (p) openPrendaDetalle(p, false);
       return;
     }
