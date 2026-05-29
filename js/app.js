@@ -2044,7 +2044,7 @@ async function compartirFotoWA(p, foto) {
     const blob = await res.blob();
     const ext = (blob.type.split("/")[1] || "jpg").replace("jpeg", "jpg");
     const file = new File([blob], `${p.nombre.replace(/\s+/g, "_")}.${ext}`, { type: blob.type });
-    const data = { files: [file], text: `${p.emoji} *${p.nombre}*\n${p.marca} · Talla ${p.tallaEtiqueta}/${p.tallaReal}\nPrecio: ${formatPeso(p.precioMin)} – ${formatPeso(p.precioMax)}` };
+    const data = { files: [file], text: `${p.emoji} *${p.nombre}*\n${p.marca} · Talla ${p.tallaReal}` };
     if (navigator.canShare && navigator.canShare(data)) {
       await navigator.share(data);
     } else {
