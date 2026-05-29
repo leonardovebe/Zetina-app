@@ -1675,7 +1675,6 @@ function buildInvCard(p) {
         ${primeraFoto
           ? `<img class="inv-card-foto" src="${primeraFoto.url}" alt="${p.nombre}" loading="lazy">`
           : `<span class="inv-card-emoji" aria-hidden="true">${p.emoji}</span>`}
-        ${fotos.length > 1 ? `<span class="inv-card-foto-badge">${fotos.length}</span>` : ""}
         ${pendiente ? `<span class="inv-devolucion-badge">Devolución pendiente</span>` : ""}
       </div>
       <div class="inv-card-body">
