@@ -2107,7 +2107,7 @@ function openGaleria(prendaId) {
   overlay.dataset.prendaId = prendaId;
 
   document.getElementById("galeriaPrendaInfo").innerHTML = `
-    <p class="galeria-prenda-id">ID: ${formatZtId(p.id)}</p>
+    <p class="galeria-prenda-id">ID: ${p.numero || formatZtId(p.id)}</p>
     <h3 class="galeria-prenda-nombre">${p.nombre}</h3>`;
 
   refreshGaleriaCarousel(p);
