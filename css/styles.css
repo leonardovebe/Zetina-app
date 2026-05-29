@@ -1324,6 +1324,7 @@ h1, h2, h3, h4, h5, h6,
   background: #fff;
   border-color: #855AA2;
   color: #16001C;
+  margin-bottom: 1rem;
 }
 
 #prendasBusqueda:focus {
