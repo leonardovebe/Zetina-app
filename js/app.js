@@ -726,6 +726,24 @@ function buildCatalogCards(items) {
   return items.map(buildCatalogCard).join('');
 }
 
+function actualizarUiFiltros(container, total) {
+  const n = catalogFiltros.categorias.size + catalogFiltros.tallas.size + catalogFiltros.marcas.size + (catalogFiltros.precio ? 1 : 0);
+  const btn = container.querySelector("#btnFiltrar");
+  if (btn) {
+    btn.classList.toggle("btn-filtrar--active", n > 0);
+    btn.querySelector(".btn-filtrar-label").textContent = n > 0 ? `Filtrar · ${n}` : "Filtrar";
+  }
+  container.querySelector("#filtrosLimpiar")?.classList.toggle("filtros-limpiar-btn--hidden", n === 0);
+  container.querySelector("#catalogGrid").innerHTML = buildCatalogCards(filtrarCatalogo());
+  const sub = container.querySelector("#catalogSubtitle");
+  if (sub) {
+    const shown = filtrarCatalogo().length;
+    sub.textContent = shown === total
+      ? `${total} prenda${total !== 1 ? 's' : ''} disponible${total !== 1 ? 's' : ''}`
+      : `${shown} de ${total} prenda${total !== 1 ? 's' : ''}`;
+  }
+}
+
 // ── Render: Catálogo ────────────────────────────────────────────────────────
 
 function renderCatalog() {
@@ -745,53 +763,68 @@ function renderCatalog() {
     return;
   }
 
-  const cats    = [...new Set(catalogo.map(p => p.categoria).filter(Boolean))].sort();
-  const tallas  = [...new Set(catalogo.map(p => p.tallaReal).filter(Boolean))].sort();
-  const marcas  = [...new Set(catalogo.map(p => p.marca).filter(Boolean))].sort();
+  const cats   = [...new Set(catalogo.map(p => p.categoria).filter(Boolean))].sort();
+  const tallas = [...new Set(catalogo.map(p => p.tallaReal).filter(Boolean))].sort();
+  const marcas = [...new Set(catalogo.map(p => p.marca).filter(Boolean))].sort();
   const precioOpts = [
-    { label: 'Menos de $500',   valor: 'lt500' },
-    { label: '$500–$1,000',     valor: '500-1000' },
-    { label: '$1,000–$2,000',   valor: '1000-2000' },
-    { label: 'Más de $2,000',   valor: 'gt2000' },
+    { label: 'Menos de $500',  valor: 'lt500' },
+    { label: '$500–$1,000',    valor: '500-1000' },
+    { label: '$1,000–$2,000',  valor: '1000-2000' },
+    { label: 'Más de $2,000',  valor: 'gt2000' },
   ];
 
-  let chipsHtml = '';
-  if (cats.length) {
-    chipsHtml += cats.map(c => `<button class="filtro-chip" data-tipo="categoria" data-valor="${c}">${c}</button>`).join('');
-    chipsHtml += `<span class="filtro-sep" aria-hidden="true"></span>`;
-  }
-  if (tallas.length) {
-    chipsHtml += tallas.map(t => `<button class="filtro-chip" data-tipo="talla" data-valor="${t}">${t}</button>`).join('');
-    chipsHtml += `<span class="filtro-sep" aria-hidden="true"></span>`;
-  }
-  if (marcas.length) {
-    chipsHtml += marcas.map(m => `<button class="filtro-chip" data-tipo="marca" data-valor="${m}">${m}</button>`).join('');
-    chipsHtml += `<span class="filtro-sep" aria-hidden="true"></span>`;
-  }
-  chipsHtml += precioOpts.map(o => `<button class="filtro-chip" data-tipo="precio" data-valor="${o.valor}">${o.label}</button>`).join('');
-  chipsHtml += `<button class="filtro-chip filtro-chip--limpiar filtro-chip--hidden" data-tipo="limpiar">✕ Limpiar</button>`;
+  const seccion = (label, chips) => chips.length ? `
+    <div class="filtros-seccion">
+      <p class="filtros-seccion-label">${label}</p>
+      <div class="filtros-chips-row">${chips}</div>
+    </div>` : '';
 
   const total = catalogo.length;
   container.innerHTML = `
     <div class="catalog-header">
-      <h2 class="catalog-title">Catálogo</h2>
-      <p class="catalog-subtitle" id="catalogSubtitle">${total} prenda${total !== 1 ? 's' : ''} disponible${total !== 1 ? 's' : ''}</p>
+      <div class="catalog-header-row">
+        <div>
+          <h2 class="catalog-title">Catálogo</h2>
+          <p class="catalog-subtitle" id="catalogSubtitle">${total} prenda${total !== 1 ? 's' : ''} disponible${total !== 1 ? 's' : ''}</p>
+        </div>
+        <button class="btn-filtrar" id="btnFiltrar" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" aria-hidden="true">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+          </svg>
+          <span class="btn-filtrar-label">Filtrar</span>
+        </button>
+      </div>
     </div>
-    <div class="catalog-filtros-bar">
-      <div class="catalog-filtros-scroll" id="filtrosScroll">${chipsHtml}</div>
+    <div class="filtros-panel" id="filtrosPanel" hidden>
+      <div class="filtros-panel-top">
+        <button class="filtros-limpiar-btn filtros-limpiar-btn--hidden" id="filtrosLimpiar">Limpiar todos</button>
+      </div>
+      ${seccion('Categoría', cats.map(c => `<button class="filtro-chip" data-tipo="categoria" data-valor="${c}">${c}</button>`).join(''))}
+      ${seccion('Talla', tallas.map(t => `<button class="filtro-chip" data-tipo="talla" data-valor="${t}">${t}</button>`).join(''))}
+      ${seccion('Marca', marcas.map(m => `<button class="filtro-chip" data-tipo="marca" data-valor="${m}">${m}</button>`).join(''))}
+      ${seccion('Precio', precioOpts.map(o => `<button class="filtro-chip" data-tipo="precio" data-valor="${o.valor}">${o.label}</button>`).join(''))}
     </div>
     <div class="catalog-grid" id="catalogGrid">${buildCatalogCards(catalogo)}</div>`;
 
-  container.querySelector("#filtrosScroll").addEventListener("click", (e) => {
+  container.querySelector("#btnFiltrar").addEventListener("click", () => {
+    const panel = container.querySelector("#filtrosPanel");
+    const btn   = container.querySelector("#btnFiltrar");
+    panel.hidden = !panel.hidden;
+    btn.setAttribute("aria-expanded", String(!panel.hidden));
+  });
+
+  container.querySelector("#filtrosPanel").addEventListener("click", (e) => {
+    if (e.target.closest("#filtrosLimpiar")) {
+      catalogFiltros = { categorias: new Set(), tallas: new Set(), marcas: new Set(), precio: null };
+      container.querySelectorAll(".filtro-chip.active").forEach(c => c.classList.remove("active"));
+      actualizarUiFiltros(container, total);
+      return;
+    }
     const chip = e.target.closest(".filtro-chip");
     if (!chip) return;
     const tipo  = chip.dataset.tipo;
     const valor = chip.dataset.valor;
-
-    if (tipo === "limpiar") {
-      catalogFiltros = { categorias: new Set(), tallas: new Set(), marcas: new Set(), precio: null };
-      container.querySelectorAll(".filtro-chip.active").forEach(c => c.classList.remove("active"));
-    } else if (tipo === "categoria") {
+    if (tipo === "categoria") {
       catalogFiltros.categorias.has(valor) ? catalogFiltros.categorias.delete(valor) : catalogFiltros.categorias.add(valor);
       chip.classList.toggle("active");
     } else if (tipo === "talla") {
@@ -810,19 +843,7 @@ function renderCatalog() {
         chip.classList.add("active");
       }
     }
-
-    const hayFiltros = catalogFiltros.categorias.size || catalogFiltros.tallas.size || catalogFiltros.marcas.size || catalogFiltros.precio;
-    container.querySelector(".filtro-chip--limpiar")?.classList.toggle("filtro-chip--hidden", !hayFiltros);
-
-    const filtradas = filtrarCatalogo();
-    container.querySelector("#catalogGrid").innerHTML = buildCatalogCards(filtradas);
-    const sub = container.querySelector("#catalogSubtitle");
-    if (sub) {
-      const shown = filtradas.length;
-      sub.textContent = shown === total
-        ? `${total} prenda${total !== 1 ? 's' : ''} disponible${total !== 1 ? 's' : ''}`
-        : `${shown} de ${total} prenda${total !== 1 ? 's' : ''}`;
-    }
+    actualizarUiFiltros(container, total);
   });
 
   container.querySelector("#catalogGrid").addEventListener("click", (e) => {
