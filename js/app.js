@@ -427,14 +427,15 @@ async function loadPedidos() {
 
 let inventario = [];
 let devoluciones = []; // prenda_ids con estado "Pendiente"
+let prestamos    = []; // préstamos activos { id, prenda_id, clienta_id }
 
 async function loadInventario() {
   if (!VENDEDORA_ID) return;
   const { data, error } = await db
     .from('inventario_vendedoras')
-    .select('id, prenda_id, pedido_id, fecha_entrega, prendas(*, fotos_prendas(*))')
+    .select('id, prenda_id, pedido_id, fecha_entrega, estado, prendas(*, fotos_prendas(*))')
     .eq('vendedora_id', VENDEDORA_ID)
-    .eq('estado', 'activo')
+    .in('estado', ['activo', 'prestado'])
     .order('created_at', { ascending: false });
   if (error) { console.error('loadInventario:', error); return; }
 
@@ -457,9 +458,19 @@ async function loadInventario() {
       descripcion: p.descripcion || '',
       fotos,
       fechaEntrega: inv.fecha_entrega,
+      estado: inv.estado || 'activo',
     };
   });
+}
 
+async function loadPrestamos() {
+  if (!VENDEDORA_ID) return;
+  const { data } = await db
+    .from('prestamos')
+    .select('id, prenda_id, clienta_id')
+    .eq('vendedora_id', VENDEDORA_ID)
+    .eq('estado', 'activo');
+  prestamos = data || [];
 }
 
 async function loadDevoluciones() {
@@ -1795,6 +1806,123 @@ function openDevolucionForm(prendaId) {
   overlay.classList.add("open");
 }
 
+// ── Sheet: Prestada ─────────────────────────────────────────────────────────
+
+function renderPrestadaClientasList(overlay, query) {
+  const list = overlay.querySelector("#prestadaClientesList");
+  if (!clientes.length) {
+    list.innerHTML = `<p class="vendida-empty">No tienes clientas registradas.<br>
+      <a class="vendida-empty-link" href="#clientes">Ir a Clientes →</a></p>`;
+    list.querySelector(".vendida-empty-link").addEventListener("click", () => overlay.classList.remove("open"));
+    return;
+  }
+  const filtered = query
+    ? clientes.filter(c => c.nombre.toLowerCase().includes(query))
+    : clientes;
+  if (!filtered.length) {
+    list.innerHTML = `<p class="vendida-empty">Sin resultados</p>`;
+    return;
+  }
+  list.innerHTML = filtered.map(c => {
+    const pal = avatarPalette(c.id);
+    return `<button class="vendida-cliente-item prestada-cliente-item" data-cliente-id="${c.id}">
+      <div class="vendida-cliente-avatar" style="background:${pal.bg};color:${pal.color}">${iniciales(c.nombre)}</div>
+      <span class="vendida-cliente-nombre">${c.nombre}</span>
+    </button>`;
+  }).join("");
+}
+
+function createPrestadaSheet() {
+  if (document.getElementById("prestadaOverlay")) return;
+  const overlay = document.createElement("div");
+  overlay.id = "prestadaOverlay";
+  overlay.className = "venta-form-overlay";
+  overlay.innerHTML = `
+    <div class="order-detail-sheet">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-topbar">
+        <button class="btn-sheet-close" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="sheet-body">
+        <h3 class="vendida-sheet-title" id="prestadaTitulo"></h3>
+        <input class="search-input vendida-busqueda" id="prestadaBusqueda" type="search"
+               placeholder="Buscar clienta…" autocomplete="off" autocorrect="off" spellcheck="false">
+        <div class="vendida-clientes-list" id="prestadaClientesList"></div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.classList.remove("open"); });
+  overlay.querySelector(".btn-sheet-close").addEventListener("click", () => overlay.classList.remove("open"));
+  overlay.querySelector("#prestadaBusqueda").addEventListener("input", (e) => {
+    renderPrestadaClientasList(overlay, e.target.value.trim().toLowerCase());
+  });
+
+  overlay.querySelector("#prestadaClientesList").addEventListener("click", async (e) => {
+    const item = e.target.closest(".prestada-cliente-item");
+    if (!item || item.disabled) return;
+    const c = clientes.find(x => x.id === item.dataset.clienteId);
+    const p = inventario.find(x => x.id === overlay.dataset.prendaId);
+    if (!c || !p) return;
+    item.disabled = true;
+
+    try {
+      const { data: pr, error: pe } = await db.from("prestamos").insert([{
+        vendedora_id: VENDEDORA_ID,
+        prenda_id:    p.id,
+        clienta_id:   c.id,
+        estado:       'activo',
+      }]).select().single();
+      if (pe) throw pe;
+
+      const { error: ie } = await db.from("inventario_vendedoras").update({ estado: 'prestado' }).eq("id", p.invId);
+      if (ie) throw ie;
+
+      if (pr) prestamos.push({ id: pr.id, prenda_id: p.id, clienta_id: c.id });
+      const inv = inventario.find(x => x.invId === p.invId);
+      if (inv) inv.estado = 'prestado';
+
+      overlay.classList.remove("open");
+      renderMisPrendas();
+      showToast("¡Prenda registrada como prestada!");
+    } catch (err) {
+      console.error("prestamo:", err);
+      item.disabled = false;
+      showToast("Error al registrar. Intenta de nuevo.");
+    }
+  });
+}
+
+function openPrestadaSheet(prendaId) {
+  createPrestadaSheet();
+  const overlay = document.getElementById("prestadaOverlay");
+  const p = inventario.find(x => x.id === prendaId);
+  if (!p) return;
+  overlay.dataset.prendaId = prendaId;
+  overlay.querySelector("#prestadaTitulo").textContent = `¿A quién le prestas ${p.nombre}?`;
+  overlay.querySelector("#prestadaBusqueda").value = "";
+  renderPrestadaClientasList(overlay, "");
+  overlay.classList.add("open");
+}
+
+async function marcarDevuelta(prestamoId, invId) {
+  if (!confirm("¿Confirmas que te devolvieron la prenda?")) return;
+  const { error: pe } = await db.from("prestamos")
+    .update({ estado: 'devuelto', fecha_devolucion: new Date().toISOString() })
+    .eq("id", prestamoId);
+  const { error: ie } = await db.from("inventario_vendedoras")
+    .update({ estado: 'activo' })
+    .eq("id", invId);
+  if (pe || ie) { console.error("devolver:", pe || ie); showToast("Error al actualizar."); return; }
+  prestamos = prestamos.filter(p => p.id !== prestamoId);
+  const inv = inventario.find(x => x.invId === invId);
+  if (inv) inv.estado = 'activo';
+  renderMisPrendas();
+  showToast("¡Prenda marcada como devuelta!");
+}
+
 // ── Sheet: Vendida ──────────────────────────────────────────────────────────
 
 function renderVendidaClientasList(overlay, query) {
@@ -1956,14 +2084,21 @@ function openVendidaSheet(prendaId) {
 
 function buildInvCard(p) {
   const fotos = p.fotos || [];
-  const primeraFoto = fotos.find(f => f.url);
-  const pendiente = devoluciones.includes(p.id);
+  const primeraFoto  = fotos.find(f => f.url);
+  const pendiente    = devoluciones.includes(p.id);
+  const prestamo     = prestamos.find(pr => pr.prenda_id === p.id);
+  const isPrestada   = p.estado === 'prestado' || !!prestamo;
+  const prestadaClientaNombre = isPrestada && prestamo
+    ? (clientes.find(c => c.id === prestamo.clienta_id)?.nombre || '—')
+    : null;
+
   return `
     <article class="inv-card" data-id="${p.id}" role="button" tabindex="0">
       <div class="inv-card-img" style="background:${p.gradiente}"${fotos.length ? ` data-galeria-id="${p.id}"` : ''}>
         ${primeraFoto
           ? `<img class="inv-card-foto" src="${primeraFoto.url}" alt="${p.nombre}" loading="lazy">`
           : `<span class="inv-card-emoji" aria-hidden="true">${p.emoji}</span>`}
+        ${isPrestada ? `<span class="inv-prestada-badge">Prestada · ${prestadaClientaNombre}</span>` : ""}
         ${pendiente ? `<span class="inv-devolucion-badge">Devolución pendiente</span>` : ""}
       </div>
       <div class="inv-card-body">
@@ -1978,15 +2113,25 @@ function buildInvCard(p) {
         <button class="btn-inv-info" data-info="${p.id}" aria-label="Ver descripción">
           Ver descripción
         </button>
-        <button class="btn-inv-vendida" data-vendida-id="${p.id}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="12" height="12"><polyline points="20 6 9 17 4 12"/></svg>
-          Vendida
-        </button>
+        ${isPrestada
+          ? `<button class="btn-inv-devolver" data-prestamo-id="${prestamo?.id}" data-inv-id="${p.invId}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="12" height="12"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+              Devuelta
+             </button>`
+          : `<button class="btn-inv-vendida" data-vendida-id="${p.id}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="12" height="12"><polyline points="20 6 9 17 4 12"/></svg>
+              Vendida
+             </button>`}
         <div class="inv-card-secondary-actions">
           ${!pendiente ? `
           <button class="btn-inv-devolucion" data-devolucion="${p.id}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="11" height="11"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
             Devolución
+          </button>` : ""}
+          ${!isPrestada ? `
+          <button class="btn-inv-prestada" data-prestada-id="${p.id}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="11" height="11"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            Prestar
           </button>` : ""}
           <button class="btn-inv-eliminar" data-inv-id="${p.invId}" data-prenda-id="${p.id}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="11" height="11"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
@@ -2038,6 +2183,10 @@ function renderMisPrendas() {
     }
     const vendidaBtn = e.target.closest(".btn-inv-vendida");
     if (vendidaBtn) { openVendidaSheet(vendidaBtn.dataset.vendidaId); return; }
+    const prestadaBtn = e.target.closest(".btn-inv-prestada");
+    if (prestadaBtn) { openPrestadaSheet(prestadaBtn.dataset.prestadaId); return; }
+    const devolverBtn = e.target.closest(".btn-inv-devolver");
+    if (devolverBtn) { marcarDevuelta(devolverBtn.dataset.prestamoId, devolverBtn.dataset.invId); return; }
     const devBtn = e.target.closest(".btn-inv-devolucion");
     if (devBtn) { openDevolucionForm(devBtn.dataset.devolucion); return; }
     const eliminarBtn = e.target.closest(".btn-inv-eliminar");
@@ -3002,7 +3151,7 @@ async function initApp() {
     '<div class="catalog-loading"><span>Cargando catálogo…</span></div>';
 
   await loadPerfil();
-  await Promise.all([loadCatalogo(), loadInventario(), loadPedidos(), loadDevoluciones(), loadClientes()]);
+  await Promise.all([loadCatalogo(), loadInventario(), loadPedidos(), loadDevoluciones(), loadClientes(), loadPrestamos()]);
   await loadCobrosData();
 
   renderCatalog();
@@ -3045,6 +3194,7 @@ async function initApp() {
   createVentaFormSheet();
   createDevolucionSheet();
   createVendidaSheet();
+  createPrestadaSheet();
   createCobrosDetailSheet();
   createAbonoFormSheet();
   createCartSheet();
