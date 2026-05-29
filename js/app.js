@@ -1666,17 +1666,15 @@ function openDevolucionForm(prendaId) {
 // ── Render: Mis Prendas ─────────────────────────────────────────────────────
 
 function buildInvCard(p) {
-  const waUrl = buildWhatsappUrl(p);
   const fotos = p.fotos || [];
   const primeraFoto = fotos.find(f => f.url);
   const pendiente = devoluciones.includes(p.id);
   return `
     <article class="inv-card" data-id="${p.id}" role="button" tabindex="0">
-      <div class="inv-card-img" style="background:${p.gradiente}">
+      <div class="inv-card-img" style="background:${p.gradiente}"${fotos.length ? ` data-galeria-id="${p.id}"` : ''}>
         ${primeraFoto
           ? `<img class="inv-card-foto" src="${primeraFoto.url}" alt="${p.nombre}" loading="lazy">`
           : `<span class="inv-card-emoji" aria-hidden="true">${p.emoji}</span>`}
-        <button class="btn-info-badge" data-desc-id="${p.id}" type="button" aria-label="Ver descripción">i</button>
         ${fotos.length > 1 ? `<span class="inv-card-foto-badge">${fotos.length}</span>` : ""}
         ${pendiente ? `<span class="inv-devolucion-badge">Devolución pendiente</span>` : ""}
       </div>
@@ -1689,18 +1687,12 @@ function buildInvCard(p) {
           <span class="inv-talla-chip">Real&nbsp;<strong>${p.tallaReal}</strong></span>
         </div>
         <p class="inv-precio-rango">Precio: ${formatPeso(p.precioMax)}</p>
-        <div class="inv-card-actions">
-          <button class="btn-inv-info" data-info="${p.id}" aria-label="Ver descripción">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" width="14" height="14">
-              <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
-            </svg>
-            Ver descripción
-          </button>
-          <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-inv-compartir">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${WA_PATH}"/></svg>
-            Compartir
-          </a>
-        </div>
+        <button class="btn-inv-info" data-info="${p.id}" aria-label="Ver descripción">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" width="14" height="14">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+          Ver descripción
+        </button>
         ${!pendiente ? `<button class="btn-inv-devolucion" data-devolucion="${p.id}">Reportar devolución</button>` : ""}
         <button class="btn-inv-eliminar" data-inv-id="${p.invId}" data-prenda-id="${p.id}">Eliminar prenda</button>
       </div>
@@ -1738,13 +1730,8 @@ function renderMisPrendas() {
   });
 
   container.onclick = (e) => {
-    if (e.target.closest(".btn-inv-compartir")) return;
-    const infoBadge = e.target.closest(".btn-info-badge");
-    if (infoBadge) {
-      const p = inventario.find((x) => x.id === infoBadge.dataset.descId);
-      if (p) openPrendaDetalle(p, true);
-      return;
-    }
+    const imgDiv = e.target.closest(".inv-card-img[data-galeria-id]");
+    if (imgDiv) { openGaleria(imgDiv.dataset.galeriaId); return; }
     const infoBtn = e.target.closest(".btn-inv-info");
     if (infoBtn) {
       const p = inventario.find((x) => x.id === infoBtn.dataset.info);
@@ -1942,17 +1929,7 @@ function openPrendaDetalle(p, fromInventario = false) {
       <span class="pd-chip">Talla etiq. <strong>${p.tallaEtiqueta || '—'}</strong></span>
       <span class="pd-chip">Talla real <strong>${p.tallaReal || '—'}</strong></span>
     </div>
-    ${buildDescripcionSections(p.descripcion)}
-    ${fromInventario && (p.fotos || []).length
-      ? `<button class="btn-ver-fotos">
-           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:18px;height:18px">
-             <rect x="3" y="3" width="18" height="18" rx="2"/>
-             <circle cx="8.5" cy="8.5" r="1.5"/>
-             <polyline points="21 15 16 10 5 21"/>
-           </svg>
-           Ver fotos
-         </button>`
-      : ''}`;
+    ${buildDescripcionSections(p.descripcion)}`;
   overlay.classList.add("open");
 }
 
