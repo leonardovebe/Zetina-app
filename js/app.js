@@ -442,6 +442,7 @@ async function loadInventario() {
     return {
       id: inv.prenda_id,
       invId: inv.id,
+      numero: p.numero || null,
       nombre: p.nombre || '',
       marca: p.marca || '',
       emoji: p.emoji || '👚',
@@ -1680,7 +1681,7 @@ function buildInvCard(p) {
         ${pendiente ? `<span class="inv-devolucion-badge">Devolución pendiente</span>` : ""}
       </div>
       <div class="inv-card-body">
-        <p class="inv-card-id">ID: ${formatZtId(p.id)}</p>
+        <p class="inv-card-id">ID: ${p.numero || formatZtId(p.id)}</p>
         <p class="inv-card-nombre">${p.nombre}</p>
         <p class="inv-card-marca">${p.marca}</p>
         <div class="inv-tallas">
