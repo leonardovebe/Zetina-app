@@ -1766,7 +1766,7 @@ function buildDescripcionSections(rawDesc) {
   try { parsed = JSON.parse(text); } catch (_) {}
 
   if (parsed && typeof parsed === 'object') {
-    const { por_que_vale, cliente_ideal, como_presentarla, manejo_objecion,
+    const { por_que_vale, cliente_ideal, como_presentarla,
             general, material, composicion, cuidado, como_usar } = parsed;
     let html = '';
 
@@ -1786,12 +1786,6 @@ function buildDescripcionSections(rawDesc) {
       <div class="pd-section">
         <h4 class="pd-section-title">Cómo presentarla</h4>
         <p class="pd-section-text">${como_presentarla.replace(/\n/g, '<br>')}</p>
-      </div>`;
-
-    if (manejo_objecion) html += `
-      <div class="pd-section">
-        <h4 class="pd-section-title">Si dice que está muy caro…</h4>
-        <p class="pd-section-text">${manejo_objecion.replace(/\n/g, '<br>')}</p>
       </div>`;
 
     if (general) html += `
