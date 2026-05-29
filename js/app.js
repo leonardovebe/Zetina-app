@@ -66,7 +66,7 @@ function updateCartBadge() {
 function buildCartWhatsappUrl() {
   const nombreVendedora = perfil ? perfil.nombre : '';
   const lines = carrito.map((p) =>
-    `${p.emoji} *${formatZtId(p.id)}* — ${p.nombre} | Talla ${p.tallaEtiqueta} | ${formatPeso(p.precioCosto)}`
+    `${p.emoji} *${p.numero || formatZtId(p.id)}* — ${p.nombre} | Talla ${p.tallaEtiqueta} | ${formatPeso(p.precioCosto)}`
   );
   const msg =
     `Hola ZETINA! 👋 Soy *${nombreVendedora}* y quisiera hacer el siguiente pedido:\n\n` +
@@ -104,7 +104,7 @@ function refreshCartSheet() {
       <div class="cart-item-info">
         <p class="cart-item-name">${p.nombre}</p>
         <p class="cart-item-meta">${p.marca} · Talla ${p.tallaEtiqueta}</p>
-        <p class="prenda-id">ID: ${formatZtId(p.id)}</p>
+        <p class="prenda-id">ID: ${p.numero || formatZtId(p.id)}</p>
         <p class="cart-item-price">${formatPeso(p.precioCosto)}</p>
       </div>
     </div>`).join("");
@@ -359,7 +359,7 @@ async function loadCatalogo() {
   // y b) la columna puede no existir si el schema-admin.sql no se ejecutó todavía.
   const { data, error } = await db
     .from('prendas')
-    .select('id, nombre, marca, emoji, gradiente, talla_etiqueta, talla_real, precio_costo, precio_min, precio_max, descripcion, fotos_prendas(url)')
+    .select('id, numero, nombre, marca, emoji, gradiente, talla_etiqueta, talla_real, precio_costo, precio_min, precio_max, descripcion, fotos_prendas(url)')
     .eq('disponible', true)
     .order('created_at', { ascending: false });
 
@@ -369,6 +369,7 @@ async function loadCatalogo() {
     const fotos = (p.fotos_prendas || []).map(f => fotoPublicUrl(f.url)).filter(Boolean);
     return {
       id:            p.id,
+      numero:        p.numero    || null,
       nombre:        p.nombre,
       marca:         p.marca     || '',
       emoji:         p.emoji     || '👚',
