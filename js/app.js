@@ -169,10 +169,11 @@ function createCartSheet() {
         await confirmarPedido();
         clearCarrito();
         closeCartSheet();
-        await Promise.all([loadPedidos(), loadCatalogo()]);
-        renderPedidos();
-        renderCatalog();
-        window.open(waUrl, "_blank");
+        Promise.all([loadPedidos(), loadCatalogo()]).then(() => {
+          renderPedidos();
+          renderCatalog();
+        });
+        window.location.href = waUrl;
       } catch (err) {
         btn.disabled = false;
         btn.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${WA_PATH}"/></svg> Confirmar pedido`;
