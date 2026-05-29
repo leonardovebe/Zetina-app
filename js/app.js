@@ -1678,22 +1678,28 @@ function buildInvCard(p) {
         ${pendiente ? `<span class="inv-devolucion-badge">Devolución pendiente</span>` : ""}
       </div>
       <div class="inv-card-body">
-        <p class="inv-card-id">ID: ${p.numero || formatZtId(p.id)}</p>
+        <p class="inv-card-id">${p.numero || formatZtId(p.id)}</p>
         <p class="inv-card-nombre">${p.nombre}</p>
         <p class="inv-card-marca">${p.marca}</p>
         <div class="inv-tallas">
           <span class="inv-talla-chip">Etq&nbsp;<strong>${p.tallaEtiqueta}</strong></span>
           <span class="inv-talla-chip">Real&nbsp;<strong>${p.tallaReal}</strong></span>
         </div>
-        <p class="inv-precio-rango">Precio: ${formatPeso(p.precioMax)}</p>
+        <p class="inv-precio-rango">${formatPeso(p.precioMax)}</p>
         <button class="btn-inv-info" data-info="${p.id}" aria-label="Ver descripción">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" width="14" height="14">
-            <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
-          </svg>
           Ver descripción
         </button>
-        ${!pendiente ? `<button class="btn-inv-devolucion" data-devolucion="${p.id}">Reportar devolución</button>` : ""}
-        <button class="btn-inv-eliminar" data-inv-id="${p.invId}" data-prenda-id="${p.id}">Eliminar prenda</button>
+        <div class="inv-card-secondary-actions">
+          ${!pendiente ? `
+          <button class="btn-inv-devolucion" data-devolucion="${p.id}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="11" height="11"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+            Devolución
+          </button>` : ""}
+          <button class="btn-inv-eliminar" data-inv-id="${p.invId}" data-prenda-id="${p.id}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="11" height="11"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            Eliminar
+          </button>
+        </div>
       </div>
     </article>`;
 }
