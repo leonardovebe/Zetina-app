@@ -2481,6 +2481,27 @@ h1, h2, h3, h4, h5, h6,
 
 .btn-inv-devolucion:active { opacity: 0.75; }
 
+.btn-inv-eliminar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0.4375rem 0.625rem;
+  background: transparent;
+  color: #e53e3e;
+  border: 1.5px solid #e53e3e;
+  border-radius: 0.625rem;
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 0.375rem;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease;
+}
+
+.btn-inv-eliminar:active { opacity: 0.75; }
+
 .devolucion-prenda-info {
   font-family: var(--font-body);
   font-size: 0.875rem;

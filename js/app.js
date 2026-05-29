@@ -1702,6 +1702,7 @@ function buildInvCard(p) {
           </a>
         </div>
         ${!pendiente ? `<button class="btn-inv-devolucion" data-devolucion="${p.id}">Reportar devolución</button>` : ""}
+        <button class="btn-inv-eliminar" data-inv-id="${p.invId}" data-prenda-id="${p.id}">Eliminar prenda</button>
       </div>
     </article>`;
 }
@@ -1752,6 +1753,17 @@ function renderMisPrendas() {
     }
     const devBtn = e.target.closest(".btn-inv-devolucion");
     if (devBtn) { openDevolucionForm(devBtn.dataset.devolucion); return; }
+    const eliminarBtn = e.target.closest(".btn-inv-eliminar");
+    if (eliminarBtn) {
+      if (!confirm("¿Seguro que quieres eliminar esta prenda de tu inventario?")) return;
+      const invId = eliminarBtn.dataset.invId;
+      db.from('inventario_vendedoras').delete().eq('id', invId).then(({ error }) => {
+        if (error) { console.error('eliminar prenda:', error.message); return; }
+        inventario = inventario.filter((p) => p.invId !== invId);
+        renderMisPrendas();
+      });
+      return;
+    }
     const card = e.target.closest(".inv-card");
     if (!card) return;
     const p = inventario.find((x) => x.id === card.dataset.id);
