@@ -334,6 +334,7 @@ function showChangePasswordScreen(userData) {
 // ── Catálogo desde Supabase ──────────────────────────────────────────────────
 
 let catalogo = [];
+let catalogFiltros = { categorias: new Set(), tallas: new Set(), marcas: new Set(), precio: null };
 
 // URL base del bucket público de fotos en Supabase Storage
 const FOTOS_URL = `${SUPABASE_URL}/storage/v1/object/public/prenda-fotos`;
@@ -359,7 +360,7 @@ async function loadCatalogo() {
   // y b) la columna puede no existir si el schema-admin.sql no se ejecutó todavía.
   const { data, error } = await db
     .from('prendas')
-    .select('id, numero, nombre, marca, emoji, gradiente, talla_etiqueta, talla_real, precio_costo, precio_min, precio_max, descripcion, fotos_prendas(url)')
+    .select('id, numero, nombre, marca, categoria, emoji, gradiente, talla_etiqueta, talla_real, precio_costo, precio_min, precio_max, descripcion, fotos_prendas(url)')
     .eq('disponible', true)
     .order('created_at', { ascending: false });
 
@@ -372,6 +373,7 @@ async function loadCatalogo() {
       numero:        p.numero    || null,
       nombre:        p.nombre,
       marca:         p.marca     || '',
+      categoria:     p.categoria || '',
       emoji:         p.emoji     || '👚',
       tallaEtiqueta: p.talla_etiqueta || '',
       tallaReal:     p.talla_real     || '',
@@ -640,10 +642,95 @@ const gallery = {
   },
 };
 
+// ── Catálogo: helpers de filtros ─────────────────────────────────────────────
+
+function filtrarCatalogo() {
+  return catalogo.filter((p) => {
+    if (catalogFiltros.categorias.size && !catalogFiltros.categorias.has(p.categoria)) return false;
+    if (catalogFiltros.tallas.size && !catalogFiltros.tallas.has(p.tallaReal)) return false;
+    if (catalogFiltros.marcas.size && !catalogFiltros.marcas.has(p.marca)) return false;
+    if (catalogFiltros.precio) {
+      const pm = p.precioMin;
+      if (catalogFiltros.precio === 'lt500'     && pm >= 500)                   return false;
+      if (catalogFiltros.precio === '500-1000'  && (pm < 500  || pm >= 1000))   return false;
+      if (catalogFiltros.precio === '1000-2000' && (pm < 1000 || pm >= 2000))   return false;
+      if (catalogFiltros.precio === 'gt2000'    && pm < 2000)                   return false;
+    }
+    return true;
+  });
+}
+
+function buildCatalogCard(p) {
+  const ganMin  = p.precioMin - p.precioCosto;
+  const ganMax  = p.precioMax - p.precioCosto;
+  const idLabel = p.numero || formatZtId(p.id);
+  return `
+    <article class="product-card" data-id="${p.id}">
+      <div class="product-image${p.foto ? ' product-image--foto' : ''} product-image--clickable"
+           data-gallery-id="${p.id}"
+           ${!p.foto ? `style="background:${p.gradiente}"` : ''}>
+        ${p.foto
+          ? `<img class="product-img" src="${p.foto}" alt="${p.nombre}" loading="lazy">`
+          : `<span class="product-emoji" aria-hidden="true">${p.emoji}</span>`}
+      </div>
+      <div class="product-info">
+        <div class="product-meta">
+          <span class="brand-chip">${p.marca}</span>
+        </div>
+        <h3 class="product-name">${p.nombre}</h3>
+        <p class="prenda-id">ID: ${idLabel}</p>
+        <div class="talla-row">
+          <div class="talla-chip">
+            <span class="talla-label">Talla etiqueta</span>
+            <span class="talla-val">${p.tallaEtiqueta || '—'}</span>
+          </div>
+          <div class="talla-chip">
+            <span class="talla-label">Talla real</span>
+            <span class="talla-val">${p.tallaReal || '—'}</span>
+          </div>
+        </div>
+        <div class="price-table">
+          <div class="price-row">
+            <span class="price-label">A ti te cuesta</span>
+            <span class="price-val price-costo">${formatPeso(p.precioCosto)}</span>
+          </div>
+          <div class="price-row">
+            <span class="price-label">Lo puedes vender</span>
+            <span class="price-val">${formatPeso(p.precioMin)} – ${formatPeso(p.precioMax)}</span>
+          </div>
+          <div class="price-row price-row--ganancia">
+            <span class="price-label">Tu ganancia</span>
+            <span class="price-val price-ganancia">+${formatPeso(ganMin)} – +${formatPeso(ganMax)}</span>
+          </div>
+        </div>
+        <button class="btn-desc-catalogo" data-desc-id="${p.id}" type="button">Cómo vender</button>
+        <div class="card-actions">
+          <a href="${buildWhatsappUrl(p)}"
+             target="_blank" rel="noopener noreferrer"
+             class="btn-whatsapp">
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="${WA_PATH}"/>
+            </svg>
+            Compartir
+          </a>
+          <button class="btn-order" data-id="${p.id}">
+            Agregar al carrito
+          </button>
+        </div>
+      </div>
+    </article>`;
+}
+
+function buildCatalogCards(items) {
+  if (!items.length) return `<p class="catalog-empty-filtros">No se encontraron prendas</p>`;
+  return items.map(buildCatalogCard).join('');
+}
+
 // ── Render: Catálogo ────────────────────────────────────────────────────────
 
 function renderCatalog() {
   const container = document.querySelector("#catalogo .view-content");
+  catalogFiltros = { categorias: new Set(), tallas: new Set(), marcas: new Set(), precio: null };
 
   if (!catalogo.length) {
     container.innerHTML = `
@@ -658,76 +745,87 @@ function renderCatalog() {
     return;
   }
 
-  const cards = catalogo.map((p) => {
-    const ganMin  = p.precioMin - p.precioCosto;
-    const ganMax  = p.precioMax - p.precioCosto;
-    const idLabel = p.numero || formatZtId(p.id);
+  const cats    = [...new Set(catalogo.map(p => p.categoria).filter(Boolean))].sort();
+  const tallas  = [...new Set(catalogo.map(p => p.tallaReal).filter(Boolean))].sort();
+  const marcas  = [...new Set(catalogo.map(p => p.marca).filter(Boolean))].sort();
+  const precioOpts = [
+    { label: 'Menos de $500',   valor: 'lt500' },
+    { label: '$500–$1,000',     valor: '500-1000' },
+    { label: '$1,000–$2,000',   valor: '1000-2000' },
+    { label: 'Más de $2,000',   valor: 'gt2000' },
+  ];
 
-    return `
-      <article class="product-card" data-id="${p.id}">
-        <div class="product-image${p.foto ? ' product-image--foto' : ''} product-image--clickable"
-             data-gallery-id="${p.id}"
-             ${!p.foto ? `style="background:${p.gradiente}"` : ''}>
-          ${p.foto
-            ? `<img class="product-img" src="${p.foto}" alt="${p.nombre}" loading="lazy">`
-            : `<span class="product-emoji" aria-hidden="true">${p.emoji}</span>`}
-        </div>
-        <div class="product-info">
-          <div class="product-meta">
-            <span class="brand-chip">${p.marca}</span>
-          </div>
-          <h3 class="product-name">${p.nombre}</h3>
-          <p class="prenda-id">ID: ${idLabel}</p>
-          <div class="talla-row">
-            <div class="talla-chip">
-              <span class="talla-label">Talla etiqueta</span>
-              <span class="talla-val">${p.tallaEtiqueta || '—'}</span>
-            </div>
-            <div class="talla-chip">
-              <span class="talla-label">Talla real</span>
-              <span class="talla-val">${p.tallaReal || '—'}</span>
-            </div>
-          </div>
-          <div class="price-table">
-            <div class="price-row">
-              <span class="price-label">A ti te cuesta</span>
-              <span class="price-val price-costo">${formatPeso(p.precioCosto)}</span>
-            </div>
-            <div class="price-row">
-              <span class="price-label">Lo puedes vender</span>
-              <span class="price-val">${formatPeso(p.precioMin)} – ${formatPeso(p.precioMax)}</span>
-            </div>
-            <div class="price-row price-row--ganancia">
-              <span class="price-label">Tu ganancia</span>
-              <span class="price-val price-ganancia">+${formatPeso(ganMin)} – +${formatPeso(ganMax)}</span>
-            </div>
-          </div>
-          <button class="btn-desc-catalogo" data-desc-id="${p.id}" type="button">Cómo vender</button>
-          <div class="card-actions">
-            <a href="${buildWhatsappUrl(p)}"
-               target="_blank" rel="noopener noreferrer"
-               class="btn-whatsapp">
-              <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="${WA_PATH}"/>
-              </svg>
-              Compartir
-            </a>
-            <button class="btn-order" data-id="${p.id}">
-              Agregar al carrito
-            </button>
-          </div>
-        </div>
-      </article>`;
-  });
+  let chipsHtml = '';
+  if (cats.length) {
+    chipsHtml += cats.map(c => `<button class="filtro-chip" data-tipo="categoria" data-valor="${c}">${c}</button>`).join('');
+    chipsHtml += `<span class="filtro-sep" aria-hidden="true"></span>`;
+  }
+  if (tallas.length) {
+    chipsHtml += tallas.map(t => `<button class="filtro-chip" data-tipo="talla" data-valor="${t}">${t}</button>`).join('');
+    chipsHtml += `<span class="filtro-sep" aria-hidden="true"></span>`;
+  }
+  if (marcas.length) {
+    chipsHtml += marcas.map(m => `<button class="filtro-chip" data-tipo="marca" data-valor="${m}">${m}</button>`).join('');
+    chipsHtml += `<span class="filtro-sep" aria-hidden="true"></span>`;
+  }
+  chipsHtml += precioOpts.map(o => `<button class="filtro-chip" data-tipo="precio" data-valor="${o.valor}">${o.label}</button>`).join('');
+  chipsHtml += `<button class="filtro-chip filtro-chip--limpiar filtro-chip--hidden" data-tipo="limpiar">✕ Limpiar</button>`;
 
+  const total = catalogo.length;
   container.innerHTML = `
     <div class="catalog-header">
       <h2 class="catalog-title">Catálogo</h2>
-      <p class="catalog-subtitle">${catalogo.length} prenda${catalogo.length !== 1 ? 's' : ''} disponible${catalogo.length !== 1 ? 's' : ''}</p>
+      <p class="catalog-subtitle" id="catalogSubtitle">${total} prenda${total !== 1 ? 's' : ''} disponible${total !== 1 ? 's' : ''}</p>
     </div>
-    <div class="catalog-grid">${cards.join("")}</div>`;
+    <div class="catalog-filtros-bar">
+      <div class="catalog-filtros-scroll" id="filtrosScroll">${chipsHtml}</div>
+    </div>
+    <div class="catalog-grid" id="catalogGrid">${buildCatalogCards(catalogo)}</div>`;
 
-  container.querySelector(".catalog-grid").addEventListener("click", (e) => {
+  container.querySelector("#filtrosScroll").addEventListener("click", (e) => {
+    const chip = e.target.closest(".filtro-chip");
+    if (!chip) return;
+    const tipo  = chip.dataset.tipo;
+    const valor = chip.dataset.valor;
+
+    if (tipo === "limpiar") {
+      catalogFiltros = { categorias: new Set(), tallas: new Set(), marcas: new Set(), precio: null };
+      container.querySelectorAll(".filtro-chip.active").forEach(c => c.classList.remove("active"));
+    } else if (tipo === "categoria") {
+      catalogFiltros.categorias.has(valor) ? catalogFiltros.categorias.delete(valor) : catalogFiltros.categorias.add(valor);
+      chip.classList.toggle("active");
+    } else if (tipo === "talla") {
+      catalogFiltros.tallas.has(valor) ? catalogFiltros.tallas.delete(valor) : catalogFiltros.tallas.add(valor);
+      chip.classList.toggle("active");
+    } else if (tipo === "marca") {
+      catalogFiltros.marcas.has(valor) ? catalogFiltros.marcas.delete(valor) : catalogFiltros.marcas.add(valor);
+      chip.classList.toggle("active");
+    } else if (tipo === "precio") {
+      if (catalogFiltros.precio === valor) {
+        catalogFiltros.precio = null;
+        chip.classList.remove("active");
+      } else {
+        container.querySelectorAll('[data-tipo="precio"]').forEach(c => c.classList.remove("active"));
+        catalogFiltros.precio = valor;
+        chip.classList.add("active");
+      }
+    }
+
+    const hayFiltros = catalogFiltros.categorias.size || catalogFiltros.tallas.size || catalogFiltros.marcas.size || catalogFiltros.precio;
+    container.querySelector(".filtro-chip--limpiar")?.classList.toggle("filtro-chip--hidden", !hayFiltros);
+
+    const filtradas = filtrarCatalogo();
+    container.querySelector("#catalogGrid").innerHTML = buildCatalogCards(filtradas);
+    const sub = container.querySelector("#catalogSubtitle");
+    if (sub) {
+      const shown = filtradas.length;
+      sub.textContent = shown === total
+        ? `${total} prenda${total !== 1 ? 's' : ''} disponible${total !== 1 ? 's' : ''}`
+        : `${shown} de ${total} prenda${total !== 1 ? 's' : ''}`;
+    }
+  });
+
+  container.querySelector("#catalogGrid").addEventListener("click", (e) => {
     const descBtn = e.target.closest(".btn-desc-catalogo");
     if (descBtn) {
       const p = catalogo.find((x) => String(x.id) === descBtn.dataset.descId);
