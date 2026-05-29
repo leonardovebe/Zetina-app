@@ -64,13 +64,14 @@ function updateCartBadge() {
 }
 
 function buildCartWhatsappUrl() {
+  const nombreVendedora = perfil ? perfil.nombre : '';
   const lines = carrito.map((p) =>
-    `${p.emoji} ${p.nombre} - ${p.marca} | Talla ${p.tallaEtiqueta}/${p.tallaReal} | ${formatPeso(p.precioCosto)}`
+    `${p.emoji} *${formatZtId(p.id)}* — ${p.nombre} | Talla ${p.tallaEtiqueta} | ${formatPeso(p.precioCosto)}`
   );
   const msg =
-    `Hola ZETINA! 👋 Quisiera hacer el siguiente pedido:\n\n` +
+    `Hola ZETINA! 👋 Soy *${nombreVendedora}* y quisiera hacer el siguiente pedido:\n\n` +
     lines.join("\n") +
-    `\n\n💰 *Total: ${formatPeso(totalCarrito())}*\n\n¡Gracias! 🛍️`;
+    `\n\n💰 *Total a pagar: ${formatPeso(totalCarrito())}*\n\n¡Gracias! 🛍️`;
   return "https://wa.me/525579346962?text=" + encodeURIComponent(msg);
 }
 
