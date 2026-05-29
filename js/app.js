@@ -508,6 +508,19 @@ function formatFecha(iso) {
 
 // ── Utilidades ──────────────────────────────────────────────────────────────
 
+function showToast(msg, duration = 2800) {
+  document.querySelector(".zt-toast")?.remove();
+  const t = document.createElement("div");
+  t.className = "zt-toast";
+  t.textContent = msg;
+  document.body.appendChild(t);
+  requestAnimationFrame(() => t.classList.add("zt-toast--visible"));
+  setTimeout(() => {
+    t.classList.remove("zt-toast--visible");
+    t.addEventListener("transitionend", () => t.remove(), { once: true });
+  }, duration);
+}
+
 function formatPeso(n) {
   return "$" + n.toLocaleString("es-MX");
 }
@@ -1782,6 +1795,163 @@ function openDevolucionForm(prendaId) {
   overlay.classList.add("open");
 }
 
+// ── Sheet: Vendida ──────────────────────────────────────────────────────────
+
+function renderVendidaClientasList(overlay, query) {
+  const list = overlay.querySelector("#vendidaClientesList");
+  if (!clientes.length) {
+    list.innerHTML = `<p class="vendida-empty">No tienes clientas registradas.<br>
+      <a class="vendida-empty-link" href="#clientes">Ir a Clientes →</a></p>`;
+    list.querySelector(".vendida-empty-link").addEventListener("click", () => overlay.classList.remove("open"));
+    return;
+  }
+  const filtered = query
+    ? clientes.filter(c => c.nombre.toLowerCase().includes(query))
+    : clientes;
+  if (!filtered.length) {
+    list.innerHTML = `<p class="vendida-empty">Sin resultados</p>`;
+    return;
+  }
+  list.innerHTML = filtered.map(c => {
+    const pal = avatarPalette(c.id);
+    return `<button class="vendida-cliente-item" data-cliente-id="${c.id}">
+      <div class="vendida-cliente-avatar" style="background:${pal.bg};color:${pal.color}">${iniciales(c.nombre)}</div>
+      <span class="vendida-cliente-nombre">${c.nombre}</span>
+    </button>`;
+  }).join("");
+}
+
+function createVendidaSheet() {
+  if (document.getElementById("vendidaOverlay")) return;
+  const overlay = document.createElement("div");
+  overlay.id = "vendidaOverlay";
+  overlay.className = "venta-form-overlay";
+  overlay.innerHTML = `
+    <div class="order-detail-sheet">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-topbar">
+        <button class="btn-sheet-close" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="sheet-body" id="vendidaStep1">
+        <h3 class="vendida-sheet-title" id="vendidaTitulo"></h3>
+        <input class="search-input vendida-busqueda" id="vendidaBusqueda" type="search"
+               placeholder="Buscar clienta…" autocomplete="off" autocorrect="off" spellcheck="false">
+        <div class="vendida-clientes-list" id="vendidaClientesList"></div>
+      </div>
+
+      <div class="sheet-body" id="vendidaStep2" hidden>
+        <button class="vendida-back-btn" id="vendidaBack">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="16" height="16"><polyline points="15 18 9 12 15 6"/></svg>
+          Volver
+        </button>
+        <div class="vendida-resumen" id="vendidaResumen"></div>
+        <div class="form-group" style="margin-top:1rem">
+          <label class="form-label" for="vendidaPrecio">Precio de venta</label>
+          <input class="form-input" type="number" id="vendidaPrecio" min="0" step="1" inputmode="numeric">
+        </div>
+        <button class="btn-confirmar-venta" id="vendidaConfirmar">Confirmar venta</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.classList.remove("open"); });
+  overlay.querySelector(".btn-sheet-close").addEventListener("click", () => overlay.classList.remove("open"));
+
+  overlay.querySelector("#vendidaBusqueda").addEventListener("input", (e) => {
+    renderVendidaClientasList(overlay, e.target.value.trim().toLowerCase());
+  });
+
+  overlay.querySelector("#vendidaClientesList").addEventListener("click", (e) => {
+    const item = e.target.closest(".vendida-cliente-item");
+    if (!item) return;
+    const c = clientes.find(x => x.id === item.dataset.clienteId);
+    const p = inventario.find(x => x.id === overlay.dataset.prendaId);
+    if (!c || !p) return;
+    overlay.dataset.clienteId = c.id;
+    const pal = avatarPalette(c.id);
+    overlay.querySelector("#vendidaResumen").innerHTML = `
+      <div class="vendida-resumen-row">
+        <div class="vendida-resumen-avatar" style="background:${pal.bg};color:${pal.color}">${iniciales(c.nombre)}</div>
+        <div>
+          <p class="vendida-resumen-clienta">${c.nombre}</p>
+          <p class="vendida-resumen-prenda">${p.nombre} — ${p.marca}</p>
+        </div>
+      </div>`;
+    overlay.querySelector("#vendidaPrecio").value = p.precioMax || "";
+    overlay.querySelector("#vendidaStep1").hidden = true;
+    overlay.querySelector("#vendidaStep2").hidden = false;
+  });
+
+  overlay.querySelector("#vendidaBack").addEventListener("click", () => {
+    overlay.querySelector("#vendidaStep1").hidden = false;
+    overlay.querySelector("#vendidaStep2").hidden = true;
+  });
+
+  overlay.querySelector("#vendidaConfirmar").addEventListener("click", async () => {
+    const btn = overlay.querySelector("#vendidaConfirmar");
+    const p = inventario.find(x => x.id === overlay.dataset.prendaId);
+    const c = clientes.find(x => x.id === overlay.dataset.clienteId);
+    if (!p || !c) return;
+    const precioVenta = parseFloat(overlay.querySelector("#vendidaPrecio").value) || p.precioMax;
+
+    btn.disabled = true;
+    btn.textContent = "Registrando…";
+
+    try {
+      const { error: ve } = await db.from("ventas").insert([{
+        vendedora_id:  VENDEDORA_ID,
+        cliente_id:    c.id,
+        prenda_id:     p.id,
+        nombre_prenda: p.nombre,
+        marca:         p.marca,
+        fecha:         new Date().toISOString().split("T")[0],
+        monto:         precioVenta,
+        estado:        "pendiente",
+      }]);
+      if (ve) throw ve;
+
+      const { error: ie } = await db.from("inventario_vendedoras").delete().eq("id", p.invId);
+      if (ie) throw ie;
+
+      inventario = inventario.filter(x => x.invId !== p.invId);
+      overlay.classList.remove("open");
+      renderMisPrendas();
+      renderCobros();
+
+      showToast("¡Venta registrada! 🎉");
+
+      const tel = (c.telefono || "").replace(/\D/g, "");
+      if (tel) {
+        const waMsg = `Hola ${c.nombre}, gracias por adquirir ${p.nombre} 💜 Te escribo de parte de ZETINA Moda Selecta.`;
+        setTimeout(() => window.open(`https://wa.me/521${tel}?text=${encodeURIComponent(waMsg)}`, "_blank"), 600);
+      }
+    } catch (err) {
+      console.error("vendida:", err);
+      btn.disabled = false;
+      btn.textContent = "Confirmar venta";
+      showToast("Error al registrar. Intenta de nuevo.");
+    }
+  });
+}
+
+function openVendidaSheet(prendaId) {
+  createVendidaSheet();
+  const overlay = document.getElementById("vendidaOverlay");
+  const p = inventario.find(x => x.id === prendaId);
+  if (!p) return;
+  overlay.dataset.prendaId = prendaId;
+  overlay.dataset.clienteId = "";
+  overlay.querySelector("#vendidaTitulo").textContent = `¿A quién le vendiste ${p.nombre}?`;
+  overlay.querySelector("#vendidaBusqueda").value = "";
+  overlay.querySelector("#vendidaStep1").hidden = false;
+  overlay.querySelector("#vendidaStep2").hidden = true;
+  renderVendidaClientasList(overlay, "");
+  overlay.classList.add("open");
+}
+
 // ── Render: Mis Prendas ─────────────────────────────────────────────────────
 
 function buildInvCard(p) {
@@ -1809,6 +1979,10 @@ function buildInvCard(p) {
           Ver descripción
         </button>
         <div class="inv-card-secondary-actions">
+          <button class="btn-inv-vendida" data-vendida-id="${p.id}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="11" height="11"><polyline points="20 6 9 17 4 12"/></svg>
+            Vendida
+          </button>
           ${!pendiente ? `
           <button class="btn-inv-devolucion" data-devolucion="${p.id}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="11" height="11"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
@@ -1862,6 +2036,8 @@ function renderMisPrendas() {
       if (p) openPrendaDetalle(p, true);
       return;
     }
+    const vendidaBtn = e.target.closest(".btn-inv-vendida");
+    if (vendidaBtn) { openVendidaSheet(vendidaBtn.dataset.vendidaId); return; }
     const devBtn = e.target.closest(".btn-inv-devolucion");
     if (devBtn) { openDevolucionForm(devBtn.dataset.devolucion); return; }
     const eliminarBtn = e.target.closest(".btn-inv-eliminar");
@@ -2868,6 +3044,7 @@ async function initApp() {
   createClienteEditSheet();
   createVentaFormSheet();
   createDevolucionSheet();
+  createVendidaSheet();
   createCobrosDetailSheet();
   createAbonoFormSheet();
   createCartSheet();
