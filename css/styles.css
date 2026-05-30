@@ -2595,7 +2595,7 @@ h1, h2, h3, h4, h5, h6,
   position: absolute;
   top: 0.5rem;
   left: 0.5rem;
-  background: #1d6fb5;
+  background: #855AA2;
   color: #fff;
   font-family: var(--font-heading);
   font-size: 0.5rem;
@@ -2670,8 +2670,8 @@ h1, h2, h3, h4, h5, h6,
   gap: 0.3rem;
   width: 100%;
   padding: 0.4375rem 0.5rem;
-  background: #dbeafe;
-  color: #1d6fb5;
+  background: #CCB8DD;
+  color: #16001C;
   border: none;
   border-radius: 0.625rem;
   font-family: var(--font-body);
