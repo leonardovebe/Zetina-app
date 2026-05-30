@@ -1967,7 +1967,7 @@ async function marcarDevuelta(prestamoId, invId) {
 
 // ── Mini-sheet: WhatsApp post-venta ─────────────────────────────────────────
 
-function showVentaWhatsAppSheet(c, p) {
+function showVentaWhatsAppSheet(c, p, precioVenta) {
   let overlay = document.getElementById("ventaWaOverlay");
   if (!overlay) {
     overlay = document.createElement("div");
@@ -2000,7 +2000,7 @@ function showVentaWhatsAppSheet(c, p) {
   const waBtn = overlay.querySelector("#ventaWaBtn");
   if (tel) {
     const numero = tel.startsWith('521') ? tel : tel.startsWith('52') ? '521' + tel.slice(2) : '521' + tel;
-    const mensaje = encodeURIComponent(`Hola ${c.nombre}, gracias por adquirir ${p.nombre} 💜 Te escribo de parte de ZETINA Moda Selecta.`);
+    const mensaje = encodeURIComponent(`Hola ${c.nombre}, te confirmo que te quedas con ${p.nombre} con un precio de ${formatPeso(precioVenta)}. Cualquier duda estoy al pendiente 🙏`);
     waBtn.href = `https://wa.me/${numero}?text=${mensaje}`;
     waBtn.style.display = "";
   } else {
@@ -2152,7 +2152,7 @@ function createVendidaSheet() {
       renderMisPrendas();
       renderCobros();
 
-      showVentaWhatsAppSheet(c, p);
+      showVentaWhatsAppSheet(c, p, precioVenta);
     } catch (err) {
       console.error("[vendida] excepción:", err?.message || err);
       btn.disabled = false;
