@@ -2111,8 +2111,9 @@ function createVendidaSheet() {
 
       const tel = (c.telefono || "").replace(/\D/g, "");
       if (tel) {
-        const waMsg = `Hola ${c.nombre}, gracias por adquirir ${p.nombre} 💜 Te escribo de parte de ZETINA Moda Selecta.`;
-        setTimeout(() => window.open(`https://wa.me/521${tel}?text=${encodeURIComponent(waMsg)}`, "_blank"), 600);
+        const numero = tel.startsWith('521') ? tel : tel.startsWith('52') ? '1' + tel : '521' + tel;
+        const mensaje = encodeURIComponent(`Hola ${c.nombre}, gracias por adquirir ${p.nombre} 💜 Te escribo de parte de ZETINA Moda Selecta.`);
+        setTimeout(() => window.open(`https://wa.me/${numero}?text=${mensaje}`, "_blank"), 600);
       }
     } catch (err) {
       console.error("[vendida] excepción:", err?.message || err);
