@@ -1965,6 +1965,51 @@ async function marcarDevuelta(prestamoId, invId) {
   showToast("¡Prenda marcada como devuelta!");
 }
 
+// ── Mini-sheet: WhatsApp post-venta ─────────────────────────────────────────
+
+function showVentaWhatsAppSheet(c, p) {
+  let overlay = document.getElementById("ventaWaOverlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "ventaWaOverlay";
+    overlay.className = "venta-wa-overlay";
+    overlay.innerHTML = `
+      <div class="venta-wa-sheet">
+        <div class="sheet-drag-handle"></div>
+        <div class="venta-wa-body">
+          <p class="venta-wa-msg" id="ventaWaMsg"></p>
+          <a class="btn-venta-wa" id="ventaWaBtn" target="_blank" rel="noopener noreferrer">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="18" height="18"><path d="${WA_PATH}"/></svg>
+            Enviar WhatsApp
+          </a>
+          <button class="btn-venta-wa-skip" id="ventaWaSkip">Ahora no</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.classList.remove("open"); });
+    overlay.querySelector("#ventaWaSkip").addEventListener("click", () => overlay.classList.remove("open"));
+    overlay.querySelector("#ventaWaBtn").addEventListener("click", () => {
+      setTimeout(() => overlay.classList.remove("open"), 300);
+    });
+  }
+
+  overlay.querySelector("#ventaWaMsg").textContent =
+    `¡Venta registrada! ¿Quieres enviarle un mensaje a ${c.nombre}?`;
+
+  const tel = (c.telefono || "").replace(/\D/g, "");
+  const waBtn = overlay.querySelector("#ventaWaBtn");
+  if (tel) {
+    const numero = tel.startsWith('521') ? tel : tel.startsWith('52') ? '521' + tel.slice(2) : '521' + tel;
+    const mensaje = encodeURIComponent(`Hola ${c.nombre}, gracias por adquirir ${p.nombre} 💜 Te escribo de parte de ZETINA Moda Selecta.`);
+    waBtn.href = `https://wa.me/${numero}?text=${mensaje}`;
+    waBtn.style.display = "";
+  } else {
+    waBtn.style.display = "none";
+  }
+
+  overlay.classList.add("open");
+}
+
 // ── Sheet: Vendida ──────────────────────────────────────────────────────────
 
 function renderVendidaClientasList(overlay, query) {
@@ -2107,14 +2152,7 @@ function createVendidaSheet() {
       renderMisPrendas();
       renderCobros();
 
-      showToast("¡Venta registrada! 🎉");
-
-      const tel = (c.telefono || "").replace(/\D/g, "");
-      if (tel) {
-        const numero = tel.startsWith('521') ? tel : tel.startsWith('52') ? '1' + tel : '521' + tel;
-        const mensaje = encodeURIComponent(`Hola ${c.nombre}, gracias por adquirir ${p.nombre} 💜 Te escribo de parte de ZETINA Moda Selecta.`);
-        setTimeout(() => window.open(`https://wa.me/${numero}?text=${mensaje}`, "_blank"), 600);
-      }
+      showVentaWhatsAppSheet(c, p);
     } catch (err) {
       console.error("[vendida] excepción:", err?.message || err);
       btn.disabled = false;

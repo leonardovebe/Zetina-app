@@ -2876,6 +2876,87 @@ h1, h2, h3, h4, h5, h6,
 .btn-confirmar-venta:active  { opacity: 0.85; }
 .btn-confirmar-venta:disabled { opacity: 0.55; cursor: default; }
 
+/* ── Mini-sheet WhatsApp post-venta ─────────────────────────────────────── */
+
+.venta-wa-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(19, 0, 22, 0.55);
+  z-index: 400;
+  display: flex;
+  align-items: flex-end;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease;
+}
+
+.venta-wa-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.venta-wa-sheet {
+  width: 100%;
+  background: #fff;
+  border-radius: 1.375rem 1.375rem 0 0;
+  padding: 0 1.25rem calc(env(safe-area-inset-bottom, 0px) + 1.5rem);
+  transform: translateY(100%);
+  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.venta-wa-overlay.open .venta-wa-sheet {
+  transform: translateY(0);
+}
+
+.venta-wa-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 0.375rem;
+}
+
+.venta-wa-msg {
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #16001C;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.btn-venta-wa {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.875rem;
+  background: #855AA2;
+  color: #fff;
+  border-radius: 0.875rem;
+  font-family: var(--font-heading);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease;
+}
+
+.btn-venta-wa:active { opacity: 0.85; }
+
+.btn-venta-wa-skip {
+  background: none;
+  border: none;
+  color: #855AA2;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.375rem;
+  text-align: center;
+  width: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* ── Toast ───────────────────────────────────────────────────────────────── */
 
 .zt-toast {
