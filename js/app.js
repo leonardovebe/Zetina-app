@@ -1865,20 +1865,38 @@ function createPrestadaSheet() {
     if (!item || item.disabled) return;
     const c = clientes.find(x => x.id === item.dataset.clienteId);
     const p = inventario.find(x => x.id === overlay.dataset.prendaId);
-    if (!c || !p) return;
+
+    console.log("[prestar] clienta seleccionada:", c);
+    console.log("[prestar] prenda:", p);
+
+    if (!c || !p) {
+      console.error("[prestar] c o p es null:", { clienteId: item.dataset.clienteId, prendaId: overlay.dataset.prendaId, c, p });
+      showToast("Error: datos incompletos. Cierra y vuelve a intentar.");
+      return;
+    }
+
     item.disabled = true;
 
+    const prestamoPayload = {
+      vendedora_id: VENDEDORA_ID,
+      prenda_id:    p.id,
+      clienta_id:   c.id,
+      estado:       'activo',
+    };
+    console.log("[prestar] payload:", prestamoPayload);
+
     try {
-      const { data: pr, error: pe } = await db.from("prestamos").insert([{
-        vendedora_id: VENDEDORA_ID,
-        prenda_id:    p.id,
-        clienta_id:   c.id,
-        estado:       'activo',
-      }]).select().single();
-      if (pe) throw pe;
+      const { data: pr, error: pe } = await db.from("prestamos").insert([prestamoPayload]).select().single();
+      if (pe) {
+        console.error("[prestar] error insert prestamos:", pe.message, "| code:", pe.code, "| details:", pe.details, "| hint:", pe.hint);
+        throw pe;
+      }
 
       const { error: ie } = await db.from("inventario_vendedoras").update({ estado: 'prestado' }).eq("id", p.invId);
-      if (ie) throw ie;
+      if (ie) {
+        console.error("[prestar] error update inventario:", ie.message, "| code:", ie.code, "| details:", ie.details);
+        throw ie;
+      }
 
       if (pr) prestamos.push({ id: pr.id, prenda_id: p.id, clienta_id: c.id });
       const inv = inventario.find(x => x.invId === p.invId);
@@ -1888,9 +1906,9 @@ function createPrestadaSheet() {
       renderMisPrendas();
       showToast("¡Prenda registrada como prestada!");
     } catch (err) {
-      console.error("prestamo:", err);
+      console.error("[prestar] excepción:", err?.message || err);
       item.disabled = false;
-      showToast("Error al registrar. Intenta de nuevo.");
+      showToast(`Error: ${err?.message || "intenta de nuevo"}`);
     }
   });
 }
