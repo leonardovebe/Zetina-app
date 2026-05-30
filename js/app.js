@@ -1120,13 +1120,13 @@ async function loadCobrosData() {
   const clienteIds = clientes.map((c) => c.id);
   if (!clienteIds.length) return;
   const [{ data: ventas }, { data: abonos }] = await Promise.all([
-    db.from('ventas').select('*').in('cliente_id', clienteIds).order('fecha', { ascending: false }),
+    db.from('ventas').select('*, prendas(numero, nombre)').in('cliente_id', clienteIds).order('fecha', { ascending: false }),
     db.from('abonos').select('*').in('cliente_id', clienteIds).order('fecha', { ascending: false }),
   ]);
   clientes.forEach((c) => {
     c.compras = (ventas || [])
       .filter((v) => v.cliente_id === c.id)
-      .map((v) => ({ id: v.id, prendaId: v.prenda_id || null, prenda: v.nombre_prenda || '', marca: v.marca || '', fecha: v.fecha || '', monto: v.monto || 0 }));
+      .map((v) => ({ id: v.id, prendaId: v.prenda_id || null, numero: v.prendas?.numero || null, prenda: v.prendas?.nombre || v.nombre_prenda || '', marca: v.marca || '', fecha: v.fecha || '', monto: v.monto || 0 }));
     c.pagos = (abonos || [])
       .filter((a) => a.cliente_id === c.id)
       .map((a) => ({ id: a.id, fecha: a.fecha || '', monto: a.monto || 0 }));
@@ -1279,7 +1279,9 @@ function openClienteDetail(id) {
     ? c.compras.map((comp) => `
         <div class="compra-card">
           <div class="compra-card-head">
-            <span class="compra-prenda">${comp.prenda}</span>
+            <span class="compra-prenda">
+              ${comp.numero ? `<span class="compra-numero">${comp.numero}</span> ` : ''}${comp.prenda}
+            </span>
           </div>
           <div class="compra-card-body">
             <span class="compra-meta">${comp.marca} · ${formatFecha(comp.fecha)}</span>
