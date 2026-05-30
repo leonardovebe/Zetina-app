@@ -3197,11 +3197,11 @@ h1, h2, h3, h4, h5, h6,
 .cuenta-action-btn--danger svg { color: #c0392b; }
 
 .cuenta-action-btn--wa {
-  background: #25D366;
-  color: #fff;
+  background: #CCB8DD;
+  color: #16001C;
   text-decoration: none;
 }
-.cuenta-action-btn--wa svg { color: #fff; }
+.cuenta-action-btn--wa svg { color: #16001C; }
 
 /* Total vendido en morado */
 .cuenta-stat-card--vendido { }
