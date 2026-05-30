@@ -2022,27 +2022,43 @@ function createVendidaSheet() {
     const btn = overlay.querySelector("#vendidaConfirmar");
     const p = inventario.find(x => x.id === overlay.dataset.prendaId);
     const c = clientes.find(x => x.id === overlay.dataset.clienteId);
-    if (!p || !c) return;
+
+    if (!p || !c) {
+      console.error("[vendida] p o c es null:", { prendaId: overlay.dataset.prendaId, clienteId: overlay.dataset.clienteId, p, c });
+      showToast("Error: datos incompletos. Cierra y vuelve a intentar.");
+      return;
+    }
+
     const precioVenta = parseFloat(overlay.querySelector("#vendidaPrecio").value) || p.precioMax;
+
+    const ventaPayload = {
+      vendedora_id:  VENDEDORA_ID,
+      cliente_id:    c.id,
+      prenda_id:     p.id,
+      nombre_prenda: p.nombre,
+      marca:         p.marca,
+      fecha:         new Date().toISOString().split("T")[0],
+      monto:         precioVenta,
+      estado:        "pendiente",
+    };
+    console.log("[vendida] payload ventas:", ventaPayload);
+    console.log("[vendida] invId para borrar:", p.invId);
 
     btn.disabled = true;
     btn.textContent = "Registrando…";
 
     try {
-      const { error: ve } = await db.from("ventas").insert([{
-        vendedora_id:  VENDEDORA_ID,
-        cliente_id:    c.id,
-        prenda_id:     p.id,
-        nombre_prenda: p.nombre,
-        marca:         p.marca,
-        fecha:         new Date().toISOString().split("T")[0],
-        monto:         precioVenta,
-        estado:        "pendiente",
-      }]);
-      if (ve) throw ve;
+      const { error: ve } = await db.from("ventas").insert([ventaPayload]);
+      if (ve) {
+        console.error("[vendida] error insert ventas:", ve.message, "| code:", ve.code, "| details:", ve.details, "| hint:", ve.hint);
+        throw ve;
+      }
 
       const { error: ie } = await db.from("inventario_vendedoras").delete().eq("id", p.invId);
-      if (ie) throw ie;
+      if (ie) {
+        console.error("[vendida] error delete inventario:", ie.message, "| code:", ie.code, "| details:", ie.details);
+        throw ie;
+      }
 
       inventario = inventario.filter(x => x.invId !== p.invId);
       overlay.classList.remove("open");
@@ -2057,10 +2073,10 @@ function createVendidaSheet() {
         setTimeout(() => window.open(`https://wa.me/521${tel}?text=${encodeURIComponent(waMsg)}`, "_blank"), 600);
       }
     } catch (err) {
-      console.error("vendida:", err);
+      console.error("[vendida] excepción:", err?.message || err);
       btn.disabled = false;
       btn.textContent = "Confirmar venta";
-      showToast("Error al registrar. Intenta de nuevo.");
+      showToast(`Error: ${err?.message || "intenta de nuevo"}`);
     }
   });
 }
