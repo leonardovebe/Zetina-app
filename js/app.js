@@ -1889,6 +1889,8 @@ function createPrestadaSheet() {
       const { data: pr, error: pe } = await db.from("prestamos").insert([prestamoPayload]).select().single();
       if (pe) {
         console.error("[prestar] error insert prestamos:", pe.message, "| code:", pe.code, "| details:", pe.details, "| hint:", pe.hint);
+        console.error("[prestar] error completo:", JSON.stringify(pe));
+        alert("Error: " + pe.message + " | code: " + pe.code);
         throw pe;
       }
 
@@ -1907,8 +1909,10 @@ function createPrestadaSheet() {
       showToast("¡Prenda registrada como prestada!");
     } catch (err) {
       console.error("[prestar] excepción:", err?.message || err);
+      console.error("[prestar] error completo:", JSON.stringify(err));
       item.disabled = false;
-      showToast(`Error: ${err?.message || "intenta de nuevo"}`);
+      // alert temporal para diagnóstico — revertir a showToast una vez identificado el error
+      alert("Error: " + (err?.message || "desconocido") + " | code: " + (err?.code || "?"));
     }
   });
 }
