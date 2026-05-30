@@ -1136,14 +1136,27 @@ async function loadCobrosData() {
 // ── Render: Clientes ─────────────────────────────────────────────────────────
 
 function buildClienteCard(c) {
-  const pendiente = tienePendiente(c);
+  const pendiente    = tienePendiente(c);
+  const totalVentas  = (c.compras || []).reduce((s, v) => s + v.monto, 0);
+  const totalAbonado = (c.pagos   || []).reduce((s, p) => s + p.monto, 0);
+  const saldo        = totalVentas - totalAbonado;
+  const tieneVentas  = (c.compras || []).length > 0;
+
+  const saldoHtml = !tieneVentas ? '' :
+    saldo > 0
+      ? `<span class="cliente-saldo cliente-saldo--pendiente">${formatPeso(saldo)}</span>`
+      : `<span class="cliente-saldo cliente-saldo--corriente">Al corriente</span>`;
+
   return `
     <article class="cliente-card" data-id="${c.id}" role="button" tabindex="0"
              aria-label="Ver detalle de ${c.nombre}">
       <div class="cliente-card-head">
         <div class="cliente-avatar">${iniciales(c.nombre)}</div>
         <div class="cliente-head-info">
-          <p class="cliente-name">${c.nombre}</p>
+          <div class="cliente-name-row">
+            <p class="cliente-name">${c.nombre}</p>
+            ${saldoHtml}
+          </div>
           ${pendiente ? `<span class="badge-pendiente">Pago pendiente</span>` : ""}
         </div>
       </div>

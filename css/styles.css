@@ -1418,10 +1418,25 @@ h1, h2, h3, h4, h5, h6,
 
 .cliente-name-row {
   display: flex;
+  justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.125rem;
+  min-width: 0;
+}
+
+.cliente-saldo {
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cliente-saldo--pendiente {
+  color: #fc8585;
+}
+
+.cliente-saldo--corriente {
+  color: #CCB8DD;
 }
 
 .cliente-name {
