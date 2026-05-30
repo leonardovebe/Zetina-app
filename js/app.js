@@ -2121,17 +2121,16 @@ function buildInvCard(p) {
           : `<button class="btn-inv-vendida" data-vendida-id="${p.id}">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="12" height="12"><polyline points="20 6 9 17 4 12"/></svg>
               Vendida
+             </button>
+             <button class="btn-inv-prestada" data-prestada-id="${p.id}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="12" height="12"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+              Prestar
              </button>`}
         <div class="inv-card-secondary-actions">
           ${!pendiente ? `
           <button class="btn-inv-devolucion" data-devolucion="${p.id}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="11" height="11"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
             Devolución
-          </button>` : ""}
-          ${!isPrestada ? `
-          <button class="btn-inv-prestada" data-prestada-id="${p.id}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="11" height="11"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-            Prestar
           </button>` : ""}
           <button class="btn-inv-eliminar" data-inv-id="${p.invId}" data-prenda-id="${p.id}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="11" height="11"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
