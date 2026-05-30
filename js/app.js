@@ -1931,13 +1931,33 @@ function openPrestadaSheet(prendaId) {
 
 async function marcarDevuelta(prestamoId, invId) {
   if (!confirm("¿Confirmas que te devolvieron la prenda?")) return;
-  const { error: pe } = await db.from("prestamos")
+
+  const prestamo = prestamos.find(x => x.id === prestamoId);
+  console.log("[devolucion prestamo] prestamoId:", prestamoId, "| invId:", invId, "| prestamo:", prestamo, "| VENDEDORA_ID:", VENDEDORA_ID);
+
+  // Paso 1: UPDATE prestamos
+  const { data: r1, error: pe } = await db.from("prestamos")
     .update({ estado: 'devuelto', fecha_devolucion: new Date().toISOString() })
-    .eq("id", prestamoId);
-  const { error: ie } = await db.from("inventario_vendedoras")
+    .eq("id", prestamoId)
+    .eq("estado", "activo")
+    .select();
+  console.log("[devolucion prestamo] resultado UPDATE prestamos:", r1, "| error:", pe);
+  if (pe) { console.error("[devolucion prestamo] error en prestamos:", pe); showToast("Error al actualizar préstamo."); return; }
+
+  // Paso 2: UPDATE inventario_vendedoras por prenda_id + vendedora_id
+  const prendaId = prestamo?.prenda_id;
+  console.log("[devolucion prestamo] UPDATE inventario — prenda_id:", prendaId, "| vendedora_id:", VENDEDORA_ID);
+
+  const { data: r2, error: ie } = await db.from("inventario_vendedoras")
     .update({ estado: 'activo' })
-    .eq("id", invId);
-  if (pe || ie) { console.error("devolver:", pe || ie); showToast("Error al actualizar."); return; }
+    .eq("prenda_id", prendaId)
+    .eq("vendedora_id", VENDEDORA_ID)
+    .eq("estado", "prestado")
+    .select();
+  console.log("[devolucion prestamo] resultado UPDATE inventario_vendedoras:", r2, "| error:", ie);
+  if (ie) { console.error("[devolucion prestamo] error en inventario:", ie); showToast("Error al actualizar inventario."); return; }
+
+  // Actualizar estado local
   prestamos = prestamos.filter(p => p.id !== prestamoId);
   const inv = inventario.find(x => x.invId === invId);
   if (inv) inv.estado = 'activo';
