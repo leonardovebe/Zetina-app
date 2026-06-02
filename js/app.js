@@ -2680,12 +2680,29 @@ function openGaleria(prendaId) {
 
 let VENDEDORA_ID = null;
 let perfil = { nombre: "Vendedora Zetina", credito: 0 };
+let visionariaStats = null;
 
 async function loadPerfil() {
   if (!VENDEDORA_ID) return;
   const { data } = await db.from('vendedoras').select('*').eq('id', VENDEDORA_ID).single();
   if (data) {
-    perfil = { nombre: data.nombre, credito: data.credito || 0, foto: data.foto_url || null };
+    perfil = { nombre: data.nombre, credito: data.credito || 0, foto: data.foto_url || null, createdAt: data.created_at || null };
+  }
+}
+
+async function loadVisionariaStats() {
+  if (!VENDEDORA_ID) return;
+  try {
+    const { data, error } = await db.from('visionaria_stats').select('*').eq('vendedora_id', VENDEDORA_ID).single();
+    if (error?.code === 'PGRST116' || !data) {
+      const { data: nuevo } = await db.from('visionaria_stats')
+        .insert([{ vendedora_id: VENDEDORA_ID }]).select().single();
+      visionariaStats = nuevo || { puntos_historicos: 0, puntos_temporada: 0, objetivo_mensual: 15, record_personal: 0, racha_activa: 0 };
+    } else {
+      visionariaStats = data;
+    }
+  } catch (_) {
+    visionariaStats = { puntos_historicos: 0, puntos_temporada: 0, objetivo_mensual: 15, record_personal: 0, racha_activa: 0 };
   }
 }
 
@@ -2719,86 +2736,265 @@ function getCuentaStats() {
   return { totalVendido, totalCobrado, totalPorCobrar, totalClientas: clientes.length, prendas: inventario.length };
 }
 
+// ── Mi Visión: helpers ───────────────────────────────────────────────────────
+
+function getNivelMaestria(puntos) {
+  if (puntos >= 3000) return 'Maestra de Afinidades';
+  if (puntos >= 1500) return 'Curadora Zetina';
+  if (puntos >= 800)  return 'Curadora Emergente';
+  if (puntos >= 300)  return 'Ojo para el Valor';
+  if (puntos >= 100)  return 'Visionaria de Afinidades';
+  return 'Candidata';
+}
+
+function getVisionStats() {
+  const ahora   = new Date();
+  const mesIdx  = ahora.getMonth();
+  const anio    = ahora.getFullYear();
+  const mesKey  = `${anio}-${String(mesIdx + 1).padStart(2, '0')}`;
+
+  const todasVentas = clientes.flatMap(c => c.compras || []);
+  const todosAbonos = clientes.flatMap(c => c.pagos   || []);
+
+  const ventasMes = todasVentas.filter(v => v.fecha?.slice(0, 7) === mesKey);
+  const abonosMes = todosAbonos.filter(a => a.fecha?.slice(0, 7) === mesKey);
+
+  const gananciaMes      = ventasMes.reduce((s, v) => s + v.monto, 0);
+  const cobradoMes       = abonosMes.reduce((s, a) => s + a.monto, 0);
+  const porCobrarMes     = Math.max(0, gananciaMes - cobradoMes);
+  const matchesMes       = ventasMes.length;
+  const gananciaHistorica = todasVentas.reduce((s, v) => s + v.monto, 0);
+  const matchesHistoricos = todasVentas.length;
+
+  const ventasPorMes = {};
+  todasVentas.forEach(v => {
+    if (!v.fecha) return;
+    const k = v.fecha.slice(0, 7);
+    ventasPorMes[k] = (ventasPorMes[k] || 0) + 1;
+  });
+  const mejorMesEntry = Object.entries(ventasPorMes).sort((a, b) => b[1] - a[1])[0] || null;
+
+  const ventasMontoPorMes = {};
+  todasVentas.forEach(v => {
+    if (!v.fecha) return;
+    const k = v.fecha.slice(0, 7);
+    ventasMontoPorMes[k] = (ventasMontoPorMes[k] || 0) + v.monto;
+  });
+  const mejorMontoMesEntry = Object.entries(ventasMontoPorMes).sort((a, b) => b[1] - a[1])[0] || null;
+
+  const clientasRecurrentes = clientes.filter(c => (c.compras || []).length > 1).length;
+
+  let antiguedadMeses = 0;
+  if (perfil.createdAt) {
+    const cr = new Date(perfil.createdAt);
+    antiguedadMeses = Math.max(0, (anio - cr.getFullYear()) * 12 + (mesIdx - cr.getMonth()));
+  }
+
+  const recordDB = visionariaStats?.record_personal || 0;
+  const prevCounts = Object.entries(ventasPorMes).filter(([k]) => k < mesKey).map(([, c]) => c);
+  const recordCalculado = prevCounts.length ? Math.max(...prevCounts) : 0;
+  const recordPersonal = Math.max(recordDB, recordCalculado);
+
+  const cobradoMesCompleto = gananciaMes > 0 && cobradoMes >= gananciaMes;
+
+  return {
+    gananciaMes, cobradoMes, porCobrarMes, matchesMes,
+    gananciaHistorica, matchesHistoricos,
+    mejorMontoMesEntry, clientasRecurrentes, antiguedadMeses,
+    recordPersonal, cobradoMesCompleto,
+    mesNombre: MESES_FULL[mesIdx], anio,
+  };
+}
+
+function getLogros(stats) {
+  const vs = visionariaStats || {};
+  return [
+    { nombre: 'Primer Match',                 icono: '🎯', desc: 'Encontraste a la persona correcta para tu primera prenda',   obtenido: stats.matchesHistoricos >= 1   },
+    { nombre: '10 Matches',                   icono: '💫', desc: 'Tu criterio empieza a tomar forma',                          obtenido: stats.matchesHistoricos >= 10  },
+    { nombre: '25 Matches',                   icono: '✨', desc: 'Tu ojo para las afinidades es evidente',                     obtenido: stats.matchesHistoricos >= 25  },
+    { nombre: '50 Matches',                   icono: '🏆', desc: 'Medio centenar de conexiones perfectas',                     obtenido: stats.matchesHistoricos >= 50  },
+    { nombre: '100 Matches',                  icono: '👑', desc: 'Leyenda de afinidades',                                      obtenido: stats.matchesHistoricos >= 100 },
+    { nombre: 'Primera Clienta Recurrente',   icono: '💜', desc: 'Alguien confiará en ti más de una vez',                     obtenido: stats.clientasRecurrentes >= 1  },
+    { nombre: '10 Clientas Recurrentes',      icono: '🌸', desc: 'Construiste una comunidad fiel',                             obtenido: stats.clientasRecurrentes >= 10 },
+    { nombre: 'Récord Personal Superado',     icono: '⚡', desc: 'Mejor que nunca',                                            obtenido: stats.recordPersonal > 0 && stats.matchesMes > stats.recordPersonal },
+    { nombre: '100% Cobrado del Mes',         icono: '💰', desc: 'Mes perfecto',                                               obtenido: stats.cobradoMesCompleto       },
+    { nombre: 'Primer Año Activa',            icono: '🌟', desc: 'Una Visionaria comprometida',                                obtenido: stats.antiguedadMeses >= 12    },
+  ];
+}
+
 function renderCuenta() {
   const container = document.querySelector("#cuenta .view-content");
-  const nivel = getNivel();
-  const stats = getCuentaStats();
-  const iniciales = perfil.nombre.trim().split(" ").slice(0, 2).map((w) => w[0].toUpperCase()).join("");
+  const stats     = getVisionStats();
+  const vs        = visionariaStats || {};
+  const puntos    = vs.puntos_historicos || 0;
+  const nivel     = getNivelMaestria(puntos);
+  const objetivo  = vs.objetivo_mensual || 15;
+  const progreso  = Math.min(1, objetivo > 0 ? stats.matchesMes / objetivo : 0);
+  const racha     = vs.racha_activa || 0;
+  const recordPersonal = stats.recordPersonal;
+
+  const iniciales_ = perfil.nombre.trim().split(" ").slice(0, 2).map(w => w[0].toUpperCase()).join("");
   const avatarContent = perfil.foto
     ? `<img src="${perfil.foto}" alt="${perfil.nombre}" class="cuenta-avatar-img">`
-    : iniciales;
+    : `<span class="vision-avatar-iniciales">${iniciales_}</span>`;
   const ayudaUrl = `https://wa.me/525579346962?text=${encodeURIComponent(`Hola ZETINA, soy ${perfil.nombre} y necesito ayuda con mi cuenta. 😊`)}`;
 
+  let mejorMesStr = '—';
+  if (stats.mejorMontoMesEntry) {
+    const [key, monto] = stats.mejorMontoMesEntry;
+    const [y, m] = key.split('-');
+    mejorMesStr = `${MESES_FULL[parseInt(m) - 1]} ${y} · ${formatPeso(monto)}`;
+  }
+
+  const progresoAncho = Math.round(progreso * 100);
+  const recordMsg = recordPersonal > 0
+    ? stats.matchesMes >= recordPersonal
+      ? `¡Superaste tu récord personal este mes! 🌟`
+      : `Te faltan ${recordPersonal - stats.matchesMes} matches para superar tu récord personal`
+    : '';
+
+  const logrosHTML = getLogros(stats).map(l => `
+    <div class="vision-logro${l.obtenido ? ' vision-logro--obtenido' : ''}">
+      <span class="vision-logro-icono">${l.icono}</span>
+      <p class="vision-logro-nombre">${l.nombre}</p>
+      <p class="vision-logro-desc">${l.desc}</p>
+      ${l.obtenido ? `<span class="vision-logro-tag">Obtenida ✓</span>` : ''}
+    </div>`).join('');
+
   container.innerHTML = `
-    <div class="cuenta-header">
-      <button class="cuenta-avatar cuenta-avatar--btn" id="btnAvatarFoto" aria-label="Cambiar foto de perfil">
-        ${avatarContent}
-        <span class="cuenta-avatar-cam" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-            <circle cx="12" cy="13" r="4"/>
+    <div class="vision-dashboard">
+
+      <div class="vision-perfil-header">
+        <button class="vision-avatar-btn" id="btnAvatarFoto" aria-label="Cambiar foto">
+          ${avatarContent}
+          <span class="vision-avatar-cam" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
+            </svg>
+          </span>
+        </button>
+        <div class="vision-perfil-info">
+          <h1 class="vision-nombre">${perfil.nombre}</h1>
+          <span class="vision-nivel-badge">${nivel}</span>
+        </div>
+      </div>
+
+      <div class="vision-bloque">
+        <h2 class="vision-bloque-titulo">Mi Negocio</h2>
+        <div class="vision-negocio-grid">
+          <div class="vision-stat-card">
+            <span class="vision-stat-label">Ganancia este mes</span>
+            <span class="vision-stat-valor">${formatPeso(stats.gananciaMes)}</span>
+          </div>
+          <div class="vision-stat-card">
+            <span class="vision-stat-label">Cobrado este mes</span>
+            <span class="vision-stat-valor">${formatPeso(stats.cobradoMes)}</span>
+          </div>
+          <div class="vision-stat-card">
+            <span class="vision-stat-label">Por cobrar</span>
+            <span class="vision-stat-valor${stats.porCobrarMes > 0 ? ' vision-stat-valor--alerta' : ''}">${formatPeso(stats.porCobrarMes)}</span>
+          </div>
+          <div class="vision-stat-card">
+            <span class="vision-stat-label">Ganancia histórica</span>
+            <span class="vision-stat-valor">${formatPeso(stats.gananciaHistorica)}</span>
+          </div>
+          <div class="vision-stat-card vision-stat-card--full">
+            <span class="vision-stat-label">Mejor mes</span>
+            <span class="vision-stat-valor">${mejorMesStr}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="vision-bloque">
+        <h2 class="vision-bloque-titulo">Mi Temporada <span class="vision-mes-actual">${stats.mesNombre} ${stats.anio}</span></h2>
+        <div class="vision-negocio-grid">
+          <div class="vision-stat-card">
+            <span class="vision-stat-label">Matches del mes</span>
+            <span class="vision-stat-valor vision-stat-valor--grande">${stats.matchesMes}</span>
+          </div>
+          <div class="vision-stat-card">
+            <span class="vision-stat-label">Puntos de temporada</span>
+            <span class="vision-stat-valor vision-stat-valor--grande">${vs.puntos_temporada || 0}</span>
+          </div>
+        </div>
+        <div class="vision-progreso-wrap">
+          <div class="vision-progreso-labels">
+            <span class="vision-progreso-label">Objetivo: ${objetivo} matches</span>
+            <span class="vision-progreso-label">${progresoAncho}%</span>
+          </div>
+          <div class="vision-progreso-barra">
+            <div class="vision-progreso-relleno" style="width:${progresoAncho}%"></div>
+          </div>
+        </div>
+        ${recordMsg ? `<p class="vision-record-msg${stats.matchesMes >= recordPersonal && recordPersonal > 0 ? ' vision-record-msg--logro' : ''}">${recordMsg}</p>` : ''}
+      </div>
+
+      <div class="vision-bloque">
+        <h2 class="vision-bloque-titulo">Mi Maestría</h2>
+        <div class="vision-maestria-lista">
+          <div class="vision-maestria-item">
+            <span class="vision-maestria-label">Nivel</span>
+            <span class="vision-maestria-valor vision-maestria-valor--nivel">${nivel}</span>
+          </div>
+          <div class="vision-maestria-item">
+            <span class="vision-maestria-label">Matches históricos</span>
+            <span class="vision-maestria-valor">${stats.matchesHistoricos}</span>
+          </div>
+          <div class="vision-maestria-item">
+            <span class="vision-maestria-label">Clientas recurrentes</span>
+            <span class="vision-maestria-valor">${stats.clientasRecurrentes}</span>
+          </div>
+          <div class="vision-maestria-item">
+            <span class="vision-maestria-label">Récord personal mensual</span>
+            <span class="vision-maestria-valor">${recordPersonal} matches</span>
+          </div>
+          <div class="vision-maestria-item">
+            <span class="vision-maestria-label">Antigüedad</span>
+            <span class="vision-maestria-valor">${stats.antiguedadMeses} ${stats.antiguedadMeses === 1 ? 'mes' : 'meses'}</span>
+          </div>
+          <div class="vision-maestria-item">
+            <span class="vision-maestria-label">Racha activa</span>
+            <span class="vision-maestria-valor">${racha} ${racha === 1 ? 'mes' : 'meses'} consecutivos</span>
+          </div>
+          <div class="vision-maestria-item vision-maestria-item--last">
+            <span class="vision-maestria-label">Puntos históricos</span>
+            <span class="vision-maestria-valor vision-maestria-valor--puntos">${puntos} pts</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="vision-bloque">
+        <h2 class="vision-bloque-titulo">Mis Logros</h2>
+        <div class="vision-logros-grid">${logrosHTML}</div>
+      </div>
+
+      <div class="cuenta-actions">
+        <button class="cuenta-action-btn" id="btnEditarPerfil">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
           </svg>
-        </span>
-      </button>
-      <h2 class="cuenta-nombre">${perfil.nombre}</h2>
-      <div class="cuenta-badges-row">
-        <span class="cuenta-nivel-badge">${nivel}</span>
+          Editar perfil
+        </button>
+        <a href="${ayudaUrl}" target="_blank" rel="noopener noreferrer" class="cuenta-action-btn cuenta-action-btn--wa">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${WA_PATH}"/></svg>
+          ¿Necesitas ayuda?
+        </a>
+        <button class="cuenta-action-btn cuenta-action-btn--danger" id="btnCerrarSesion">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          Cerrar sesión
+        </button>
       </div>
-    </div>
 
-    <div class="cuenta-stats-grid">
-      <div class="cuenta-stat-card cuenta-stat-card--vendido">
-        <span class="cuenta-stat-label">Total vendido</span>
-        <span class="cuenta-stat-value cuenta-stat-value--vendido">${formatPeso(stats.totalVendido)}</span>
-      </div>
-      <div class="cuenta-stat-card">
-        <span class="cuenta-stat-label">Total cobrado</span>
-        <span class="cuenta-stat-value">${formatPeso(stats.totalCobrado)}</span>
-      </div>
-      <div class="cuenta-stat-card cuenta-stat-card--accent">
-        <span class="cuenta-stat-label">Por cobrar</span>
-        <span class="cuenta-stat-value">${formatPeso(stats.totalPorCobrar)}</span>
-      </div>
-      <div class="cuenta-stat-card">
-        <span class="cuenta-stat-label">Clientas</span>
-        <span class="cuenta-stat-value cuenta-stat-value--num">${stats.totalClientas}</span>
-      </div>
-      <div class="cuenta-stat-card">
-        <span class="cuenta-stat-label">Prendas en inventario</span>
-        <span class="cuenta-stat-value cuenta-stat-value--num">${stats.prendas}</span>
-      </div>
-      <div class="cuenta-stat-card cuenta-stat-card--credito">
-        <span class="cuenta-stat-label">Crédito por devoluciones</span>
-        <span class="cuenta-stat-value">${formatPeso(perfil.credito || 0)}</span>
-      </div>
-    </div>
-
-    <div class="cuenta-actions">
-      <button class="cuenta-action-btn" id="btnEditarPerfil">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-        </svg>
-        Editar perfil
-      </button>
-      <a href="${ayudaUrl}" target="_blank" rel="noopener noreferrer" class="cuenta-action-btn cuenta-action-btn--wa">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${WA_PATH}"/></svg>
-        ¿Necesitas ayuda?
-      </a>
-      <button class="cuenta-action-btn cuenta-action-btn--danger" id="btnCerrarSesion">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-          <polyline points="16 17 21 12 16 7"/>
-          <line x1="21" y1="12" x2="9" y2="12"/>
-        </svg>
-        Cerrar sesión
-      </button>
     </div>
     <input type="file" id="avatarFileInput" accept="image/*" hidden>`;
 
   container.querySelector("#btnEditarPerfil").addEventListener("click", openPerfilEdit);
   container.querySelector("#btnCerrarSesion").addEventListener("click", openCerrarSesion);
-
   const avatarInput = container.querySelector("#avatarFileInput");
   container.querySelector("#btnAvatarFoto").addEventListener("click", () => avatarInput.click());
   avatarInput.addEventListener("change", (e) => {
@@ -3262,7 +3458,7 @@ async function initApp() {
     '<div class="catalog-loading"><span>Cargando catálogo…</span></div>';
 
   await loadPerfil();
-  await Promise.all([loadCatalogo(), loadInventario(), loadPedidos(), loadDevoluciones(), loadClientes(), loadPrestamos()]);
+  await Promise.all([loadCatalogo(), loadInventario(), loadPedidos(), loadDevoluciones(), loadClientes(), loadPrestamos(), loadVisionariaStats()]);
   await loadCobrosData();
 
   renderCatalog();
