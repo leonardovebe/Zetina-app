@@ -2755,10 +2755,88 @@ async function actualizarStats(evento, contexto = {}) {
   try {
     const { error } = await db.from('visionaria_stats')
       .update(updates).eq('vendedora_id', VENDEDORA_ID);
-    if (!error) Object.assign(visionariaStats, updates);
-    else console.error('[puntos] error DB:', error.message, error.code);
+    if (!error) {
+      Object.assign(visionariaStats, updates);
+      verificarLogros();
+    } else console.error('[puntos] error DB:', error.message, error.code);
   } catch (err) {
     console.error('[puntos] excepción:', err);
+  }
+}
+
+// ── Logros ───────────────────────────────────────────────────────────────────
+
+const LOGROS_NOMBRES = {
+  primer_match:               'Primer Match',
+  diez_matches:               '10 Matches',
+  veinticinco_matches:        '25 Matches',
+  cincuenta_matches:          '50 Matches',
+  cien_matches:               '100 Matches',
+  primera_clienta_recurrente: 'Primera Clienta Recurrente',
+  diez_clientas_recurrentes:  '10 Clientas Recurrentes',
+  record_superado:            'Récord Personal Superado',
+  mes_perfecto:               'Mes Perfecto',
+  primer_anio:                'Primer Año Activa',
+};
+
+function showToastLogro(msg) {
+  document.querySelector(".zt-toast-logro")?.remove();
+  const t = document.createElement("div");
+  t.className = "zt-toast zt-toast-logro";
+  t.textContent = msg;
+  document.body.appendChild(t);
+  requestAnimationFrame(() => t.classList.add("zt-toast--visible"));
+  setTimeout(() => {
+    t.classList.remove("zt-toast--visible");
+    t.addEventListener("transitionend", () => t.remove(), { once: true });
+  }, 4000);
+}
+
+async function verificarLogros(contexto = {}) {
+  if (!VENDEDORA_ID || !visionariaStats) return;
+  const vs = visionariaStats;
+  const logrosObtenidos = vs.logros_obtenidos || [];
+  const idsObtenidos = new Set(logrosObtenidos.map(l => l.id));
+
+  const antiguedadMeses = (() => {
+    if (!perfil.createdAt) return 0;
+    const cr = new Date(perfil.createdAt);
+    const ahora = new Date();
+    return (ahora.getFullYear() - cr.getFullYear()) * 12 + (ahora.getMonth() - cr.getMonth());
+  })();
+
+  const condiciones = {
+    primer_match:               (vs.matches_historicos || 0) >= 1,
+    diez_matches:               (vs.matches_historicos || 0) >= 10,
+    veinticinco_matches:        (vs.matches_historicos || 0) >= 25,
+    cincuenta_matches:          (vs.matches_historicos || 0) >= 50,
+    cien_matches:               (vs.matches_historicos || 0) >= 100,
+    primera_clienta_recurrente: (vs.clientas_recurrentes || 0) >= 1,
+    diez_clientas_recurrentes:  (vs.clientas_recurrentes || 0) >= 10,
+    record_superado:            (vs.record_personal || 0) > 0,
+    mes_perfecto:               contexto.mes_perfecto === true,
+    primer_anio:                antiguedadMeses >= 12,
+  };
+
+  const nuevos = Object.entries(condiciones)
+    .filter(([id, cumple]) => cumple && !idsObtenidos.has(id))
+    .map(([id]) => ({ id, fecha: new Date().toISOString().split('T')[0] }));
+
+  if (!nuevos.length) return;
+
+  const actualizados = [...logrosObtenidos, ...nuevos];
+  try {
+    const { error } = await db.from('visionaria_stats')
+      .update({ logros_obtenidos: actualizados })
+      .eq('vendedora_id', VENDEDORA_ID);
+    if (!error) {
+      visionariaStats.logros_obtenidos = actualizados;
+      nuevos.forEach((l, i) => {
+        setTimeout(() => showToastLogro(`🏅 ¡Nuevo logro desbloqueado! ${LOGROS_NOMBRES[l.id] || l.id}`), i * 1800);
+      });
+    } else console.error('[logros] error DB:', error.message);
+  } catch (err) {
+    console.error('[logros] excepción:', err);
   }
 }
 
@@ -2784,6 +2862,16 @@ async function checkResetTemporada() {
   const matchesTemp  = visionariaStats.matches_temporada || 0;
   const recordActual = visionariaStats.record_personal   || 0;
 
+  // Calcular mes_perfecto: total abonos del mes que cerró >= total ventas del mes
+  const mesKey = `${anioGuardado}-${String(mesGuardado).padStart(2, '0')}`;
+  const todasVentas = clientes.flatMap(c => c.compras || []);
+  const todosAbonos = clientes.flatMap(c => c.pagos   || []);
+  const ventasMesCerrado = todasVentas.filter(v => v.fecha?.slice(0, 7) === mesKey);
+  const abonosMesCerrado = todosAbonos.filter(a => a.fecha?.slice(0, 7) === mesKey);
+  const totalVentasCerrado = ventasMesCerrado.reduce((s, v) => s + v.monto, 0);
+  const totalAbonosCerrado = abonosMesCerrado.reduce((s, a) => s + a.monto, 0);
+  const mesPerfecto = totalVentasCerrado > 0 && totalAbonosCerrado >= totalVentasCerrado;
+
   if (matchesTemp > 0) await actualizarStats('mes_activo');
 
   if (matchesTemp > recordActual) {
@@ -2794,6 +2882,8 @@ async function checkResetTemporada() {
   await db.from('visionaria_stats').update(reset).eq('vendedora_id', VENDEDORA_ID);
   Object.assign(visionariaStats, reset);
   console.log('[puntos] temporada reseteada → mes', mesActual, anioActual);
+
+  await verificarLogros({ mes_perfecto: mesPerfecto });
 }
 
 const NIVELES = ["Stylist", "Estrella", "Líder", "Directora"];
@@ -2887,19 +2977,21 @@ function getVisionStats() {
   };
 }
 
-function getLogros(stats) {
+function getLogros() {
   const vs = visionariaStats || {};
+  const obtenidos = new Set((vs.logros_obtenidos || []).map(l => l.id));
+  const fechaMap  = Object.fromEntries((vs.logros_obtenidos || []).map(l => [l.id, l.fecha]));
   return [
-    { nombre: 'Primer Match',                 icono: '🎯', desc: 'Encontraste a la persona correcta para tu primera prenda',   obtenido: stats.matchesHistoricos >= 1   },
-    { nombre: '10 Matches',                   icono: '💫', desc: 'Tu criterio empieza a tomar forma',                          obtenido: stats.matchesHistoricos >= 10  },
-    { nombre: '25 Matches',                   icono: '✨', desc: 'Tu ojo para las afinidades es evidente',                     obtenido: stats.matchesHistoricos >= 25  },
-    { nombre: '50 Matches',                   icono: '🏆', desc: 'Medio centenar de conexiones perfectas',                     obtenido: stats.matchesHistoricos >= 50  },
-    { nombre: '100 Matches',                  icono: '👑', desc: 'Leyenda de afinidades',                                      obtenido: stats.matchesHistoricos >= 100 },
-    { nombre: 'Primera Clienta Recurrente',   icono: '💜', desc: 'Alguien confiará en ti más de una vez',                     obtenido: stats.clientasRecurrentes >= 1  },
-    { nombre: '10 Clientas Recurrentes',      icono: '🌸', desc: 'Construiste una comunidad fiel',                             obtenido: stats.clientasRecurrentes >= 10 },
-    { nombre: 'Récord Personal Superado',     icono: '⚡', desc: 'Mejor que nunca',                                            obtenido: stats.recordPersonal > 0 && stats.matchesMes > stats.recordPersonal },
-    { nombre: '100% Cobrado del Mes',         icono: '💰', desc: 'Mes perfecto',                                               obtenido: stats.cobradoMesCompleto       },
-    { nombre: 'Primer Año Activa',            icono: '🌟', desc: 'Una Visionaria comprometida',                                obtenido: stats.antiguedadMeses >= 12    },
+    { id: 'primer_match',               nombre: 'Primer Match',                 icono: '🎯', desc: 'Encontraste a la persona correcta para tu primera prenda',   obtenido: obtenidos.has('primer_match'),               fecha: fechaMap['primer_match'] },
+    { id: 'diez_matches',               nombre: '10 Matches',                   icono: '💫', desc: 'Tu criterio empieza a tomar forma',                          obtenido: obtenidos.has('diez_matches'),               fecha: fechaMap['diez_matches'] },
+    { id: 'veinticinco_matches',        nombre: '25 Matches',                   icono: '✨', desc: 'Tu ojo para las afinidades es evidente',                     obtenido: obtenidos.has('veinticinco_matches'),        fecha: fechaMap['veinticinco_matches'] },
+    { id: 'cincuenta_matches',          nombre: '50 Matches',                   icono: '🏆', desc: 'Medio centenar de conexiones perfectas',                     obtenido: obtenidos.has('cincuenta_matches'),          fecha: fechaMap['cincuenta_matches'] },
+    { id: 'cien_matches',               nombre: '100 Matches',                  icono: '👑', desc: 'Leyenda de afinidades',                                      obtenido: obtenidos.has('cien_matches'),               fecha: fechaMap['cien_matches'] },
+    { id: 'primera_clienta_recurrente', nombre: 'Primera Clienta Recurrente',   icono: '💜', desc: 'Alguien confiará en ti más de una vez',                      obtenido: obtenidos.has('primera_clienta_recurrente'), fecha: fechaMap['primera_clienta_recurrente'] },
+    { id: 'diez_clientas_recurrentes',  nombre: '10 Clientas Recurrentes',      icono: '🌸', desc: 'Construiste una comunidad fiel',                              obtenido: obtenidos.has('diez_clientas_recurrentes'),  fecha: fechaMap['diez_clientas_recurrentes'] },
+    { id: 'record_superado',            nombre: 'Récord Personal Superado',     icono: '⚡', desc: 'Mejor que nunca',                                             obtenido: obtenidos.has('record_superado'),            fecha: fechaMap['record_superado'] },
+    { id: 'mes_perfecto',               nombre: 'Mes Perfecto',                 icono: '💰', desc: '100% cobrado en un mes',                                     obtenido: obtenidos.has('mes_perfecto'),               fecha: fechaMap['mes_perfecto'] },
+    { id: 'primer_anio',                nombre: 'Primer Año Activa',            icono: '🌟', desc: 'Una Visionaria comprometida',                                obtenido: obtenidos.has('primer_anio'),                fecha: fechaMap['primer_anio'] },
   ];
 }
 
@@ -2934,12 +3026,12 @@ function renderCuenta() {
       : `Te faltan ${recordPersonal - stats.matchesMes} matches para superar tu récord personal`
     : '';
 
-  const logrosHTML = getLogros(stats).map(l => `
+  const logrosHTML = getLogros().map(l => `
     <div class="vision-logro${l.obtenido ? ' vision-logro--obtenido' : ''}">
       <span class="vision-logro-icono">${l.icono}</span>
       <p class="vision-logro-nombre">${l.nombre}</p>
       <p class="vision-logro-desc">${l.desc}</p>
-      ${l.obtenido ? `<span class="vision-logro-tag">Obtenida ✓</span>` : ''}
+      ${l.obtenido ? `<span class="vision-logro-tag">${l.fecha ? l.fecha.slice(0, 7).replace('-', '/') : '✓'}</span>` : ''}
     </div>`).join('');
 
   container.innerHTML = `
