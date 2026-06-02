@@ -1798,7 +1798,7 @@ function createDevolucionSheet() {
     btn.textContent = "Enviar solicitud";
 
     if (!error && !devoluciones.includes(prendaId)) devoluciones.push(prendaId);
-    if (!error) renderMisPrendas();
+    if (!error) { renderMisPrendas(); actualizarStats('devolucion'); }
     if (error) console.error("devolucion insert:", error.message);
 
     // Abrir WhatsApp siempre, haya o no error en Supabase
@@ -2166,6 +2166,15 @@ function createVendidaSheet() {
       overlay.classList.remove("open");
       renderMisPrendas();
       renderCobros();
+
+      // Puntos: check compras BEFORE this sale was added to local state
+      const comprasAnteriores = (c.compras || []).length;
+      actualizarStats('match_valido');
+      if (comprasAnteriores > 0) {
+        actualizarStats('clienta_recurrente', { primeraVezRecurrente: comprasAnteriores === 1 });
+      } else {
+        actualizarStats('clienta_nueva_con_venta');
+      }
 
       showVentaWhatsAppSheet(c, p, precioVenta);
     } catch (err) {
@@ -2713,6 +2722,78 @@ async function savePerfil() {
     credito: perfil.credito || 0,
     foto_url: perfil.foto || null,
   }).eq('id', VENDEDORA_ID);
+}
+
+// ── Sistema de puntos ────────────────────────────────────────────────────────
+
+const PUNTOS_REGLAS = {
+  match_valido:            { puntos_historicos: 10,  puntos_temporada: 10,  matches_historicos: 1, matches_temporada: 1 },
+  clienta_nueva_con_venta: { puntos_temporada: 5 },
+  clienta_recurrente:      { puntos_historicos: 15,  puntos_temporada: 15 },
+  venta_cobrada_completa:  { puntos_historicos: 5,   puntos_temporada: 5 },
+  record_superado:         { puntos_historicos: 30,  puntos_temporada: 30 },
+  mes_activo:              { puntos_historicos: 10 },
+  devolucion:              { puntos_historicos: -15, puntos_temporada: -15 },
+};
+
+async function actualizarStats(evento, contexto = {}) {
+  if (!VENDEDORA_ID || !visionariaStats) return;
+  const regla = PUNTOS_REGLAS[evento];
+  if (!regla) return;
+
+  const updates = {};
+  for (const [campo, delta] of Object.entries(regla)) {
+    updates[campo] = Math.max(0, (visionariaStats[campo] ?? 0) + delta);
+  }
+  if (contexto.primeraVezRecurrente) {
+    updates.clientas_recurrentes = (visionariaStats.clientas_recurrentes ?? 0) + 1;
+  }
+  if (contexto.nuevoRecord !== undefined) {
+    updates.record_personal = contexto.nuevoRecord;
+  }
+
+  try {
+    const { error } = await db.from('visionaria_stats')
+      .update(updates).eq('vendedora_id', VENDEDORA_ID);
+    if (!error) Object.assign(visionariaStats, updates);
+    else console.error('[puntos] error DB:', error.message, error.code);
+  } catch (err) {
+    console.error('[puntos] excepción:', err);
+  }
+}
+
+async function checkResetTemporada() {
+  if (!visionariaStats || !VENDEDORA_ID) return;
+
+  const ahora      = new Date();
+  const mesActual  = ahora.getMonth() + 1;
+  const anioActual = ahora.getFullYear();
+  const mesGuardado  = visionariaStats.temporada_mes  || 0;
+  const anioGuardado = visionariaStats.temporada_anio || 0;
+
+  if (!mesGuardado) {
+    const init = { temporada_mes: mesActual, temporada_anio: anioActual };
+    await db.from('visionaria_stats').update(init).eq('vendedora_id', VENDEDORA_ID);
+    Object.assign(visionariaStats, init);
+    return;
+  }
+
+  if (mesActual === mesGuardado && anioActual === anioGuardado) return;
+
+  // El mes cambió: procesar cierre de temporada anterior
+  const matchesTemp  = visionariaStats.matches_temporada || 0;
+  const recordActual = visionariaStats.record_personal   || 0;
+
+  if (matchesTemp > 0) await actualizarStats('mes_activo');
+
+  if (matchesTemp > recordActual) {
+    await actualizarStats('record_superado', { nuevoRecord: matchesTemp });
+  }
+
+  const reset = { puntos_temporada: 0, matches_temporada: 0, temporada_mes: mesActual, temporada_anio: anioActual };
+  await db.from('visionaria_stats').update(reset).eq('vendedora_id', VENDEDORA_ID);
+  Object.assign(visionariaStats, reset);
+  console.log('[puntos] temporada reseteada → mes', mesActual, anioActual);
 }
 
 const NIVELES = ["Stylist", "Estrella", "Líder", "Directora"];
@@ -3407,6 +3488,10 @@ function openAbonoForm(clienteId) {
     if (!c.pagos) c.pagos = [];
     c.pagos.push({ id: abono.id, fecha: abono.fecha, monto: abono.monto });
     _showAbonoConfirmacion(overlay, c, monto, fecha);
+    // Puntos: verificar si la clienta quedó al corriente
+    const totalVentas = (c.compras || []).reduce((s, v) => s + v.monto, 0);
+    const totalPagado = (c.pagos   || []).reduce((s, p) => s + p.monto, 0);
+    if (totalVentas > 0 && totalPagado >= totalVentas) actualizarStats('venta_cobrada_completa');
   });
 }
 
@@ -3460,6 +3545,7 @@ async function initApp() {
   await loadPerfil();
   await Promise.all([loadCatalogo(), loadInventario(), loadPedidos(), loadDevoluciones(), loadClientes(), loadPrestamos(), loadVisionariaStats()]);
   await loadCobrosData();
+  await checkResetTemporada();
 
   renderCatalog();
   renderPedidos();
