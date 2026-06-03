@@ -713,3 +713,168 @@ html, body {
   opacity: 1;
 }
 .admin-toast-icon { font-size: 1.125rem; }
+
+/* ── Formulario en filas ──────────────────────────────────────────────────── */
+.admin-form-row {
+  display: flex;
+  gap: 0.75rem;
+}
+.admin-form-row .admin-field-wrap { min-width: 0; }
+
+.admin-field-emoji { flex: 0 0 5.5rem; }
+.admin-input--emoji {
+  text-align: center;
+  font-size: 1.375rem;
+  padding: 0.75rem 0.5rem;
+}
+
+/* ── Textarea ────────────────────────────────────────────────────────────── */
+.admin-textarea {
+  resize: vertical;
+  min-height: 5rem;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+/* ── Select con estilo ZETINA ─────────────────────────────────────────────── */
+.admin-select-wrap {
+  position: relative;
+}
+.admin-select-wrap::after {
+  content: '';
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--lavender);
+  pointer-events: none;
+}
+.admin-select {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1.5px solid rgba(255, 255, 255, 0.13);
+  border-radius: 0.875rem;
+  padding: 0.875rem 2.5rem 0.875rem 1rem;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--content);
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.admin-select:focus {
+  border-color: var(--purple);
+  background: rgba(133, 90, 162, 0.1);
+}
+.admin-select option {
+  background: #1e0027;
+  color: var(--content);
+}
+.admin-select option[value="__nueva__"] {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Checkbox disponible ──────────────────────────────────────────────────── */
+.admin-field-row-check { flex-direction: row; align-items: center; }
+.admin-check-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  cursor: pointer;
+  font-size: 0.9375rem;
+  color: var(--lavender);
+}
+.admin-checkbox {
+  width: 1.125rem;
+  height: 1.125rem;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* ── Formulario Subir Prenda ──────────────────────────────────────────────── */
+.subir-prenda-form {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1.5rem;
+}
+
+/* ── Modal ancho para prendas ─────────────────────────────────────────────── */
+.admin-modal--wide {
+  max-width: 580px;
+}
+
+/* ── Lista de prendas admin ───────────────────────────────────────────────── */
+.prendas-admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.prenda-admin-card {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 0.875rem 1rem;
+  transition: border-color 0.15s;
+}
+.prenda-admin-card:hover { border-color: rgba(255, 255, 255, 0.2); }
+
+.pac-emoji {
+  flex-shrink: 0;
+  font-size: 1.75rem;
+  width: 2.5rem;
+  text-align: center;
+  line-height: 1;
+}
+
+.pac-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.pac-nombre {
+  font-family: var(--font-heading);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pac-sub {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pac-precios {
+  font-size: 0.8125rem;
+  color: var(--lavender);
+  margin-top: 0.1rem;
+}
+
+.pac-right {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+@media (max-width: 480px) {
+  .admin-form-row { flex-wrap: wrap; }
+  .admin-field-emoji { flex: 0 0 4.5rem; }
+}

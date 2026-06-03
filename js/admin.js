@@ -419,6 +419,239 @@ function initPedidosRealtime() {
     .subscribe();
 }
 
+// ── Categorias de prendas ─────────────────────────────────────────────────────
+
+let categoriasCache = [];
+
+async function loadCategorias() {
+  const { data } = await db
+    .from('categorias_prendas')
+    .select('id, nombre')
+    .order('nombre', { ascending: true });
+  categoriasCache = data || [];
+}
+
+function fillCategoriaSelect(selectEl, valorActual = '') {
+  const opts = categoriasCache.map(c =>
+    `<option value="${c.nombre}"${c.nombre === valorActual ? ' selected' : ''}>${c.nombre}</option>`
+  ).join('');
+  selectEl.innerHTML =
+    `<option value="">Seleccionar categoria...</option>${opts}<option value="__nueva__">+ Nueva categoria</option>`;
+  if (valorActual && valorActual !== '__nueva__') selectEl.value = valorActual;
+}
+
+function onCategoriaChange(selectEl, nuevaWrapEl) {
+  const isNueva = selectEl.value === '__nueva__';
+  nuevaWrapEl.hidden = !isNueva;
+  const input = nuevaWrapEl.querySelector('input');
+  input.required = isNueva;
+  if (!isNueva) input.value = '';
+}
+
+async function resolverCategoria(selectEl, nuevaInputEl) {
+  if (selectEl.value !== '__nueva__') return selectEl.value || null;
+  const nombre = nuevaInputEl.value.trim();
+  if (!nombre) throw new Error('Ingresa el nombre de la nueva categoria');
+  const { error } = await db.from('categorias_prendas').insert([{ nombre }]);
+  if (error && !error.message.includes('duplicate') && !error.message.includes('unique')) {
+    throw new Error('Error al crear categoria: ' + error.message);
+  }
+  await loadCategorias();
+  return nombre;
+}
+
+// ── Prendas (admin) ───────────────────────────────────────────────────────────
+
+let prendasAdmin = [];
+
+async function loadPrendasAdmin() {
+  document.getElementById('prendasAdminList').innerHTML = '<p class="admin-state-msg">Cargando...</p>';
+
+  const { data, error } = await db
+    .from('prendas')
+    .select('id, numero, nombre, marca, categoria, emoji, talla_etiqueta, talla_real, precio_costo, precio_min, precio_max, descripcion, gradiente, medida_1_nombre, medida_1_valor, medida_2_nombre, medida_2_valor, disponible')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    document.getElementById('prendasAdminList').innerHTML =
+      `<p class="admin-state-msg" style="color:#ff7b7b">Error al cargar: ${error.message}</p>`;
+    return;
+  }
+
+  prendasAdmin = data || [];
+  const sub = document.getElementById('prendasAdminSubtitle');
+  if (sub) sub.textContent = `${prendasAdmin.length} prenda${prendasAdmin.length !== 1 ? 's' : ''}`;
+  renderPrendasAdmin();
+}
+
+function renderPrendasAdmin() {
+  const list = document.getElementById('prendasAdminList');
+  if (!prendasAdmin.length) {
+    list.innerHTML = '<p class="admin-state-msg">No hay prendas en el catalogo todavia.</p>';
+    return;
+  }
+
+  list.innerHTML = prendasAdmin.map(p => {
+    const dispBadge = p.disponible
+      ? '<span class="vstatus vstatus--ok">Disponible</span>'
+      : '<span class="vstatus vstatus--none">No disponible</span>';
+    const sub = [p.marca, p.categoria].filter(Boolean).join(' · ');
+    return `
+      <div class="prenda-admin-card">
+        <span class="pac-emoji" aria-hidden="true">${p.emoji || '\u{1F45A}'}</span>
+        <div class="pac-info">
+          <p class="pac-nombre">${p.nombre}</p>
+          ${sub ? `<p class="pac-sub">${sub}</p>` : ''}
+          <p class="pac-precios">$${(p.precio_min || 0).toLocaleString('es-MX')} – $${(p.precio_max || 0).toLocaleString('es-MX')}</p>
+        </div>
+        <div class="pac-right">
+          ${dispBadge}
+          <button class="admin-btn-edit pac-edit-btn" data-id="${p.id}" aria-label="Editar ${p.nombre}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+        </div>
+      </div>`;
+  }).join('');
+
+  list.querySelectorAll('.pac-edit-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = prendasAdmin.find(x => x.id === btn.dataset.id);
+      if (p) openEditPrendaModal(p);
+    });
+  });
+}
+
+// ── Formulario subir prenda ───────────────────────────────────────────────────
+
+async function submitSubirPrenda(e) {
+  e.preventDefault();
+  const errEl = document.getElementById('subirPrendaError');
+  const btn   = document.getElementById('btnSubirPrenda');
+  errEl.textContent = '';
+  btn.disabled = true;
+  btn.textContent = 'Subiendo...';
+
+  try {
+    const nombre = document.getElementById('spNombre').value.trim();
+    if (!nombre) throw new Error('El nombre es obligatorio');
+
+    const categoria = await resolverCategoria(
+      document.getElementById('spCategoria'),
+      document.getElementById('spNuevaCat')
+    );
+
+    const { error } = await db.from('prendas').insert([{
+      nombre,
+      marca:          document.getElementById('spMarca').value.trim()          || null,
+      emoji:          document.getElementById('spEmoji').value.trim()           || '\u{1F45A}',
+      categoria,
+      talla_etiqueta: document.getElementById('spTallaEtiqueta').value.trim()  || null,
+      talla_real:     document.getElementById('spTallaReal').value.trim()      || null,
+      precio_costo:   parseFloat(document.getElementById('spPrecioCosto').value) || 0,
+      precio_min:     parseFloat(document.getElementById('spPrecioMin').value)   || 0,
+      precio_max:     parseFloat(document.getElementById('spPrecioMax').value)   || 0,
+      descripcion:    document.getElementById('spDescripcion').value.trim()    || null,
+      disponible:     true,
+    }]);
+
+    if (error) throw new Error(error.message);
+
+    document.getElementById('subirPrendaForm').reset();
+    document.getElementById('spNuevaCatWrap').hidden = true;
+    fillCategoriaSelect(document.getElementById('spCategoria'));
+    await loadPrendasAdmin();
+    mostrarToast('Prenda subida al catalogo');
+  } catch (err) {
+    errEl.textContent = err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Subir prenda';
+  }
+}
+
+// ── Modal editar prenda ───────────────────────────────────────────────────────
+
+let editingPrendaId = null;
+
+function openEditPrendaModal(p) {
+  editingPrendaId = p.id;
+  document.getElementById('epNombre').value        = p.nombre           || '';
+  document.getElementById('epEmoji').value         = p.emoji            || '';
+  document.getElementById('epMarca').value         = p.marca            || '';
+  document.getElementById('epTallaEtiqueta').value = p.talla_etiqueta   || '';
+  document.getElementById('epTallaReal').value     = p.talla_real       || '';
+  document.getElementById('epPrecioCosto').value   = p.precio_costo     || '';
+  document.getElementById('epPrecioMin').value     = p.precio_min       || '';
+  document.getElementById('epPrecioMax').value     = p.precio_max       || '';
+  document.getElementById('epDescripcion').value   = p.descripcion      || '';
+  document.getElementById('epDisponible').checked  = !!p.disponible;
+  document.getElementById('editPrendaError').textContent = '';
+
+  const selectEl  = document.getElementById('epCategoria');
+  const nuevaWrap = document.getElementById('epNuevaCatWrap');
+  fillCategoriaSelect(selectEl, p.categoria || '');
+  nuevaWrap.hidden = true;
+  nuevaWrap.querySelector('input').value    = '';
+  nuevaWrap.querySelector('input').required = false;
+
+  document.getElementById('prendaEditModal').hidden = false;
+  document.getElementById('epNombre').focus();
+}
+
+function closeEditPrendaModal() {
+  document.getElementById('prendaEditModal').hidden = true;
+  editingPrendaId = null;
+}
+
+async function submitEditPrenda(e) {
+  e.preventDefault();
+  const errEl = document.getElementById('editPrendaError');
+  const btn   = document.getElementById('btnGuardarPrenda');
+  errEl.textContent = '';
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+
+  try {
+    const nombre = document.getElementById('epNombre').value.trim();
+    if (!nombre) throw new Error('El nombre es obligatorio');
+
+    const categoria = await resolverCategoria(
+      document.getElementById('epCategoria'),
+      document.getElementById('epNuevaCat')
+    );
+
+    const updates = {
+      nombre,
+      marca:          document.getElementById('epMarca').value.trim()          || null,
+      emoji:          document.getElementById('epEmoji').value.trim()           || '\u{1F45A}',
+      categoria,
+      talla_etiqueta: document.getElementById('epTallaEtiqueta').value.trim()  || null,
+      talla_real:     document.getElementById('epTallaReal').value.trim()      || null,
+      precio_costo:   parseFloat(document.getElementById('epPrecioCosto').value) || 0,
+      precio_min:     parseFloat(document.getElementById('epPrecioMin').value)   || 0,
+      precio_max:     parseFloat(document.getElementById('epPrecioMax').value)   || 0,
+      descripcion:    document.getElementById('epDescripcion').value.trim()    || null,
+      disponible:     document.getElementById('epDisponible').checked,
+    };
+
+    const { error } = await db.from('prendas').update(updates).eq('id', editingPrendaId);
+    if (error) throw new Error(error.message);
+
+    closeEditPrendaModal();
+    await loadPrendasAdmin();
+    mostrarToast('Prenda actualizada');
+  } catch (err) {
+    errEl.textContent = err.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Guardar cambios';
+  }
+}
+
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 
 function switchTab(tabId) {
@@ -429,6 +662,7 @@ function switchTab(tabId) {
   });
   document.getElementById('tabVendedoras').hidden = tabId !== 'vendedoras';
   document.getElementById('tabPedidos').hidden    = tabId !== 'pedidos';
+  document.getElementById('tabPrendas').hidden    = tabId !== 'prendas';
 }
 
 function initTabs() {
@@ -439,6 +673,11 @@ function initTabs() {
       if (target === 'pedidos') {
         document.getElementById('pedidosNewDot').hidden = true;
         await loadPedidosTodos();
+      }
+      if (target === 'prendas') {
+        await loadCategorias();
+        fillCategoriaSelect(document.getElementById('spCategoria'));
+        await loadPrendasAdmin();
       }
     });
   });
@@ -454,8 +693,20 @@ function initTabs() {
   document.getElementById('modalClose').addEventListener('click', closeModal);
   document.getElementById('btnCancelar').addEventListener('click', closeModal);
   document.getElementById('vendedoraForm').addEventListener('submit', submitVendedoraForm);
-
   document.getElementById('vendedoraModal').addEventListener('click', (e) => {
     if (e.target === document.getElementById('vendedoraModal')) closeModal();
   });
+
+  document.getElementById('subirPrendaForm').addEventListener('submit', submitSubirPrenda);
+  document.getElementById('spCategoria').addEventListener('change', () =>
+    onCategoriaChange(document.getElementById('spCategoria'), document.getElementById('spNuevaCatWrap')));
+
+  document.getElementById('editPrendaForm').addEventListener('submit', submitEditPrenda);
+  document.getElementById('prendaModalClose').addEventListener('click', closeEditPrendaModal);
+  document.getElementById('btnCancelarPrenda').addEventListener('click', closeEditPrendaModal);
+  document.getElementById('prendaEditModal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('prendaEditModal')) closeEditPrendaModal();
+  });
+  document.getElementById('epCategoria').addEventListener('change', () =>
+    onCategoriaChange(document.getElementById('epCategoria'), document.getElementById('epNuevaCatWrap')));
 })();

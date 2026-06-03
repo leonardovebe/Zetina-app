@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/admin.css?v=11">
+  <link rel="stylesheet" href="css/admin.css?v=12">
 </head>
 <body>
 
@@ -51,6 +51,8 @@
         Pedidos
         <span id="pedidosNewDot" class="admin-tab-dot" hidden></span>
       </button>
+      <button class="admin-tab" data-tab="prendas" role="tab"
+              aria-selected="false" aria-controls="tabPrendas">Subir Prendas</button>
     </nav>
 
     <main class="admin-main">
@@ -81,6 +83,96 @@
         <div id="pedidosList" class="pedidos-admin-list">
           <p class="admin-state-msg">Cargando pedidos…</p>
         </div>
+      </div>
+
+      <!-- ── Tab: Subir Prendas ─────────────────────────────────────────────── -->
+      <div id="tabPrendas" class="admin-tab-panel" role="tabpanel" hidden>
+
+        <!-- Formulario de subida -->
+        <div class="admin-section-header">
+          <h2 class="admin-section-title">Subir prenda</h2>
+        </div>
+        <form id="subirPrendaForm" class="admin-form subir-prenda-form" novalidate>
+          <div class="admin-form-row">
+            <div class="admin-field-wrap" style="flex:1">
+              <label class="admin-label" for="spNombre">Nombre</label>
+              <input class="admin-input" id="spNombre" type="text"
+                     placeholder="Ej. Vestido floral" required autocomplete="off">
+            </div>
+            <div class="admin-field-wrap admin-field-emoji">
+              <label class="admin-label" for="spEmoji">Emoji</label>
+              <input class="admin-input admin-input--emoji" id="spEmoji" type="text"
+                     placeholder="&#x1F45A;" maxlength="2" autocomplete="off">
+            </div>
+          </div>
+          <div class="admin-form-row">
+            <div class="admin-field-wrap" style="flex:1">
+              <label class="admin-label" for="spMarca">Marca</label>
+              <input class="admin-input" id="spMarca" type="text"
+                     placeholder="Ej. Zara" autocomplete="off">
+            </div>
+            <div class="admin-field-wrap" style="flex:1">
+              <label class="admin-label" for="spCategoria">Categoria</label>
+              <div class="admin-select-wrap">
+                <select class="admin-select" id="spCategoria">
+                  <option value="">Seleccionar categoria...</option>
+                  <option value="__nueva__">+ Nueva categoria</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="admin-field-wrap" id="spNuevaCatWrap" hidden>
+            <label class="admin-label" for="spNuevaCat">Nueva categoria</label>
+            <input class="admin-input" id="spNuevaCat" type="text"
+                   placeholder="Nombre de la nueva categoria" autocomplete="off">
+          </div>
+          <div class="admin-form-row">
+            <div class="admin-field-wrap" style="flex:1">
+              <label class="admin-label" for="spTallaEtiqueta">Talla etiqueta</label>
+              <input class="admin-input" id="spTallaEtiqueta" type="text"
+                     placeholder="M" autocomplete="off">
+            </div>
+            <div class="admin-field-wrap" style="flex:1">
+              <label class="admin-label" for="spTallaReal">Talla real</label>
+              <input class="admin-input" id="spTallaReal" type="text"
+                     placeholder="L" autocomplete="off">
+            </div>
+          </div>
+          <div class="admin-form-row">
+            <div class="admin-field-wrap" style="flex:1">
+              <label class="admin-label" for="spPrecioCosto">Costo</label>
+              <input class="admin-input" id="spPrecioCosto" type="number"
+                     min="0" step="1" placeholder="0" required>
+            </div>
+            <div class="admin-field-wrap" style="flex:1">
+              <label class="admin-label" for="spPrecioMin">Precio min.</label>
+              <input class="admin-input" id="spPrecioMin" type="number"
+                     min="0" step="1" placeholder="0" required>
+            </div>
+            <div class="admin-field-wrap" style="flex:1">
+              <label class="admin-label" for="spPrecioMax">Precio max.</label>
+              <input class="admin-input" id="spPrecioMax" type="number"
+                     min="0" step="1" placeholder="0" required>
+            </div>
+          </div>
+          <div class="admin-field-wrap">
+            <label class="admin-label" for="spDescripcion">Descripcion (opcional)</label>
+            <textarea class="admin-input admin-textarea" id="spDescripcion"
+                      rows="3" placeholder="Descripcion de la prenda..."></textarea>
+          </div>
+          <p class="admin-form-error" id="subirPrendaError"></p>
+          <button type="submit" class="admin-btn-primary" id="btnSubirPrenda">Subir prenda</button>
+        </form>
+
+        <!-- Lista de prendas en catalogo -->
+        <div class="admin-section-header" style="margin-top:2.5rem">
+          <h2 class="admin-section-title">Prendas en catalogo</h2>
+          <span id="prendasAdminSubtitle" class="admin-section-sub"></span>
+        </div>
+        <div id="prendasAdminList" class="prendas-admin-list">
+          <p class="admin-state-msg">Abre la seccion para cargar las prendas.</p>
+        </div>
+
       </div>
 
     </main>
@@ -139,8 +231,103 @@
     </div>
   </div>
 
+  <!-- ── Modal editar prenda ─────────────────────────────────────────────── -->
+  <div id="prendaEditModal" class="admin-modal-overlay" hidden>
+    <div class="admin-modal admin-modal--wide" role="dialog" aria-modal="true" aria-labelledby="prendaModalTitle">
+      <div class="admin-modal-header">
+        <h3 class="admin-modal-title" id="prendaModalTitle">Editar prenda</h3>
+        <button class="admin-modal-close" id="prendaModalClose" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+               stroke-linecap="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <form id="editPrendaForm" class="admin-form" novalidate>
+        <div class="admin-form-row">
+          <div class="admin-field-wrap" style="flex:1">
+            <label class="admin-label" for="epNombre">Nombre</label>
+            <input class="admin-input" id="epNombre" type="text"
+                   placeholder="Nombre de la prenda" required autocomplete="off">
+          </div>
+          <div class="admin-field-wrap admin-field-emoji">
+            <label class="admin-label" for="epEmoji">Emoji</label>
+            <input class="admin-input admin-input--emoji" id="epEmoji" type="text"
+                   placeholder="&#x1F45A;" maxlength="2" autocomplete="off">
+          </div>
+        </div>
+        <div class="admin-form-row">
+          <div class="admin-field-wrap" style="flex:1">
+            <label class="admin-label" for="epMarca">Marca</label>
+            <input class="admin-input" id="epMarca" type="text"
+                   placeholder="Marca" autocomplete="off">
+          </div>
+          <div class="admin-field-wrap" style="flex:1">
+            <label class="admin-label" for="epCategoria">Categoria</label>
+            <div class="admin-select-wrap">
+              <select class="admin-select" id="epCategoria">
+                <option value="">Seleccionar categoria...</option>
+                <option value="__nueva__">+ Nueva categoria</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="admin-field-wrap" id="epNuevaCatWrap" hidden>
+          <label class="admin-label" for="epNuevaCat">Nueva categoria</label>
+          <input class="admin-input" id="epNuevaCat" type="text"
+                 placeholder="Nombre de la nueva categoria" autocomplete="off">
+        </div>
+        <div class="admin-form-row">
+          <div class="admin-field-wrap" style="flex:1">
+            <label class="admin-label" for="epTallaEtiqueta">Talla etiqueta</label>
+            <input class="admin-input" id="epTallaEtiqueta" type="text"
+                   placeholder="M" autocomplete="off">
+          </div>
+          <div class="admin-field-wrap" style="flex:1">
+            <label class="admin-label" for="epTallaReal">Talla real</label>
+            <input class="admin-input" id="epTallaReal" type="text"
+                   placeholder="L" autocomplete="off">
+          </div>
+        </div>
+        <div class="admin-form-row">
+          <div class="admin-field-wrap" style="flex:1">
+            <label class="admin-label" for="epPrecioCosto">Costo</label>
+            <input class="admin-input" id="epPrecioCosto" type="number"
+                   min="0" step="1" placeholder="0" required>
+          </div>
+          <div class="admin-field-wrap" style="flex:1">
+            <label class="admin-label" for="epPrecioMin">Precio min.</label>
+            <input class="admin-input" id="epPrecioMin" type="number"
+                   min="0" step="1" placeholder="0" required>
+          </div>
+          <div class="admin-field-wrap" style="flex:1">
+            <label class="admin-label" for="epPrecioMax">Precio max.</label>
+            <input class="admin-input" id="epPrecioMax" type="number"
+                   min="0" step="1" placeholder="0" required>
+          </div>
+        </div>
+        <div class="admin-field-wrap">
+          <label class="admin-label" for="epDescripcion">Descripcion</label>
+          <textarea class="admin-input admin-textarea" id="epDescripcion"
+                    rows="3" placeholder="Descripcion de la prenda..."></textarea>
+        </div>
+        <div class="admin-field-wrap admin-field-row-check">
+          <label class="admin-check-label">
+            <input type="checkbox" id="epDisponible" class="admin-checkbox" checked>
+            <span>Disponible en catalogo</span>
+          </label>
+        </div>
+        <p class="admin-form-error" id="editPrendaError"></p>
+        <div class="admin-form-actions">
+          <button type="button" class="admin-btn-secondary" id="btnCancelarPrenda">Cancelar</button>
+          <button type="submit" class="admin-btn-primary" id="btnGuardarPrenda">Guardar cambios</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase-config.js"></script>
-  <script src="js/admin.js?v=11"></script>
+  <script src="js/admin.js?v=12"></script>
 </body>
 </html>
