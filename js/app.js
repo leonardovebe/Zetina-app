@@ -21,12 +21,19 @@ function totalCarrito() {
   return carrito.reduce((sum, p) => sum + p.precioCosto, 0);
 }
 
-async function confirmarPedido() {
+async function confirmarPedido(dirId = null) {
   if (!carrito.length || !VENDEDORA_ID) throw new Error('Carrito vacío o sesión inválida');
+
+  const dir = dirId ? direcciones.find(d => d.id === dirId) : null;
+  const pedidoInsert = {
+    vendedora_id: VENDEDORA_ID,
+    estado: 'En proceso',
+    ...(dir && { direccion_entrega_id: dir.id, direccion_entrega_texto: formatDireccion(dir) }),
+  };
 
   const { data: pedido, error: errPedido } = await db
     .from('pedidos')
-    .insert([{ vendedora_id: VENDEDORA_ID, estado: 'En proceso' }])
+    .insert([pedidoInsert])
     .select()
     .single();
 
@@ -119,6 +126,14 @@ function refreshCartSheet() {
       <span class="cart-total-label">Total a pagar a ZETINA</span>
       <span class="cart-total-value">${formatPeso(totalCarrito())}</span>
     </div>
+    ${direcciones.length > 0 ? `
+    <div class="cart-direccion-wrap">
+      <p class="cart-direccion-label">📦 Dirección de entrega</p>
+      <select class="cart-direccion-select" id="cartDirSelect">
+        <option value="">Sin dirección especificada</option>
+        ${direcciones.map(d => `<option value="${d.id}" ${d.predeterminada ? 'selected' : ''}>${d.alias} — ${d.colonia}, ${d.municipio}</option>`).join('')}
+      </select>
+    </div>` : ''}
     <button class="btn-confirmar-pedido" id="btnConfirmarPedido">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${WA_PATH}"/></svg>
       Confirmar pedido
@@ -163,10 +178,11 @@ function createCartSheet() {
       const errEl = document.getElementById("cartError");
       if (errEl) errEl.hidden = true;
       const waUrl = buildCartWhatsappUrl();
+      const dirId = document.getElementById('cartDirSelect')?.value || null;
       btn.disabled = true;
       btn.textContent = "Guardando pedido…";
       try {
-        await confirmarPedido();
+        await confirmarPedido(dirId);
         clearCarrito();
         closeCartSheet();
         Promise.all([loadPedidos(), loadCatalogo()]).then(() => {
@@ -360,7 +376,7 @@ async function loadCatalogo() {
   // y b) la columna puede no existir si el schema-admin.sql no se ejecutó todavía.
   const { data, error } = await db
     .from('prendas')
-    .select('id, numero, nombre, marca, categoria, emoji, gradiente, talla_etiqueta, talla_real, precio_costo, precio_min, precio_max, descripcion, fotos_prendas(url)')
+    .select('id, numero, nombre, marca, categoria, emoji, gradiente, talla_etiqueta, talla_real, precio_costo, precio_min, precio_max, descripcion, medida_1_nombre, medida_1_valor, medida_2_nombre, medida_2_valor, fotos_prendas(url)')
     .eq('disponible', true)
     .order('created_at', { ascending: false });
 
@@ -381,9 +397,13 @@ async function loadCatalogo() {
       precioMin:     p.precio_min     || 0,
       precioMax:     p.precio_max     || 0,
       gradiente:     p.gradiente || 'linear-gradient(150deg, #130016 0%, #855AA2 100%)',
-      descripcion:   p.descripcion || '',
+      descripcion:    p.descripcion || '',
+      medida1Nombre:  p.medida_1_nombre || null,
+      medida1Valor:   p.medida_1_valor  != null ? +p.medida_1_valor  : null,
+      medida2Nombre:  p.medida_2_nombre || null,
+      medida2Valor:   p.medida_2_valor  != null ? +p.medida_2_valor  : null,
       fotos,
-      foto:          fotos[0] || null,
+      foto:           fotos[0] || null,
     };
   });
 }
@@ -425,9 +445,10 @@ async function loadPedidos() {
 
 // ── Inventario de la vendedora ───────────────────────────────────────────────
 
-let inventario = [];
+let inventario   = [];
 let devoluciones = []; // prenda_ids con estado "Pendiente"
 let prestamos    = []; // préstamos activos { id, prenda_id, clienta_id }
+let direcciones  = []; // direcciones de envío de la visionaria
 
 async function loadInventario() {
   if (!VENDEDORA_ID) return;
@@ -454,11 +475,15 @@ async function loadInventario() {
       precioCosto: p.precio_costo || 0,
       precioMin: p.precio_min || 0,
       precioMax: p.precio_max || 0,
-      gradiente: p.gradiente || 'linear-gradient(150deg, #130016 0%, #855AA2 100%)',
-      descripcion: p.descripcion || '',
+      gradiente:     p.gradiente || 'linear-gradient(150deg, #130016 0%, #855AA2 100%)',
+      descripcion:   p.descripcion || '',
+      medida1Nombre: p.medida_1_nombre || null,
+      medida1Valor:  p.medida_1_valor  != null ? +p.medida_1_valor  : null,
+      medida2Nombre: p.medida_2_nombre || null,
+      medida2Valor:  p.medida_2_valor  != null ? +p.medida_2_valor  : null,
       fotos,
-      fechaEntrega: inv.fecha_entrega,
-      estado: inv.estado || 'activo',
+      fechaEntrega:  inv.fecha_entrega,
+      estado:        inv.estado || 'activo',
     };
   });
 }
@@ -481,6 +506,44 @@ async function loadDevoluciones() {
     .eq('vendedora_id', VENDEDORA_ID)
     .eq('estado', 'Pendiente');
   devoluciones = (data || []).map(d => d.prenda_id);
+}
+
+async function loadDirecciones() {
+  if (!VENDEDORA_ID) return;
+  const { data } = await db
+    .from('direcciones_vendedoras')
+    .select('*')
+    .eq('vendedora_id', VENDEDORA_ID)
+    .order('predeterminada', { ascending: false });
+  direcciones = data || [];
+}
+
+// ── Medidas de clientas ──────────────────────────────────────────────────────
+
+const _MEDIDA_DB = { Cintura: 'medida_cintura', Busto: 'medida_busto', Cadera: 'medida_cadera' };
+const _MEDIDA_LOCAL = { Cintura: 'medidaCintura', Busto: 'medidaBusto', Cadera: 'medidaCadera' };
+
+async function actualizarMedidasClienta(clienteId, prenda) {
+  const c = clientes.find(cl => cl.id === clienteId);
+  if (!c) return;
+  const updates = {};
+  const pares = [
+    { nombre: prenda.medida1Nombre, valor: prenda.medida1Valor },
+    { nombre: prenda.medida2Nombre, valor: prenda.medida2Valor },
+  ];
+  for (const { nombre, valor } of pares) {
+    if (!nombre || valor == null) continue;
+    const dbField    = _MEDIDA_DB[nombre];
+    const localField = _MEDIDA_LOCAL[nombre];
+    if (!dbField) continue;
+    updates[dbField] = valor;
+    c[localField]    = valor;
+  }
+  if (!Object.keys(updates).length) return;
+  updates.medida_actualizada_en = new Date().toISOString();
+  await db.from('clientes').update(updates).eq('id', clienteId).then(({ error }) => {
+    if (error) console.warn('[medidas clienta] error:', error.message);
+  });
 }
 
 async function marcarVendida(prendaId) {
@@ -728,6 +791,11 @@ function buildCatalogCard(p) {
           </div>
         </div>
         <button class="btn-desc-catalogo" data-desc-id="${p.id}" type="button">Cómo vender</button>
+        ${(p.medida1Valor || p.medida2Valor) ? `
+        <button class="btn-matches-catalogo" data-matches-id="${p.id}" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true" width="12" height="12"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          Ver matches
+        </button>` : ''}
         <div class="card-actions">
           <a href="${buildWhatsappUrl(p)}"
              target="_blank" rel="noopener noreferrer"
@@ -875,6 +943,12 @@ function renderCatalog() {
     if (descBtn) {
       const p = catalogo.find((x) => String(x.id) === descBtn.dataset.descId);
       if (p) openPrendaDetalle(p, false);
+      return;
+    }
+    const matchesBtn = e.target.closest(".btn-matches-catalogo");
+    if (matchesBtn) {
+      const p = catalogo.find(x => String(x.id) === matchesBtn.dataset.matchesId);
+      if (p) openMatchesSheet(p);
       return;
     }
     const imgDiv = e.target.closest("[data-gallery-id]");
@@ -1110,6 +1184,9 @@ async function loadClientes() {
       tallaCalzado: row.talla_calzado || '',
       fechaCumpleanos: row.fecha_cumpleanos || '',
       notas: row.notas || '',
+      medidaCintura: row.medida_cintura != null ? +row.medida_cintura : null,
+      medidaBusto:   row.medida_busto   != null ? +row.medida_busto   : null,
+      medidaCadera:  row.medida_cadera  != null ? +row.medida_cadera  : null,
       compras: [],
       pagos: [],
     }));
@@ -1324,6 +1401,15 @@ function openClienteDetail(id) {
         <span class="detail-value detail-notes">${c.notas}</span>
       </div>` : ""}
     </div>
+    ${(c.medidaCintura || c.medidaBusto || c.medidaCadera) ? `
+    <div class="detail-medidas-bloque">
+      <p class="detail-medidas-titulo">Medidas aproximadas <span class="detail-medidas-hint">(historial de compras)</span></p>
+      <div class="detail-medidas-chips">
+        ${c.medidaBusto   ? `<span class="medida-chip">Busto <strong>${c.medidaBusto} cm</strong></span>`   : ''}
+        ${c.medidaCintura ? `<span class="medida-chip">Cintura <strong>${c.medidaCintura} cm</strong></span>` : ''}
+        ${c.medidaCadera  ? `<span class="medida-chip">Cadera <strong>${c.medidaCadera} cm</strong></span>`  : ''}
+      </div>
+    </div>` : ''}
     <a href="https://wa.me/52${c.telefono}" target="_blank" rel="noopener noreferrer"
        class="btn-wa-cliente">
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="${WA_PATH}"/></svg>
@@ -1687,6 +1773,8 @@ function createVentaFormSheet() {
       c.compras.unshift({ id: venta.id, prendaId: venta.prenda_id, prenda: venta.nombre_prenda || nombre, marca: venta.marca || '', fecha: venta.fecha, monto: venta.monto });
       if (prendaId) {
         await marcarVendida(prendaId);
+        const pVendida = inventario.find(x => x.id === prendaId);
+        if (pVendida) actualizarMedidasClienta(currentVentaClienteId, pVendida);
         inventario = inventario.filter((p) => p.id !== prendaId);
         renderMisPrendas();
       }
@@ -2166,6 +2254,7 @@ function createVendidaSheet() {
       overlay.classList.remove("open");
       renderMisPrendas();
       renderCobros();
+      actualizarMedidasClienta(c.id, p);
 
       // Puntos: check compras BEFORE this sale was added to local state
       const comprasAnteriores = (c.compras || []).length;
@@ -2201,6 +2290,118 @@ function openVendidaSheet(prendaId) {
   overlay.classList.add("open");
 }
 
+// ── Matches de prendas con clientas ─────────────────────────────────────────
+
+function _matchScore(prendaMedida, clientaVal) {
+  if (clientaVal == null || prendaMedida == null) return null;
+  const diff = Math.abs(clientaVal - prendaMedida);
+  if (diff <= 2) return 'perfect';
+  if (diff <= 5) return 'possible';
+  return 'none';
+}
+
+function calcularMatchPrenda(prenda, clienta) {
+  const pares = [
+    { nombre: prenda.medida1Nombre, valor: prenda.medida1Valor },
+    { nombre: prenda.medida2Nombre, valor: prenda.medida2Valor },
+  ];
+  let hasPerfect = false;
+  let hasPossible = false;
+  for (const { nombre, valor } of pares) {
+    if (!nombre || valor == null) continue;
+    const localField = _MEDIDA_LOCAL[nombre];
+    if (!localField) continue;
+    const score = _matchScore(valor, clienta[localField]);
+    if (score === 'perfect') hasPerfect = true;
+    else if (score === 'possible') hasPossible = true;
+  }
+  if (hasPerfect)  return 'perfect';
+  if (hasPossible) return 'possible';
+  return 'none';
+}
+
+function createMatchesSheet() {
+  if (document.getElementById('matchesOverlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'matchesOverlay';
+  overlay.className = 'order-detail-overlay';
+  overlay.innerHTML = `
+    <div class="order-detail-sheet">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-topbar">
+        <button class="btn-sheet-close" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="sheet-body" id="matchesSheetBody"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('.btn-sheet-close').addEventListener('click', () => overlay.classList.remove('open'));
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+}
+
+function openMatchesSheet(prenda) {
+  createMatchesSheet();
+  const overlay = document.getElementById('matchesOverlay');
+  const body    = document.getElementById('matchesSheetBody');
+
+  const clientasConMedidas = clientes.filter(c =>
+    c.medidaCintura != null || c.medidaBusto != null || c.medidaCadera != null
+  );
+
+  if (!clientasConMedidas.length) {
+    body.innerHTML = `
+      <h3 class="cart-title" style="margin-bottom:0.5rem">Ver matches</h3>
+      <p class="matches-empty-msg">Aún no hay suficiente historial para sugerir matches.<br>¡Registra más ventas para generar medidas!</p>`;
+    overlay.classList.add('open');
+    return;
+  }
+
+  const scoradas = clientasConMedidas.map(c => ({
+    clienta: c,
+    score: calcularMatchPrenda(prenda, c),
+  })).filter(x => x.score !== 'none');
+
+  const perfectas = scoradas.filter(x => x.score === 'perfect');
+  const posibles  = scoradas.filter(x => x.score === 'possible');
+
+  const buildRow = ({ clienta, score }) => {
+    const pal = avatarPalette(clienta.id);
+    const icon = score === 'perfect' ? '✅' : '🟡';
+    const label = score === 'perfect' ? 'Match perfecto' : 'Match posible';
+    return `
+      <div class="match-row">
+        <div class="match-avatar" style="background:${pal.bg};color:${pal.color}">${iniciales(clienta.nombre)}</div>
+        <div class="match-info">
+          <p class="match-nombre">${clienta.nombre}</p>
+          <p class="match-medidas">${[
+            clienta.medidaBusto   ? `Busto ${clienta.medidaBusto}cm`   : '',
+            clienta.medidaCintura ? `Cintura ${clienta.medidaCintura}cm` : '',
+            clienta.medidaCadera  ? `Cadera ${clienta.medidaCadera}cm`  : '',
+          ].filter(Boolean).join(' · ')}</p>
+        </div>
+        <span class="match-badge match-badge--${score}" title="${label}">${icon}</span>
+      </div>`;
+  };
+
+  body.innerHTML = `
+    <h3 class="cart-title" style="margin-bottom:0.25rem">Ver matches</h3>
+    <p class="matches-prenda-info">${prenda.nombre} · ${prenda.medida1Nombre ? `${prenda.medida1Nombre} ${prenda.medida1Valor}cm` : ''}${prenda.medida2Nombre ? ` / ${prenda.medida2Nombre} ${prenda.medida2Valor}cm` : ''}</p>
+
+    ${perfectas.length ? `
+    <p class="matches-seccion-label">✅ Match perfecto <span class="matches-seccion-hint">±2cm</span></p>
+    ${perfectas.map(buildRow).join('')}` : ''}
+
+    ${posibles.length ? `
+    <p class="matches-seccion-label" style="margin-top:1rem">🟡 Match posible <span class="matches-seccion-hint">3–5cm</span></p>
+    ${posibles.map(buildRow).join('')}` : ''}
+
+    ${!perfectas.length && !posibles.length ? `
+    <p class="matches-empty-msg">Ninguna clienta encaja en este rango.<br>Sigue registrando ventas para ampliar el historial.</p>` : ''}`;
+
+  overlay.classList.add('open');
+}
+
 // ── Render: Mis Prendas ─────────────────────────────────────────────────────
 
 function buildInvCard(p) {
@@ -2234,6 +2435,11 @@ function buildInvCard(p) {
         <button class="btn-inv-info" data-info="${p.id}" aria-label="Ver descripción">
           Ver descripción
         </button>
+        ${(p.medida1Valor || p.medida2Valor) ? `
+        <button class="btn-inv-matches" data-matches-id="${p.id}" aria-label="Ver matches">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true" width="12" height="12"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          Ver matches
+        </button>` : ''}
         ${isPrestada
           ? `<button class="btn-inv-devolver" data-prestamo-id="${prestamo?.id}" data-inv-id="${p.invId}">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="12" height="12"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
@@ -2299,6 +2505,12 @@ function renderMisPrendas() {
     if (infoBtn) {
       const p = inventario.find((x) => x.id === infoBtn.dataset.info);
       if (p) openPrendaDetalle(p, true);
+      return;
+    }
+    const matchesBtn = e.target.closest(".btn-inv-matches");
+    if (matchesBtn) {
+      const p = inventario.find(x => x.id === matchesBtn.dataset.matchesId);
+      if (p) openMatchesSheet(p);
       return;
     }
     const vendidaBtn = e.target.closest(".btn-inv-vendida");
@@ -2907,6 +3119,157 @@ function getCuentaStats() {
   return { totalVendido, totalCobrado, totalPorCobrar, totalClientas: clientes.length, prendas: inventario.length };
 }
 
+// ── Direcciones de envío ─────────────────────────────────────────────────────
+
+function formatDireccion(d) {
+  return `${d.calle} ${d.num_exterior}${d.num_interior ? ' Int. ' + d.num_interior : ''}, ${d.colonia}, ${d.municipio}, ${d.estado_dir} ${d.codigo_postal}`;
+}
+
+function createDireccionSheet() {
+  if (document.getElementById('dirOverlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'dirOverlay';
+  overlay.className = 'order-detail-overlay';
+  overlay.innerHTML = `
+    <div class="order-detail-sheet">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-topbar">
+        <button class="btn-sheet-close" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="sheet-body" id="dirSheetBody"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('.btn-sheet-close').addEventListener('click', () => overlay.classList.remove('open'));
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+}
+
+function openDireccionForm(dirId = null) {
+  createDireccionSheet();
+  const overlay = document.getElementById('dirOverlay');
+  const body    = document.getElementById('dirSheetBody');
+  const d = dirId ? direcciones.find(x => x.id === dirId) : null;
+
+  body.innerHTML = `
+    <h3 class="cart-title" style="margin-bottom:1.25rem">${d ? 'Editar dirección' : 'Nueva dirección'}</h3>
+    <form id="dirForm" class="cliente-form">
+      <div class="form-group">
+        <label class="form-label" for="dAlias">Alias</label>
+        <input class="form-input" id="dAlias" name="alias" type="text" placeholder="Ej. Casa, Trabajo" required value="${d?.alias || ''}">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="dCalle">Calle y número exterior</label>
+        <input class="form-input" id="dCalle" name="calle" type="text" placeholder="Ej. Av. Insurgentes 1234" required value="${d?.calle || ''}">
+      </div>
+      <div class="dir-grid-2">
+        <div class="form-group">
+          <label class="form-label" for="dNumExt">Núm. exterior</label>
+          <input class="form-input" id="dNumExt" name="num_exterior" type="text" placeholder="1234" required value="${d?.num_exterior || ''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="dNumInt">Núm. interior <span class="form-opt">(opcional)</span></label>
+          <input class="form-input" id="dNumInt" name="num_interior" type="text" placeholder="Apt 5B" value="${d?.num_interior || ''}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="dColonia">Colonia</label>
+        <input class="form-input" id="dColonia" name="colonia" type="text" required value="${d?.colonia || ''}">
+      </div>
+      <div class="dir-grid-2">
+        <div class="form-group">
+          <label class="form-label" for="dMunicipio">Municipio / Alcaldía</label>
+          <input class="form-input" id="dMunicipio" name="municipio" type="text" required value="${d?.municipio || ''}">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="dEstado">Estado</label>
+          <input class="form-input" id="dEstado" name="estado_dir" type="text" required value="${d?.estado_dir || ''}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="dCP">Código postal</label>
+        <input class="form-input" id="dCP" name="codigo_postal" type="text" inputmode="numeric" maxlength="5" required value="${d?.codigo_postal || ''}">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="dRefs">Referencias <span class="form-opt">(opcional)</span></label>
+        <input class="form-input" id="dRefs" name="referencias" type="text" placeholder="Ej. Frente al parque" value="${d?.referencias || ''}">
+      </div>
+      <label class="dir-predeterminada-check">
+        <input type="checkbox" id="dPredeterminada" name="predeterminada" ${d?.predeterminada ? 'checked' : ''}>
+        Marcar como dirección predeterminada
+      </label>
+      <p id="dirFormError" class="form-error" hidden></p>
+      <button type="submit" class="btn-save-cliente">${d ? 'Guardar cambios' : 'Agregar dirección'}</button>
+    </form>`;
+
+  document.getElementById('dirForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn  = e.target.querySelector('[type=submit]');
+    const errEl = document.getElementById('dirFormError');
+    errEl.hidden = true;
+    btn.disabled = true;
+    btn.textContent = 'Guardando…';
+
+    const fd = new FormData(e.target);
+    const predeterminada = document.getElementById('dPredeterminada').checked;
+    const payload = {
+      vendedora_id:  VENDEDORA_ID,
+      alias:         fd.get('alias').trim(),
+      calle:         fd.get('calle').trim(),
+      num_exterior:  fd.get('num_exterior').trim(),
+      num_interior:  fd.get('num_interior').trim() || null,
+      colonia:       fd.get('colonia').trim(),
+      municipio:     fd.get('municipio').trim(),
+      estado_dir:    fd.get('estado_dir').trim(),
+      codigo_postal: fd.get('codigo_postal').trim(),
+      referencias:   fd.get('referencias').trim() || null,
+      predeterminada,
+    };
+
+    if (predeterminada) {
+      await db.from('direcciones_vendedoras').update({ predeterminada: false }).eq('vendedora_id', VENDEDORA_ID);
+    }
+
+    let error;
+    if (dirId) {
+      ({ error } = await db.from('direcciones_vendedoras').update(payload).eq('id', dirId));
+    } else {
+      ({ error } = await db.from('direcciones_vendedoras').insert(payload));
+    }
+
+    if (error) {
+      errEl.textContent = error.message;
+      errEl.hidden = false;
+      btn.disabled = false;
+      btn.textContent = d ? 'Guardar cambios' : 'Agregar dirección';
+      return;
+    }
+
+    await loadDirecciones();
+    overlay.classList.remove('open');
+    renderCuenta();
+    showToast(dirId ? 'Dirección actualizada' : 'Dirección agregada');
+  });
+
+  overlay.classList.add('open');
+}
+
+async function eliminarDireccion(id) {
+  if (!confirm('¿Eliminar esta dirección?')) return;
+  const { error } = await db.from('direcciones_vendedoras').delete().eq('id', id);
+  if (error) { showToast('Error al eliminar'); return; }
+  await loadDirecciones();
+  renderCuenta();
+  showToast('Dirección eliminada');
+}
+
+async function marcarPredeterminada(id) {
+  await db.from('direcciones_vendedoras').update({ predeterminada: false }).eq('vendedora_id', VENDEDORA_ID);
+  await db.from('direcciones_vendedoras').update({ predeterminada: true  }).eq('id', id);
+  await loadDirecciones();
+  renderCuenta();
+}
+
 // ── Mi Visión: helpers ───────────────────────────────────────────────────────
 
 function getNivelMaestria(puntos) {
@@ -3141,6 +3504,29 @@ function renderCuenta() {
         <div class="vision-logros-grid">${logrosHTML}</div>
       </div>
 
+      <div class="vision-bloque">
+        <div class="vision-bloque-header">
+          <h2 class="vision-bloque-titulo">Mis Direcciones</h2>
+          <button class="btn-dir-add" id="btnAgregarDir">+ Agregar</button>
+        </div>
+        ${!direcciones.length
+          ? `<p class="dir-empty">Aún no tienes direcciones guardadas.</p>`
+          : direcciones.map(d => `
+            <div class="dir-card${d.predeterminada ? ' dir-card--default' : ''}">
+              <div class="dir-card-head">
+                <span class="dir-alias">${d.alias}</span>
+                ${d.predeterminada ? '<span class="dir-default-badge">Predeterminada</span>' : ''}
+              </div>
+              <p class="dir-texto">${formatDireccion(d)}</p>
+              ${d.referencias ? `<p class="dir-refs">${d.referencias}</p>` : ''}
+              <div class="dir-card-actions">
+                ${!d.predeterminada ? `<button class="btn-dir-action btn-dir-default" data-dir-default="${d.id}">Predeterminar</button>` : ''}
+                <button class="btn-dir-action" data-dir-edit="${d.id}">Editar</button>
+                <button class="btn-dir-action btn-dir-delete" data-dir-delete="${d.id}">Eliminar</button>
+              </div>
+            </div>`).join('')}
+      </div>
+
       <div class="cuenta-actions">
         <button class="cuenta-action-btn" id="btnEditarPerfil">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -3168,6 +3554,10 @@ function renderCuenta() {
 
   container.querySelector("#btnEditarPerfil").addEventListener("click", openPerfilEdit);
   container.querySelector("#btnCerrarSesion").addEventListener("click", openCerrarSesion);
+  container.querySelector("#btnAgregarDir")?.addEventListener("click", () => openDireccionForm());
+  container.querySelectorAll("[data-dir-edit]").forEach(btn => btn.addEventListener("click", () => openDireccionForm(btn.dataset.dirEdit)));
+  container.querySelectorAll("[data-dir-delete]").forEach(btn => btn.addEventListener("click", () => eliminarDireccion(btn.dataset.dirDelete)));
+  container.querySelectorAll("[data-dir-default]").forEach(btn => btn.addEventListener("click", () => marcarPredeterminada(btn.dataset.dirDefault)));
   const avatarInput = container.querySelector("#avatarFileInput");
   container.querySelector("#btnAvatarFoto").addEventListener("click", () => avatarInput.click());
   avatarInput.addEventListener("change", (e) => {
@@ -3635,7 +4025,7 @@ async function initApp() {
     '<div class="catalog-loading"><span>Cargando catálogo…</span></div>';
 
   await loadPerfil();
-  await Promise.all([loadCatalogo(), loadInventario(), loadPedidos(), loadDevoluciones(), loadClientes(), loadPrestamos(), loadVisionariaStats()]);
+  await Promise.all([loadCatalogo(), loadInventario(), loadPedidos(), loadDevoluciones(), loadClientes(), loadPrestamos(), loadVisionariaStats(), loadDirecciones()]);
   await loadCobrosData();
   await checkResetTemporada();
 

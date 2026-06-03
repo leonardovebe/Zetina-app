@@ -4027,3 +4027,311 @@ h1, h2, h3, h4, h5, h6,
   color: #333;
   line-height: 1.4;
 }
+
+/* ── Medidas inferidas en perfil de clienta ─────────────────────────────── */
+.detail-medidas-bloque {
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  background: rgba(133,90,162,0.07);
+  border-radius: 12px;
+  border: 1px solid rgba(133,90,162,0.18);
+}
+
+.detail-medidas-titulo {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #855AA2;
+  margin-bottom: 0.5rem;
+}
+
+.detail-medidas-hint {
+  font-weight: 400;
+  color: #a08bb8;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.detail-medidas-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.medida-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: #fff;
+  border: 1px solid rgba(133,90,162,0.3);
+  border-radius: 100px;
+  padding: 3px 12px;
+  font-size: 0.8rem;
+  color: #16001C;
+}
+
+.medida-chip strong {
+  color: #855AA2;
+  font-weight: 700;
+}
+
+/* ── Botones "Ver matches" ───────────────────────────────────────────────── */
+.btn-inv-matches,
+.btn-matches-catalogo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(133,90,162,0.1);
+  color: #855AA2;
+  border: 1px solid rgba(133,90,162,0.25);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 0.73rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  margin-top: 6px;
+  transition: background 0.15s;
+  width: 100%;
+  justify-content: center;
+}
+
+.btn-inv-matches:hover,
+.btn-matches-catalogo:hover {
+  background: rgba(133,90,162,0.18);
+}
+
+/* ── Matches sheet ──────────────────────────────────────────────────────── */
+.matches-prenda-info {
+  font-size: 0.82rem;
+  color: #7B6B8D;
+  margin-bottom: 1rem;
+}
+
+.matches-seccion-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #16001C;
+  margin-bottom: 0.5rem;
+}
+
+.matches-seccion-hint {
+  font-weight: 400;
+  color: #a08bb8;
+  text-transform: none;
+}
+
+.match-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #f0eaf7;
+}
+
+.match-row:last-child { border-bottom: none; }
+
+.match-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.match-info { flex: 1; min-width: 0; }
+
+.match-nombre {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #16001C;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.match-medidas {
+  font-size: 0.75rem;
+  color: #7B6B8D;
+  margin-top: 1px;
+}
+
+.match-badge {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.matches-empty-msg {
+  font-size: 0.875rem;
+  color: #7B6B8D;
+  text-align: center;
+  line-height: 1.6;
+  padding: 1.5rem 0;
+}
+
+/* ── Direcciones en Mi Visión ───────────────────────────────────────────── */
+.vision-bloque-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.vision-bloque-header .vision-bloque-titulo { margin-bottom: 0; }
+
+.btn-dir-add {
+  background: #16001C;
+  color: #DEFF00;
+  border: none;
+  border-radius: 10px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+}
+
+.dir-empty {
+  font-size: 0.85rem;
+  color: #a08bb8;
+  padding: 0.5rem 0;
+}
+
+.dir-card {
+  background: #fff;
+  border: 1px solid #e8dff2;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.dir-card--default {
+  border-color: #855AA2;
+  background: rgba(133,90,162,0.04);
+}
+
+.dir-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.dir-alias {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #16001C;
+}
+
+.dir-default-badge {
+  background: #855AA2;
+  color: #fff;
+  border-radius: 100px;
+  padding: 1px 9px;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.dir-texto {
+  font-size: 0.8rem;
+  color: #555;
+  line-height: 1.4;
+}
+
+.dir-refs {
+  font-size: 0.75rem;
+  color: #9b8aae;
+  margin-top: 2px;
+  font-style: italic;
+}
+
+.dir-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.6rem;
+}
+
+.btn-dir-action {
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: #555;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-dir-action:hover { border-color: #855AA2; color: #855AA2; }
+.btn-dir-default { border-color: #855AA2; color: #855AA2; }
+.btn-dir-delete  { color: #dc2626; border-color: rgba(220,38,38,0.3); }
+.btn-dir-delete:hover { background: rgba(220,38,38,0.06); }
+
+/* ── Formulario de dirección ────────────────────────────────────────────── */
+.dir-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.dir-predeterminada-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #333;
+  margin: 0.5rem 0 1rem;
+  cursor: pointer;
+}
+
+.dir-predeterminada-check input[type=checkbox] {
+  width: 16px;
+  height: 16px;
+  accent-color: #855AA2;
+}
+
+.form-opt {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #a08bb8;
+}
+
+/* ── Dirección en carrito ───────────────────────────────────────────────── */
+.cart-direccion-wrap {
+  margin: 0.75rem 0 0.25rem;
+}
+
+.cart-direccion-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 0.35rem;
+}
+
+.cart-direccion-select {
+  width: 100%;
+  background: #f8f5fd;
+  border: 1px solid #d4c6e8;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 0.85rem;
+  color: #16001C;
+  font-family: inherit;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23855AA2' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
