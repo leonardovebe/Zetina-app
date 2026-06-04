@@ -2911,19 +2911,31 @@ async function loadPerfil() {
   }
 }
 
+function parseLogrosArray(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  try { return JSON.parse(val); } catch { return []; }
+}
+
 async function loadVisionariaStats() {
   if (!VENDEDORA_ID) return;
   try {
-    const { data, error } = await db.from('visionaria_stats').select('*').eq('vendedora_id', VENDEDORA_ID).single();
+    const { data, error } = await db.from('visionaria_stats')
+      .select('*, logros_obtenidos')
+      .eq('vendedora_id', VENDEDORA_ID)
+      .single();
     if (error?.code === 'PGRST116' || !data) {
       const { data: nuevo } = await db.from('visionaria_stats')
-        .insert([{ vendedora_id: VENDEDORA_ID }]).select().single();
-      visionariaStats = nuevo || { puntos_historicos: 0, puntos_temporada: 0, objetivo_mensual: 15, record_personal: 0, racha_activa: 0 };
+        .insert([{ vendedora_id: VENDEDORA_ID }]).select('*, logros_obtenidos').single();
+      visionariaStats = nuevo
+        ? { ...nuevo, logros_obtenidos: parseLogrosArray(nuevo.logros_obtenidos) }
+        : { puntos_historicos: 0, puntos_temporada: 0, objetivo_mensual: 15, record_personal: 0, racha_activa: 0, logros_obtenidos: [] };
     } else {
-      visionariaStats = data;
+      visionariaStats = { ...data, logros_obtenidos: parseLogrosArray(data.logros_obtenidos) };
     }
+    console.log('[logros] obtenidos:', visionariaStats.logros_obtenidos);
   } catch (_) {
-    visionariaStats = { puntos_historicos: 0, puntos_temporada: 0, objetivo_mensual: 15, record_personal: 0, racha_activa: 0 };
+    visionariaStats = { puntos_historicos: 0, puntos_temporada: 0, objetivo_mensual: 15, record_personal: 0, racha_activa: 0, logros_obtenidos: [] };
   }
 }
 
@@ -3007,7 +3019,7 @@ function showToastLogro(msg) {
 async function verificarLogros(contexto = {}) {
   if (!VENDEDORA_ID || !visionariaStats) return;
   const vs = visionariaStats;
-  const logrosObtenidos = vs.logros_obtenidos || [];
+  const logrosObtenidos = parseLogrosArray(vs.logros_obtenidos);
   const idsObtenidos = new Set(logrosObtenidos.map(l => l.id));
 
   const antiguedadMeses = (() => {
@@ -3037,18 +3049,20 @@ async function verificarLogros(contexto = {}) {
   if (!nuevos.length) return;
 
   const actualizados = [...logrosObtenidos, ...nuevos];
+  console.log('[logros] guardando en DB:', actualizados);
   try {
     const { error } = await db.from('visionaria_stats')
       .update({ logros_obtenidos: actualizados })
       .eq('vendedora_id', VENDEDORA_ID);
     if (!error) {
       visionariaStats.logros_obtenidos = actualizados;
+      console.log('[logros] guardado OK, nuevos:', nuevos.map(l => l.id));
       nuevos.forEach((l, i) => {
         setTimeout(() => showToastLogro(`🏅 ¡Nuevo logro desbloqueado! ${LOGROS_NOMBRES[l.id] || l.id}`), i * 1800);
       });
-    } else console.error('[logros] error DB:', error.message);
+    } else console.error('[logros] error al guardar en DB:', error.message, error);
   } catch (err) {
-    console.error('[logros] excepción:', err);
+    console.error('[logros] excepción al guardar:', err);
   }
 }
 
@@ -3342,8 +3356,9 @@ function getVisionStats() {
 
 function getLogros() {
   const vs = visionariaStats || {};
-  const obtenidos = new Set((vs.logros_obtenidos || []).map(l => l.id));
-  const fechaMap  = Object.fromEntries((vs.logros_obtenidos || []).map(l => [l.id, l.fecha]));
+  const logrosArr = parseLogrosArray(vs.logros_obtenidos);
+  const obtenidos = new Set(logrosArr.map(l => l.id));
+  const fechaMap  = Object.fromEntries(logrosArr.map(l => [l.id, l.fecha]));
   return [
     { id: 'primer_match',               nombre: 'Primer Match',                 icono: '🎯', desc: 'Encontraste a la persona correcta para tu primera prenda',   obtenido: obtenidos.has('primer_match'),               fecha: fechaMap['primer_match'] },
     { id: 'diez_matches',               nombre: '10 Matches',                   icono: '💫', desc: 'Tu criterio empieza a tomar forma',                          obtenido: obtenidos.has('diez_matches'),               fecha: fechaMap['diez_matches'] },
@@ -3389,6 +3404,7 @@ function renderCuenta() {
       : `Te faltan ${recordPersonal - stats.matchesMes} matches para superar tu récord personal`
     : '';
 
+  console.log('[logros] render — visionariaStats.logros_obtenidos:', vs.logros_obtenidos);
   const logrosHTML = getLogros().map(l => `
     <div class="vision-logro${l.obtenido ? ' vision-logro--obtenido' : ''}">
       <span class="vision-logro-icono">${l.icono}</span>
@@ -3895,7 +3911,7 @@ function _showAbonoConfirmacion(overlay, c, monto, fecha) {
 
   const mensaje =
     `Hola ${c.nombre} 🌟\n\n` +
-    `Te confirmamos tu abono de ${formatPeso(monto)} el ${formatFecha(fecha)}.\n\n` +
+    `Te confirmo tu abono de ${formatPeso(monto)} el ${formatFecha(fecha)}.\n\n` +
     prendaLinea +
     saldoLinea + `\n\n` +
     `¡Gracias por tu pago! 🙏`;
@@ -4018,6 +4034,116 @@ window.addEventListener("hashchange", () => {
   showView(getViewFromHash());
 });
 
+// ── Pull to refresh ──────────────────────────────────────────────────────────
+
+function initPullToRefresh() {
+  const PTR_THRESHOLD = 80;
+
+  const bar = document.createElement('div');
+  bar.className = 'ptr-bar';
+  bar.innerHTML = `<div class="ptr-spinner"></div><span class="ptr-text">Desliza para actualizar</span>`;
+  document.body.appendChild(bar);
+  const ptrText = bar.querySelector('.ptr-text');
+
+  const refreshMap = {
+    catalogo: async () => { await loadCatalogo(); renderCatalog(); },
+    pedidos:  async () => { await loadPedidos(); renderPedidos(); },
+    clientes: async () => { await loadClientes(); renderClientes(); },
+    prendas:  async () => { await Promise.all([loadInventario(), loadPrestamos(), loadDevoluciones()]); renderMisPrendas(); },
+    cuenta:   async () => { await loadVisionariaStats(); renderCuenta(); },
+  };
+
+  // startY: posición Y del touchstart
+  // maxPull: mayor delta descendente alcanzado en este gesto (no se reduce si el dedo sube)
+  // activeViewId: sección capturada en touchstart (no cambia durante el gesto)
+  let startY = 0;
+  let maxPull = 0;
+  let pulling = false;
+  let refreshing = false;
+  let activeViewId = null;
+
+  function isSheetOpen() {
+    return !!document.querySelector('[class*="-overlay"].open');
+  }
+
+  function resetBar() {
+    bar.classList.remove('ptr-pulling', 'ptr-visible', 'ptr-refreshing');
+    ptrText.textContent = 'Desliza para actualizar';
+  }
+
+  document.addEventListener('touchstart', e => {
+    if (refreshing || isSheetOpen()) return;
+    const view = document.querySelector('.view.active');
+    if (!view || view.scrollTop !== 0) return;
+    startY = e.touches[0].clientY;
+    maxPull = 0;
+    pulling = true;
+    activeViewId = view.id;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (!pulling || refreshing) return;
+
+    // Si el contenido ya scrolleó (no estamos en el tope), cancelar
+    const view = document.querySelector('.view.active');
+    if (!view || view.scrollTop > 2) {
+      pulling = false;
+      resetBar();
+      return;
+    }
+
+    const delta = e.touches[0].clientY - startY;
+    if (delta <= 0) return; // movimiento hacia arriba: no cancelar, solo ignorar
+
+    maxPull = Math.max(maxPull, delta);
+    bar.classList.add('ptr-pulling', 'ptr-visible');
+    bar.classList.remove('ptr-refreshing');
+    ptrText.textContent = maxPull >= PTR_THRESHOLD ? 'Suelta para actualizar' : 'Desliza para actualizar';
+  }, { passive: true });
+
+  async function onRelease() {
+    console.log('[ptr] touchend — pulling:', pulling, '| maxPull:', maxPull, '| activeViewId:', activeViewId, '| refreshing:', refreshing);
+    if (!pulling || refreshing) return;
+    pulling = false;
+    bar.classList.remove('ptr-pulling');
+
+    if (maxPull < PTR_THRESHOLD) {
+      resetBar();
+      return;
+    }
+
+    console.log('[pull-to-refresh] recargando sección:', activeViewId);
+
+    refreshing = true;
+    bar.classList.add('ptr-visible', 'ptr-refreshing');
+    ptrText.textContent = 'Actualizando...';
+
+    const fn = refreshMap[activeViewId];
+    if (fn) {
+      try {
+        await fn();
+      } catch (err) {
+        console.error('[pull-to-refresh] error al recargar:', err);
+      }
+    } else {
+      console.warn('[pull-to-refresh] sin función de recarga para sección:', activeViewId);
+    }
+
+    bar.classList.remove('ptr-visible', 'ptr-refreshing');
+    refreshing = false;
+    maxPull = 0;
+    activeViewId = null;
+    ptrText.textContent = 'Desliza para actualizar';
+  }
+
+  document.addEventListener('touchend', onRelease, { passive: true });
+  // touchcancel (p.ej. notificación del SO interrumpe el gesto) también intenta el refresh si se pasó el umbral
+  document.addEventListener('touchcancel', async () => {
+    console.log('[ptr] touchcancel — pulling:', pulling, '| maxPull:', maxPull, '| activeViewId:', activeViewId);
+    await onRelease();
+  }, { passive: true });
+}
+
 // ── Init ────────────────────────────────────────────────────────────────────
 
 async function initApp() {
@@ -4059,6 +4185,8 @@ async function initApp() {
       renderCatalog();
     })
     .subscribe();
+
+  initPullToRefresh();
 }
 
 (async () => {

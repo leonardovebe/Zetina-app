@@ -424,10 +424,11 @@ function initPedidosRealtime() {
 let categoriasCache = [];
 
 async function loadCategorias() {
-  const { data } = await db
+  const { data, error } = await db
     .from('categorias_prendas')
     .select('id, nombre')
     .order('nombre', { ascending: true });
+  console.log('[categorias] data:', data, '| error:', error);
   categoriasCache = data || [];
 }
 
