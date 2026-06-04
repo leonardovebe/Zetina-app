@@ -2956,7 +2956,13 @@ async function loadPerfil() {
 function parseLogrosArray(val) {
   if (!val) return [];
   if (Array.isArray(val)) return val;
-  try { return JSON.parse(val); } catch { return []; }
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch { return []; }
+  }
+  return [];
 }
 
 async function loadVisionariaStats() {
@@ -3058,53 +3064,66 @@ function showToastLogro(msg) {
   }, 4000);
 }
 
+let _verificandoLogros = false;
+
 async function verificarLogros(contexto = {}) {
   if (!VENDEDORA_ID || !visionariaStats) return;
-  const vs = visionariaStats;
-  const logrosObtenidos = parseLogrosArray(vs.logros_obtenidos);
-  const idsObtenidos = new Set(logrosObtenidos.map(l => l.id));
+  // Guard: evita que dos llamadas concurrentes (ej. ventas rápidas) dupliquen toasts
+  if (_verificandoLogros) return;
+  _verificandoLogros = true;
 
-  const antiguedadMeses = (() => {
-    if (!perfil.createdAt) return 0;
-    const cr = new Date(perfil.createdAt);
-    const ahora = new Date();
-    return (ahora.getFullYear() - cr.getFullYear()) * 12 + (ahora.getMonth() - cr.getMonth());
-  })();
-
-  const condiciones = {
-    primer_match:               (vs.matches_historicos || 0) >= 1,
-    diez_matches:               (vs.matches_historicos || 0) >= 10,
-    veinticinco_matches:        (vs.matches_historicos || 0) >= 25,
-    cincuenta_matches:          (vs.matches_historicos || 0) >= 50,
-    cien_matches:               (vs.matches_historicos || 0) >= 100,
-    primera_clienta_recurrente: (vs.clientas_recurrentes || 0) >= 1,
-    diez_clientas_recurrentes:  (vs.clientas_recurrentes || 0) >= 10,
-    record_superado:            (vs.record_personal || 0) > 0,
-    mes_perfecto:               contexto.mes_perfecto === true,
-    primer_anio:                antiguedadMeses >= 12,
-  };
-
-  const nuevos = Object.entries(condiciones)
-    .filter(([id, cumple]) => cumple && !idsObtenidos.has(id))
-    .map(([id]) => ({ id, fecha: new Date().toISOString().split('T')[0] }));
-
-  if (!nuevos.length) return;
-
-  const actualizados = [...logrosObtenidos, ...nuevos];
-  console.log('[logros] guardando en DB:', actualizados);
   try {
+    const vs = visionariaStats;
+    const logrosObtenidos = parseLogrosArray(vs.logros_obtenidos);
+    const idsObtenidos = new Set(logrosObtenidos.map(l => l.id));
+
+    const antiguedadMeses = (() => {
+      if (!perfil.createdAt) return 0;
+      const cr = new Date(perfil.createdAt);
+      const ahora = new Date();
+      return (ahora.getFullYear() - cr.getFullYear()) * 12 + (ahora.getMonth() - cr.getMonth());
+    })();
+
+    const condiciones = {
+      primer_match:               (vs.matches_historicos || 0) >= 1,
+      diez_matches:               (vs.matches_historicos || 0) >= 10,
+      veinticinco_matches:        (vs.matches_historicos || 0) >= 25,
+      cincuenta_matches:          (vs.matches_historicos || 0) >= 50,
+      cien_matches:               (vs.matches_historicos || 0) >= 100,
+      primera_clienta_recurrente: (vs.clientas_recurrentes || 0) >= 1,
+      diez_clientas_recurrentes:  (vs.clientas_recurrentes || 0) >= 10,
+      record_superado:            (vs.record_personal || 0) > 0,
+      mes_perfecto:               contexto.mes_perfecto === true,
+      primer_anio:                antiguedadMeses >= 12,
+    };
+
+    // Solo logros que cumplen la condición Y no están ya en logros_obtenidos
+    const nuevos = Object.entries(condiciones)
+      .filter(([id, cumple]) => cumple && !idsObtenidos.has(id))
+      .map(([id]) => ({ id, fecha: new Date().toISOString().split('T')[0] }));
+
+    if (!nuevos.length) return;
+
+    const actualizados = [...logrosObtenidos, ...nuevos];
+    console.log('[logros] guardando en DB:', actualizados);
+
     const { error } = await db.from('visionaria_stats')
       .update({ logros_obtenidos: actualizados })
       .eq('vendedora_id', VENDEDORA_ID);
+
     if (!error) {
       visionariaStats.logros_obtenidos = actualizados;
       console.log('[logros] guardado OK, nuevos:', nuevos.map(l => l.id));
       nuevos.forEach((l, i) => {
         setTimeout(() => showToastLogro(`🏅 ¡Nuevo logro desbloqueado! ${LOGROS_NOMBRES[l.id] || l.id}`), i * 1800);
       });
-    } else console.error('[logros] error al guardar en DB:', error.message, error);
+    } else {
+      console.error('[logros] error al guardar en DB:', error.message, error);
+    }
   } catch (err) {
     console.error('[logros] excepción al guardar:', err);
+  } finally {
+    _verificandoLogros = false;
   }
 }
 
