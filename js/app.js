@@ -4010,7 +4010,10 @@ function showView(viewId) {
 
   if (viewId === "catalogo" && 'clearAppBadge' in navigator) navigator.clearAppBadge();
   if (viewId === "cobros") renderCobros();
-  if (viewId === "cuenta") renderCuenta();
+  if (viewId === "cuenta") {
+    // SELECT fresco de visionaria_stats antes de renderizar para que logros_obtenidos esté disponible
+    loadVisionariaStats().then(() => renderCuenta()).catch(() => renderCuenta());
+  }
 }
 
 function getViewFromHash() {
@@ -4103,7 +4106,10 @@ function initPullToRefresh() {
 
   async function onRelease() {
     console.log('[ptr] touchend — pulling:', pulling, '| maxPull:', maxPull, '| activeViewId:', activeViewId, '| refreshing:', refreshing);
-    if (!pulling || refreshing) return;
+    // Si ya hay un refresh en curso, ignorar. Si no hay gesto activo, asegurar que la barra esté oculta.
+    if (refreshing) return;
+    if (!pulling) { resetBar(); return; }
+
     pulling = false;
     bar.classList.remove('ptr-pulling');
 
@@ -4114,30 +4120,31 @@ function initPullToRefresh() {
 
     console.log('[pull-to-refresh] recargando sección:', activeViewId);
 
+    const capturedViewId = activeViewId;
     refreshing = true;
     bar.classList.add('ptr-visible', 'ptr-refreshing');
     ptrText.textContent = 'Actualizando...';
 
-    const fn = refreshMap[activeViewId];
-    if (fn) {
-      try {
+    const fn = refreshMap[capturedViewId];
+    try {
+      if (fn) {
         await fn();
-      } catch (err) {
-        console.error('[pull-to-refresh] error al recargar:', err);
+      } else {
+        console.warn('[pull-to-refresh] sin función de recarga para sección:', capturedViewId);
       }
-    } else {
-      console.warn('[pull-to-refresh] sin función de recarga para sección:', activeViewId);
+    } catch (err) {
+      console.error('[pull-to-refresh] error al recargar:', err);
+    } finally {
+      // Siempre resetear aunque el fetch falle o lance excepción
+      bar.classList.remove('ptr-visible', 'ptr-refreshing');
+      refreshing = false;
+      maxPull = 0;
+      activeViewId = null;
+      ptrText.textContent = 'Desliza para actualizar';
     }
-
-    bar.classList.remove('ptr-visible', 'ptr-refreshing');
-    refreshing = false;
-    maxPull = 0;
-    activeViewId = null;
-    ptrText.textContent = 'Desliza para actualizar';
   }
 
   document.addEventListener('touchend', onRelease, { passive: true });
-  // touchcancel (p.ej. notificación del SO interrumpe el gesto) también intenta el refresh si se pasó el umbral
   document.addEventListener('touchcancel', async () => {
     console.log('[ptr] touchcancel — pulling:', pulling, '| maxPull:', maxPull, '| activeViewId:', activeViewId);
     await onRelease();
