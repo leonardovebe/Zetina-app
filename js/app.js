@@ -845,13 +845,19 @@ function renderCatalog() {
   if (!catalogo.length) {
     container.innerHTML = `
       <div class="catalog-header">
-        <h2 class="catalog-title">Catálogo</h2>
-        <p class="catalog-subtitle">0 prendas disponibles</p>
+        <div class="section-header-row">
+          <div>
+            <h2 class="catalog-title">Catálogo</h2>
+            <p class="catalog-subtitle">0 prendas disponibles</p>
+          </div>
+          <button class="btn-refresh" id="btnRefreshCatalogo" aria-label="Actualizar catálogo">🔄</button>
+        </div>
       </div>
       <div class="catalog-empty">
         <p class="catalog-empty-icon">👗</p>
         <p class="catalog-empty-text">El catálogo está vacío.<br>Pronto habrá prendas disponibles.</p>
       </div>`;
+    attachRefreshBtn('btnRefreshCatalogo', loadCatalogo, renderCatalog);
     return;
   }
 
@@ -879,12 +885,15 @@ function renderCatalog() {
           <h2 class="catalog-title">Catálogo</h2>
           <p class="catalog-subtitle" id="catalogSubtitle">${total} prenda${total !== 1 ? 's' : ''} disponible${total !== 1 ? 's' : ''}</p>
         </div>
-        <button class="btn-filtrar" id="btnFiltrar" aria-expanded="false">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" aria-hidden="true">
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
-          </svg>
-          <span class="btn-filtrar-label">Filtrar</span>
-        </button>
+        <div class="header-actions">
+          <button class="btn-refresh" id="btnRefreshCatalogo" aria-label="Actualizar catálogo">🔄</button>
+          <button class="btn-filtrar" id="btnFiltrar" aria-expanded="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" aria-hidden="true">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+            </svg>
+            <span class="btn-filtrar-label">Filtrar</span>
+          </button>
+        </div>
       </div>
     </div>
     <div class="filtros-panel" id="filtrosPanel" hidden>
@@ -897,6 +906,8 @@ function renderCatalog() {
       ${seccion('Precio', precioOpts.map(o => `<button class="filtro-chip" data-tipo="precio" data-valor="${o.valor}">${o.label}</button>`).join(''))}
     </div>
     <div class="catalog-grid" id="catalogGrid">${buildCatalogCards(catalogo)}</div>`;
+
+  attachRefreshBtn('btnRefreshCatalogo', loadCatalogo, renderCatalog);
 
   container.querySelector("#btnFiltrar").addEventListener("click", () => {
     const panel = container.querySelector("#filtrosPanel");
@@ -1058,13 +1069,19 @@ function renderPedidos() {
   if (!pedidosDB.length) {
     container.innerHTML = `
       <div class="pedidos-header">
-        <h2 class="catalog-title">Mis Pedidos</h2>
-        <p class="catalog-subtitle">Sin pedidos realizados</p>
+        <div class="section-header-row">
+          <div>
+            <h2 class="catalog-title">Mis Pedidos</h2>
+            <p class="catalog-subtitle">Sin pedidos realizados</p>
+          </div>
+          <button class="btn-refresh" id="btnRefreshPedidos" aria-label="Actualizar pedidos">🔄</button>
+        </div>
       </div>
       <div class="catalog-empty">
         <p class="catalog-empty-icon">📦</p>
         <p class="catalog-empty-text">Aún no tienes pedidos</p>
       </div>`;
+    attachRefreshBtn('btnRefreshPedidos', loadPedidos, renderPedidos);
     return;
   }
 
@@ -1101,8 +1118,13 @@ function renderPedidos() {
 
   container.innerHTML = `
     <div class="pedidos-header">
-      <h2 class="catalog-title">Mis Pedidos</h2>
-      <p class="catalog-subtitle">${pedidosDB.length} pedido${pedidosDB.length !== 1 ? 's' : ''} realizados a ZETINA</p>
+      <div class="section-header-row">
+        <div>
+          <h2 class="catalog-title">Mis Pedidos</h2>
+          <p class="catalog-subtitle">${pedidosDB.length} pedido${pedidosDB.length !== 1 ? 's' : ''} realizados a ZETINA</p>
+        </div>
+        <button class="btn-refresh" id="btnRefreshPedidos" aria-label="Actualizar pedidos">🔄</button>
+      </div>
     </div>
     <div class="pedidos-filters">
       <button class="filter-btn active" data-filter="todos">Todos</button>
@@ -1111,6 +1133,8 @@ function renderPedidos() {
       <button class="filter-btn" data-filter="entregados">Entregados</button>
     </div>
     <div class="orders-list">${orderCards}</div>`;
+
+  attachRefreshBtn('btnRefreshPedidos', loadPedidos, renderPedidos);
 
   container.querySelector(".pedidos-filters").addEventListener("click", (e) => {
     const btn = e.target.closest(".filter-btn");
@@ -1262,8 +1286,13 @@ function renderClientes() {
   const container = document.querySelector("#clientes .view-content");
   container.innerHTML = `
     <div class="clientes-header">
-      <h2 class="catalog-title">Clientes</h2>
-      <p class="catalog-subtitle">${clientes.length} clientas registradas</p>
+      <div class="section-header-row">
+        <div>
+          <h2 class="catalog-title">Clientes</h2>
+          <p class="catalog-subtitle">${clientes.length} clientas registradas</p>
+        </div>
+        <button class="btn-refresh" id="btnRefreshClientes" aria-label="Actualizar clientes">🔄</button>
+      </div>
     </div>
     <div class="clientes-toolbar">
       <div class="search-wrap">
@@ -1281,6 +1310,10 @@ function renderClientes() {
       </button>
     </div>
     <div class="clientes-list"></div>`;
+
+  attachRefreshBtn('btnRefreshClientes',
+    () => loadClientes(),
+    () => renderClientes());
 
   renderClientesList(container);
 
@@ -2477,8 +2510,13 @@ function renderMisPrendas() {
 
   container.innerHTML = `
     <div class="catalog-header">
-      <h2 class="catalog-title">Mis Prendas</h2>
-      <p class="catalog-subtitle">${inventario.length} prenda${inventario.length !== 1 ? "s" : ""} disponible${inventario.length !== 1 ? "s" : ""}</p>
+      <div class="section-header-row">
+        <div>
+          <h2 class="catalog-title">Mis Prendas</h2>
+          <p class="catalog-subtitle">${inventario.length} prenda${inventario.length !== 1 ? "s" : ""} disponible${inventario.length !== 1 ? "s" : ""}</p>
+        </div>
+        <button class="btn-refresh" id="btnRefreshPrendas" aria-label="Actualizar prendas">🔄</button>
+      </div>
     </div>
     <div class="clientes-search-row">
       <input class="search-input" id="prendasBusqueda" type="search"
@@ -2486,6 +2524,10 @@ function renderMisPrendas() {
              autocorrect="off" spellcheck="false">
     </div>
     <div class="inv-grid" id="invGrid">${renderGrid(inventario)}</div>`;
+
+  attachRefreshBtn('btnRefreshPrendas',
+    () => Promise.all([loadInventario(), loadPrestamos(), loadDevoluciones()]),
+    renderMisPrendas);
 
   container.querySelector("#prendasBusqueda").addEventListener("input", (e) => {
     const q = e.target.value.trim().toLowerCase();
@@ -3429,6 +3471,7 @@ function renderCuenta() {
           <h1 class="vision-nombre">${perfil.nombre}</h1>
           <span class="vision-nivel-badge">${nivel}</span>
         </div>
+        <button class="btn-refresh" id="btnRefreshVision" aria-label="Actualizar Mi Visión" style="align-self:flex-start;margin-left:auto;">🔄</button>
       </div>
 
       <div class="vision-bloque">
@@ -3567,6 +3610,10 @@ function renderCuenta() {
 
     </div>
     <input type="file" id="avatarFileInput" accept="image/*" hidden>`;
+
+  attachRefreshBtn('btnRefreshVision',
+    () => loadVisionariaStats(),
+    renderCuenta);
 
   container.querySelector("#btnEditarPerfil").addEventListener("click", openPerfilEdit);
   container.querySelector("#btnCerrarSesion").addEventListener("click", openCerrarSesion);
@@ -4037,118 +4084,23 @@ window.addEventListener("hashchange", () => {
   showView(getViewFromHash());
 });
 
-// ── Pull to refresh ──────────────────────────────────────────────────────────
+// ── Botón de actualizar sección ──────────────────────────────────────────────
 
-function initPullToRefresh() {
-  const PTR_THRESHOLD = 80;
-
-  const bar = document.createElement('div');
-  bar.className = 'ptr-bar';
-  bar.innerHTML = `<div class="ptr-spinner"></div><span class="ptr-text">Desliza para actualizar</span>`;
-  document.body.appendChild(bar);
-  const ptrText = bar.querySelector('.ptr-text');
-
-  const refreshMap = {
-    catalogo: async () => { await loadCatalogo(); renderCatalog(); },
-    pedidos:  async () => { await loadPedidos(); renderPedidos(); },
-    clientes: async () => { await loadClientes(); renderClientes(); },
-    prendas:  async () => { await Promise.all([loadInventario(), loadPrestamos(), loadDevoluciones()]); renderMisPrendas(); },
-    cuenta:   async () => { await loadVisionariaStats(); renderCuenta(); },
-  };
-
-  // startY: posición Y del touchstart
-  // maxPull: mayor delta descendente alcanzado en este gesto (no se reduce si el dedo sube)
-  // activeViewId: sección capturada en touchstart (no cambia durante el gesto)
-  let startY = 0;
-  let maxPull = 0;
-  let pulling = false;
-  let refreshing = false;
-  let activeViewId = null;
-
-  function isSheetOpen() {
-    return !!document.querySelector('[class*="-overlay"].open');
-  }
-
-  function resetBar() {
-    bar.classList.remove('ptr-pulling', 'ptr-visible', 'ptr-refreshing');
-    ptrText.textContent = 'Desliza para actualizar';
-  }
-
-  document.addEventListener('touchstart', e => {
-    if (refreshing || isSheetOpen()) return;
-    const view = document.querySelector('.view.active');
-    if (!view || view.scrollTop !== 0) return;
-    startY = e.touches[0].clientY;
-    maxPull = 0;
-    pulling = true;
-    activeViewId = view.id;
-  }, { passive: true });
-
-  document.addEventListener('touchmove', e => {
-    if (!pulling || refreshing) return;
-
-    // Si el contenido ya scrolleó (no estamos en el tope), cancelar
-    const view = document.querySelector('.view.active');
-    if (!view || view.scrollTop > 2) {
-      pulling = false;
-      resetBar();
-      return;
-    }
-
-    const delta = e.touches[0].clientY - startY;
-    if (delta <= 0) return; // movimiento hacia arriba: no cancelar, solo ignorar
-
-    maxPull = Math.max(maxPull, delta);
-    bar.classList.add('ptr-pulling', 'ptr-visible');
-    bar.classList.remove('ptr-refreshing');
-    ptrText.textContent = maxPull >= PTR_THRESHOLD ? 'Suelta para actualizar' : 'Desliza para actualizar';
-  }, { passive: true });
-
-  async function onRelease() {
-    console.log('[ptr] touchend — pulling:', pulling, '| maxPull:', maxPull, '| activeViewId:', activeViewId, '| refreshing:', refreshing);
-    // Si ya hay un refresh en curso, ignorar. Si no hay gesto activo, asegurar que la barra esté oculta.
-    if (refreshing) return;
-    if (!pulling) { resetBar(); return; }
-
-    pulling = false;
-    bar.classList.remove('ptr-pulling');
-
-    if (maxPull < PTR_THRESHOLD) {
-      resetBar();
-      return;
-    }
-
-    console.log('[pull-to-refresh] recargando sección:', activeViewId);
-
-    const capturedViewId = activeViewId;
-    refreshing = true;
-    bar.classList.add('ptr-visible', 'ptr-refreshing');
-    ptrText.textContent = 'Actualizando...';
-
-    const fn = refreshMap[capturedViewId];
+function attachRefreshBtn(btnId, loadFn, renderFn) {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    btn.classList.add('btn-refresh--spinning');
+    btn.disabled = true;
     try {
-      if (fn) {
-        await fn();
-      } else {
-        console.warn('[pull-to-refresh] sin función de recarga para sección:', capturedViewId);
-      }
+      await loadFn();
+      renderFn(); // re-renderiza el contenedor completo (crea un botón nuevo)
     } catch (err) {
-      console.error('[pull-to-refresh] error al recargar:', err);
-    } finally {
-      // Siempre resetear aunque el fetch falle o lance excepción
-      bar.classList.remove('ptr-visible', 'ptr-refreshing');
-      refreshing = false;
-      maxPull = 0;
-      activeViewId = null;
-      ptrText.textContent = 'Desliza para actualizar';
+      console.error('[refresh]', btnId, err);
+      btn.classList.remove('btn-refresh--spinning');
+      btn.disabled = false;
     }
-  }
-
-  document.addEventListener('touchend', onRelease, { passive: true });
-  document.addEventListener('touchcancel', async () => {
-    console.log('[ptr] touchcancel — pulling:', pulling, '| maxPull:', maxPull, '| activeViewId:', activeViewId);
-    await onRelease();
-  }, { passive: true });
+  });
 }
 
 // ── Init ────────────────────────────────────────────────────────────────────
@@ -4193,7 +4145,6 @@ async function initApp() {
     })
     .subscribe();
 
-  initPullToRefresh();
 }
 
 (async () => {

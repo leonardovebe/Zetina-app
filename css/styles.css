@@ -133,7 +133,6 @@ body {
   inset: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;
@@ -144,54 +143,52 @@ body {
   pointer-events: auto;
 }
 
-/* Pull to refresh */
-.ptr-bar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  top: calc(var(--header-height) + env(safe-area-inset-top, 0px));
-  height: 52px;
+/* Botón de actualizar sección */
+.btn-refresh {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #CCB8DD;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.625rem;
-  background: #16001C;
-  border-bottom: 2px solid rgba(133, 90, 162, 0.35);
-  color: #855AA2;
-  font-family: var(--font-body);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  transform: translateY(-100%);
-  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 50;
-  pointer-events: none;
-  will-change: transform;
-}
-
-.ptr-bar.ptr-pulling {
-  transition: none;
-}
-
-.ptr-bar.ptr-visible {
-  transform: translateY(0);
-}
-
-.ptr-spinner {
-  width: 18px;
-  height: 18px;
-  border: 2px solid rgba(133, 90, 162, 0.25);
-  border-top-color: #855AA2;
-  border-radius: 50%;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
   flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
-.ptr-bar.ptr-refreshing .ptr-spinner {
-  animation: ptr-spin 0.75s linear infinite;
+.btn-refresh:active {
+  opacity: 0.7;
+  transform: scale(0.9);
 }
 
-@keyframes ptr-spin {
+.btn-refresh--spinning {
+  animation: btn-spin 0.7s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes btn-spin {
   to { transform: rotate(360deg); }
+}
+
+/* Fila título + botón de actualizar (Pedidos, Clientes, Prendas, Mi Visión) */
+.section-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+/* Grupo de botones a la derecha del header de Catálogo */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .view-content {
