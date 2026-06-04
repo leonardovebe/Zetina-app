@@ -2965,29 +2965,61 @@ function parseLogrosArray(val) {
   return [];
 }
 
+function buildInitialStatsRow() {
+  const now = new Date();
+  return {
+    vendedora_id:        VENDEDORA_ID,
+    puntos_historicos:   0,
+    puntos_temporada:    0,
+    matches_historicos:  0,
+    matches_temporada:   0,
+    clientas_recurrentes: 0,
+    record_personal:     0,
+    racha_activa:        0,
+    logros_obtenidos:    [],
+    temporada_mes:       now.getMonth() + 1,
+    temporada_anio:      now.getFullYear(),
+  };
+}
+
+async function ensureVisionariaStats() {
+  if (!VENDEDORA_ID) return;
+  const { data, error } = await db.from('visionaria_stats')
+    .select('*')
+    .eq('vendedora_id', VENDEDORA_ID)
+    .single();
+
+  if (data && !error) {
+    visionariaStats = { ...data, logros_obtenidos: parseLogrosArray(data.logros_obtenidos) };
+    console.log('[stats completos]', JSON.stringify(data));
+    console.log('[logros raw]', data?.logros_obtenidos);
+    console.log('[logros tipo]', typeof data?.logros_obtenidos);
+    console.log('[logros parseados]', parseLogrosArray(data?.logros_obtenidos));
+    return;
+  }
+
+  // No existe el registro → INSERT con valores iniciales
+  const row = buildInitialStatsRow();
+  const { data: nuevo, error: errIns } = await db.from('visionaria_stats')
+    .insert([row]).select('*').single();
+
+  if (!errIns && nuevo) {
+    visionariaStats = { ...nuevo, logros_obtenidos: [] };
+    console.log('[stats] registro creado:', nuevo);
+  } else {
+    console.error('[stats] error al crear registro:', errIns?.message);
+    visionariaStats = { ...row };
+  }
+}
+
 async function loadVisionariaStats() {
   if (!VENDEDORA_ID) return;
   try {
-    const { data, error } = await db.from('visionaria_stats')
-      .select('*, logros_obtenidos')
-      .eq('vendedora_id', VENDEDORA_ID)
-      .single();
-    if (error?.code === 'PGRST116' || !data) {
-      const { data: nuevo } = await db.from('visionaria_stats')
-        .insert([{ vendedora_id: VENDEDORA_ID }]).select('*, logros_obtenidos').single();
-      visionariaStats = nuevo
-        ? { ...nuevo, logros_obtenidos: parseLogrosArray(nuevo.logros_obtenidos) }
-        : { puntos_historicos: 0, puntos_temporada: 0, objetivo_mensual: 15, record_personal: 0, racha_activa: 0, logros_obtenidos: [] };
-    } else {
-      console.log('[stats completos]', JSON.stringify(data));
-      console.log('[logros raw]', data?.logros_obtenidos);
-      console.log('[logros tipo]', typeof data?.logros_obtenidos);
-      console.log('[logros parseados]', parseLogrosArray(data?.logros_obtenidos));
-      visionariaStats = { ...data, logros_obtenidos: parseLogrosArray(data.logros_obtenidos) };
-    }
+    await ensureVisionariaStats();
     console.log('[logros] en memoria tras load:', visionariaStats.logros_obtenidos);
-  } catch (_) {
-    visionariaStats = { puntos_historicos: 0, puntos_temporada: 0, objetivo_mensual: 15, record_personal: 0, racha_activa: 0, logros_obtenidos: [] };
+  } catch (err) {
+    console.error('[stats] excepción en load:', err);
+    visionariaStats = { ...buildInitialStatsRow(), logros_obtenidos: [] };
   }
 }
 
@@ -3013,9 +3045,15 @@ const PUNTOS_REGLAS = {
 };
 
 async function actualizarStats(evento, contexto = {}) {
-  if (!VENDEDORA_ID || !visionariaStats) return;
+  if (!VENDEDORA_ID) return;
   const regla = PUNTOS_REGLAS[evento];
   if (!regla) return;
+
+  // Si no hay registro en memoria, crearlo antes de intentar el UPDATE
+  if (!visionariaStats) {
+    await ensureVisionariaStats();
+    if (!visionariaStats) return;
+  }
 
   const updates = {};
   for (const [campo, delta] of Object.entries(regla)) {
