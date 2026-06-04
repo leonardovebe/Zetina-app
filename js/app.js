@@ -3458,23 +3458,37 @@ function getVisionStats() {
 }
 
 function getLogros() {
-  const vs = visionariaStats || {};
-  const logrosObtenidos = parseLogrosArray(vs.logros_obtenidos);
+  // Usa los mismos datos calculados que "Mi Maestría" (getVisionStats),
+  // no depende de visionaria_stats.logros_obtenidos para determinar si está obtenido.
+  const stats = getVisionStats();
+  const logrosGuardados = parseLogrosArray((visionariaStats || {}).logros_obtenidos);
+  const fechaMap = Object.fromEntries(logrosGuardados.map(l => [l.id, l.fecha]));
+  const fecha = (id) => fechaMap[id] || null;
 
-  const obtenido = (id) => logrosObtenidos.some(l => l.id === id);
-  const fecha    = (id) => (logrosObtenidos.find(l => l.id === id) || {}).fecha;
+  const condiciones = {
+    primer_match:               stats.matchesHistoricos >= 1,
+    diez_matches:               stats.matchesHistoricos >= 10,
+    veinticinco_matches:        stats.matchesHistoricos >= 25,
+    cincuenta_matches:          stats.matchesHistoricos >= 50,
+    cien_matches:               stats.matchesHistoricos >= 100,
+    primera_clienta_recurrente: stats.clientasRecurrentes >= 1,
+    diez_clientas_recurrentes:  stats.clientasRecurrentes >= 10,
+    record_superado:            stats.recordPersonal > 0,
+    mes_perfecto:               stats.cobradoMesCompleto === true,
+    primer_anio:                stats.antiguedadMeses >= 12,
+  };
 
   return [
-    { id: 'primer_match',               nombre: 'Primer Match',               icono: '🎯', desc: 'Encontraste a la persona correcta para tu primera prenda',   obtenido: obtenido('primer_match'),               fecha: fecha('primer_match') },
-    { id: 'diez_matches',               nombre: '10 Matches',                 icono: '💫', desc: 'Tu criterio empieza a tomar forma',                          obtenido: obtenido('diez_matches'),               fecha: fecha('diez_matches') },
-    { id: 'veinticinco_matches',        nombre: '25 Matches',                 icono: '✨', desc: 'Tu ojo para las afinidades es evidente',                     obtenido: obtenido('veinticinco_matches'),        fecha: fecha('veinticinco_matches') },
-    { id: 'cincuenta_matches',          nombre: '50 Matches',                 icono: '🏆', desc: 'Medio centenar de conexiones perfectas',                     obtenido: obtenido('cincuenta_matches'),          fecha: fecha('cincuenta_matches') },
-    { id: 'cien_matches',               nombre: '100 Matches',                icono: '👑', desc: 'Leyenda de afinidades',                                      obtenido: obtenido('cien_matches'),               fecha: fecha('cien_matches') },
-    { id: 'primera_clienta_recurrente', nombre: 'Primera Clienta Recurrente', icono: '💜', desc: 'Alguien confiará en ti más de una vez',                      obtenido: obtenido('primera_clienta_recurrente'), fecha: fecha('primera_clienta_recurrente') },
-    { id: 'diez_clientas_recurrentes',  nombre: '10 Clientas Recurrentes',    icono: '🌸', desc: 'Construiste una comunidad fiel',                              obtenido: obtenido('diez_clientas_recurrentes'),  fecha: fecha('diez_clientas_recurrentes') },
-    { id: 'record_superado',            nombre: 'Récord Personal Superado',   icono: '⚡', desc: 'Mejor que nunca',                                             obtenido: obtenido('record_superado'),            fecha: fecha('record_superado') },
-    { id: 'mes_perfecto',               nombre: 'Mes Perfecto',               icono: '💰', desc: '100% cobrado en un mes',                                     obtenido: obtenido('mes_perfecto'),               fecha: fecha('mes_perfecto') },
-    { id: 'primer_anio',                nombre: 'Primer Año Activa',          icono: '🌟', desc: 'Una Visionaria comprometida',                                obtenido: obtenido('primer_anio'),                fecha: fecha('primer_anio') },
+    { id: 'primer_match',               nombre: 'Primer Match',               icono: '🎯', desc: 'Encontraste a la persona correcta para tu primera prenda',   obtenido: condiciones.primer_match,               fecha: fecha('primer_match') },
+    { id: 'diez_matches',               nombre: '10 Matches',                 icono: '💫', desc: 'Tu criterio empieza a tomar forma',                          obtenido: condiciones.diez_matches,               fecha: fecha('diez_matches') },
+    { id: 'veinticinco_matches',        nombre: '25 Matches',                 icono: '✨', desc: 'Tu ojo para las afinidades es evidente',                     obtenido: condiciones.veinticinco_matches,        fecha: fecha('veinticinco_matches') },
+    { id: 'cincuenta_matches',          nombre: '50 Matches',                 icono: '🏆', desc: 'Medio centenar de conexiones perfectas',                     obtenido: condiciones.cincuenta_matches,          fecha: fecha('cincuenta_matches') },
+    { id: 'cien_matches',               nombre: '100 Matches',                icono: '👑', desc: 'Leyenda de afinidades',                                      obtenido: condiciones.cien_matches,               fecha: fecha('cien_matches') },
+    { id: 'primera_clienta_recurrente', nombre: 'Primera Clienta Recurrente', icono: '💜', desc: 'Alguien confiará en ti más de una vez',                      obtenido: condiciones.primera_clienta_recurrente, fecha: fecha('primera_clienta_recurrente') },
+    { id: 'diez_clientas_recurrentes',  nombre: '10 Clientas Recurrentes',    icono: '🌸', desc: 'Construiste una comunidad fiel',                              obtenido: condiciones.diez_clientas_recurrentes,  fecha: fecha('diez_clientas_recurrentes') },
+    { id: 'record_superado',            nombre: 'Récord Personal Superado',   icono: '⚡', desc: 'Mejor que nunca',                                             obtenido: condiciones.record_superado,            fecha: fecha('record_superado') },
+    { id: 'mes_perfecto',               nombre: 'Mes Perfecto',               icono: '💰', desc: '100% cobrado en un mes',                                     obtenido: condiciones.mes_perfecto,               fecha: fecha('mes_perfecto') },
+    { id: 'primer_anio',                nombre: 'Primer Año Activa',          icono: '🌟', desc: 'Una Visionaria comprometida',                                obtenido: condiciones.primer_anio,                fecha: fecha('primer_anio') },
   ];
 }
 
