@@ -3915,11 +3915,15 @@ function renderCobros() {
   if (!clientes.length) {
     container.innerHTML = `
       <div class="cobros-header">
-        <h2 class="catalog-title">Cuentas</h2>
+        <div class="section-header-row">
+          <h2 class="catalog-title">Cuentas</h2>
+          <button class="btn-refresh" id="btnRefreshCobros" aria-label="Actualizar cuentas">${REFRESH_SVG}</button>
+        </div>
       </div>
       <div class="clientes-empty">
         <p class="clientes-empty-text">Aún no tienes cuentas registradas</p>
       </div>`;
+    attachRefreshBtn('btnRefreshCobros', loadCobrosData, renderCobros);
     return;
   }
 
@@ -3961,8 +3965,13 @@ function renderCobros() {
 
   container.innerHTML = `
     <div class="cobros-header">
-      <h2 class="catalog-title">Cuentas</h2>
-      <p class="catalog-subtitle">${clientes.length} clienta${clientes.length !== 1 ? "s" : ""}</p>
+      <div class="section-header-row">
+        <div>
+          <h2 class="catalog-title">Cuentas</h2>
+          <p class="catalog-subtitle">${clientes.length} clienta${clientes.length !== 1 ? "s" : ""}</p>
+        </div>
+        <button class="btn-refresh" id="btnRefreshCobros" aria-label="Actualizar cuentas">${REFRESH_SVG}</button>
+      </div>
     </div>
     <div class="cobros-total-bar">
       <span class="cobros-total-label">Total por cobrar</span>
@@ -3974,6 +3983,8 @@ function renderCobros() {
              spellcheck="false">
     </div>
     <div class="cobros-list" id="cobrosListContainer">${cards}</div>`;
+
+  attachRefreshBtn('btnRefreshCobros', loadCobrosData, renderCobros);
 
   container.querySelector("#cuentasBusqueda").addEventListener("input", (e) => {
     const q = e.target.value.trim().toLowerCase();
