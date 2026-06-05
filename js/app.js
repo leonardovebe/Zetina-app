@@ -18,7 +18,7 @@ function clearCarrito() {
 }
 
 function totalCarrito() {
-  return carrito.reduce((sum, p) => sum + p.precioCosto, 0);
+  return carrito.reduce((sum, p) => sum + p.precioVendedora, 0);
 }
 
 async function confirmarPedido(dirId = null) {
@@ -45,7 +45,7 @@ async function confirmarPedido(dirId = null) {
     nombre:    p.nombre,
     marca:     p.marca,
     emoji:     p.emoji,
-    precio:    p.precioCosto,
+    precio:    p.precioVendedora,
   }));
 
   const { error: errDetalles } = await db
@@ -73,7 +73,7 @@ function updateCartBadge() {
 function buildCartWhatsappUrl() {
   const nombreVendedora = perfil ? perfil.nombre : '';
   const lines = carrito.map((p) =>
-    `${p.emoji} *${p.numero || formatZtId(p.id)}* — ${p.nombre} | Talla ${p.tallaEtiqueta} | ${formatPeso(p.precioCosto)}`
+    `${p.emoji} *${p.numero || formatZtId(p.id)}* — ${p.nombre} | Talla ${p.tallaEtiqueta} | ${formatPeso(p.precioVendedora)}`
   );
   const msg =
     `Hola ZETINA! 👋 Soy *${nombreVendedora}* y quisiera hacer el siguiente pedido:\n\n` +
@@ -112,7 +112,7 @@ function refreshCartSheet() {
         <p class="cart-item-name">${p.nombre}</p>
         <p class="cart-item-meta">${p.marca} · Talla ${p.tallaEtiqueta}</p>
         <p class="prenda-id">ID: ${p.numero || formatZtId(p.id)}</p>
-        <p class="cart-item-price">${formatPeso(p.precioCosto)}</p>
+        <p class="cart-item-price">${formatPeso(p.precioVendedora)}</p>
       </div>
     </div>`).join("");
 
@@ -376,7 +376,7 @@ async function loadCatalogo() {
   // y b) la columna puede no existir si el schema-admin.sql no se ejecutó todavía.
   const { data, error } = await db
     .from('prendas')
-    .select('id, numero, nombre, marca, categoria, emoji, gradiente, talla_etiqueta, talla_real, precio_costo, precio_min, precio_max, descripcion, medida_1_nombre, medida_1_valor, medida_2_nombre, medida_2_valor, fotos_prendas(url)')
+    .select('id, numero, nombre, marca, categoria, emoji, gradiente, talla_etiqueta, talla_real, precio_min, precio_max, descripcion, medida_1_nombre, medida_1_valor, medida_2_nombre, medida_2_valor, fotos_prendas(url)')
     .eq('disponible', true)
     .order('created_at', { ascending: false });
 
@@ -393,9 +393,9 @@ async function loadCatalogo() {
       emoji:         p.emoji     || '👚',
       tallaEtiqueta: p.talla_etiqueta || '',
       tallaReal:     p.talla_real     || '',
-      precioCosto:   p.precio_costo   || 0,
-      precioMin:     p.precio_min     || 0,
-      precioMax:     p.precio_max     || 0,
+      precioMin:       p.precio_min || 0,
+      precioMax:       p.precio_max || 0,
+      precioVendedora: Math.ceil((p.precio_min || 0) * 0.70 / 10) * 10,
       gradiente:     p.gradiente || 'linear-gradient(150deg, #130016 0%, #855AA2 100%)',
       descripcion:    p.descripcion || '',
       medida1Nombre:  p.medida_1_nombre || null,
@@ -472,9 +472,9 @@ async function loadInventario() {
       emoji: p.emoji || '👚',
       tallaEtiqueta: p.talla_etiqueta || '',
       tallaReal: p.talla_real || '',
-      precioCosto: p.precio_costo || 0,
-      precioMin: p.precio_min || 0,
-      precioMax: p.precio_max || 0,
+      precioMin:       p.precio_min || 0,
+      precioMax:       p.precio_max || 0,
+      precioVendedora: Math.ceil((p.precio_min || 0) * 0.70 / 10) * 10,
       gradiente:     p.gradiente || 'linear-gradient(150deg, #130016 0%, #855AA2 100%)',
       descripcion:   p.descripcion || '',
       medida1Nombre: p.medida_1_nombre || null,
@@ -558,7 +558,7 @@ async function insertPrenda(prenda) {
     emoji: prenda.emoji,
     talla_etiqueta: prenda.tallaEtiqueta,
     talla_real: prenda.tallaReal,
-    precio_costo: prenda.precioCosto,
+    precio_costo: prenda.precioVendedora,  // precio al que la visionaria compra la prenda
     precio_min: prenda.precioMin,
     precio_max: prenda.precioMax,
     gradiente: prenda.gradiente,
@@ -605,8 +605,8 @@ function formatZtId(id) {
 }
 
 function buildWhatsappUrl(p) {
-  const ganMin = p.precioMin - p.precioCosto;
-  const ganMax = p.precioMax - p.precioCosto;
+  const ganMin = p.precioMin - p.precioVendedora;
+  const ganMax = p.precioMax - p.precioVendedora;
   const texto =
     `✨ *${p.nombre}*\n` +
     `👗 Marca: ${p.marca}  |  Talla etiqueta: ${p.tallaEtiqueta}  |  Talla real: ${p.tallaReal}\n` +
@@ -748,8 +748,8 @@ function filtrarCatalogo() {
 }
 
 function buildCatalogCard(p) {
-  const ganMin  = p.precioMin - p.precioCosto;
-  const ganMax  = p.precioMax - p.precioCosto;
+  const ganMin  = p.precioMin - p.precioVendedora;
+  const ganMax  = p.precioMax - p.precioVendedora;
   const idLabel = p.numero || formatZtId(p.id);
   return `
     <article class="product-card" data-id="${p.id}">
@@ -779,7 +779,7 @@ function buildCatalogCard(p) {
         <div class="price-table">
           <div class="price-row">
             <span class="price-label">A ti te cuesta</span>
-            <span class="price-val price-costo">${formatPeso(p.precioCosto)}</span>
+            <span class="price-val price-costo">${formatPeso(p.precioVendedora)}</span>
           </div>
           <div class="price-row">
             <span class="price-label">Lo puedes vender</span>
