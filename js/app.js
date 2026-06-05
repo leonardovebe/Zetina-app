@@ -351,8 +351,7 @@ function showChangePasswordScreen(userData) {
 
 let catalogo = [];
 let catalogFiltros = { categorias: new Set(), tallas: new Set(), marcas: new Set(), precio: null };
-let modoClientaActivo    = false;
-let mostrarPreciosCliente = false;
+let modoClientaActivo = false;
 
 // URL base del bucket público de fotos en Supabase Storage
 const FOTOS_URL = `${SUPABASE_URL}/storage/v1/object/public/prenda-fotos`;
@@ -831,9 +830,16 @@ function buildCatalogCardClienteMode(p) {
           : `<span class="product-emoji" aria-hidden="true">${p.emoji}</span>`}
       </div>
       <div class="product-info product-info--clienta">
-        <h3 class="product-name product-name--clienta">${p.nombre}</h3>
+        <div class="clienta-nombre-row">
+          <h3 class="product-name product-name--clienta">${p.nombre}</h3>
+          <button class="btn-ojito" aria-label="Mostrar precio" aria-pressed="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" aria-hidden="true">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
         <span class="talla-chip-clienta">Talla ${p.tallaReal || '—'}</span>
-        ${mostrarPreciosCliente ? `<p class="clienta-precio">${formatPeso(p.precioMax)}</p>` : ''}
+        <p class="clienta-precio" hidden>${formatPeso(p.precioMax)}</p>
       </div>
     </article>`;
 }
@@ -865,20 +871,6 @@ function aplicarModoClientaUI(activo) {
   if (btnFiltrar)   btnFiltrar.hidden   = activo;
   if (btnRefresh)   btnRefresh.hidden   = activo;
   if (filtrosPanel) filtrosPanel.hidden = true;
-
-  // Barra "Mostrar precios"
-  const barPrecios = document.getElementById('barMostrarPrecios');
-  if (barPrecios) barPrecios.hidden = !activo;
-
-  // Al desactivar: resetear toggle secundario
-  if (!activo) {
-    mostrarPreciosCliente = false;
-    const tgPrecios = document.getElementById('toggleMostrarPrecios');
-    if (tgPrecios) {
-      tgPrecios.setAttribute('aria-pressed', 'false');
-      tgPrecios.classList.remove('btn-modo-clienta--activo');
-    }
-  }
 
   // Re-renderizar grid
   const grid = document.getElementById('catalogGrid');
@@ -969,12 +961,6 @@ function renderCatalog() {
           </button>
         </div>
       </div>
-      <div class="bar-mostrar-precios" id="barMostrarPrecios"${modoClientaActivo ? '' : ' hidden'}>
-        <button class="btn-modo-clienta${mostrarPreciosCliente ? ' btn-modo-clienta--activo' : ''}" id="toggleMostrarPrecios" aria-pressed="${mostrarPreciosCliente}">
-          <span class="modo-clienta-track"><span class="modo-clienta-thumb"></span></span>
-          <span class="modo-clienta-label">Mostrar precios</span>
-        </button>
-      </div>
     </div>
     <div class="filtros-panel" id="filtrosPanel" hidden>
       <div class="filtros-panel-top">
@@ -991,15 +977,6 @@ function renderCatalog() {
 
   container.querySelector('#btnModoClienta').addEventListener('click', () => {
     aplicarModoClientaUI(!modoClientaActivo);
-  });
-
-  container.querySelector('#toggleMostrarPrecios').addEventListener('click', () => {
-    mostrarPreciosCliente = !mostrarPreciosCliente;
-    const btn = document.getElementById('toggleMostrarPrecios');
-    btn.setAttribute('aria-pressed', String(mostrarPreciosCliente));
-    btn.classList.toggle('btn-modo-clienta--activo', mostrarPreciosCliente);
-    const grid = document.getElementById('catalogGrid');
-    if (grid) grid.innerHTML = buildCatalogCardsClienteMode(filtrarCatalogo());
   });
 
   container.querySelector("#btnFiltrar").addEventListener("click", () => {
@@ -1043,6 +1020,27 @@ function renderCatalog() {
   });
 
   container.querySelector("#catalogGrid").addEventListener("click", (e) => {
+    // Ojito: toggle precio por card en Modo Clienta
+    const ojitoBtn = e.target.closest(".btn-ojito");
+    if (ojitoBtn) {
+      const card     = ojitoBtn.closest(".product-card--clienta");
+      const precioEl = card?.querySelector(".clienta-precio");
+      if (precioEl) {
+        const visible = !precioEl.hidden;
+        precioEl.hidden = visible;
+        ojitoBtn.setAttribute("aria-pressed", String(!visible));
+        ojitoBtn.classList.toggle("btn-ojito--activo", !visible);
+      }
+      return;
+    }
+
+    // En Modo Clienta: solo la galería responde, nada más
+    if (modoClientaActivo) {
+      const imgDiv = e.target.closest("[data-gallery-id]");
+      if (imgDiv) gallery.open(imgDiv.dataset.galleryId);
+      return;
+    }
+
     const descBtn = e.target.closest(".btn-desc-catalogo");
     if (descBtn) {
       const p = catalogo.find((x) => String(x.id) === descBtn.dataset.descId);

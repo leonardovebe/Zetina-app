@@ -323,14 +323,6 @@ h1, h2, h3, h4, h5, h6,
   letter-spacing: 0.01em;
 }
 
-.bar-mostrar-precios {
-  display: flex;
-  align-items: center;
-  padding: 0.5rem 0 0.125rem;
-  border-top: 1px solid rgba(133, 90, 162, 0.15);
-  margin-top: 0.5rem;
-}
-
 /* Cards Modo Clienta */
 .catalog-grid--clienta {
   grid-template-columns: repeat(2, 1fr);
@@ -377,6 +369,28 @@ h1, h2, h3, h4, h5, h6,
   border-radius: 999px;
   padding: 0.15rem 0.55rem;
   width: fit-content;
+}
+
+.clienta-nombre-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
+
+.btn-ojito {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #CCB8DD;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s ease;
+}
+
+.btn-ojito--activo {
+  color: #855AA2;
 }
 
 .clienta-precio {
