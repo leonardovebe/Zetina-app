@@ -376,7 +376,7 @@ async function loadCatalogo() {
   // y b) la columna puede no existir si el schema-admin.sql no se ejecutó todavía.
   const { data, error } = await db
     .from('prendas')
-    .select('id, numero, nombre, marca, categoria, emoji, gradiente, talla_etiqueta, talla_real, precio_min, precio_max, descripcion, medida_1_nombre, medida_1_valor, medida_2_nombre, medida_2_valor, fotos_prendas(url)')
+    .select('id, numero, nombre, marca, categoria, emoji, gradiente, talla_etiqueta, talla_real, precio_min, precio_vendedora, precio_max, descripcion, medida_1_nombre, medida_1_valor, medida_2_nombre, medida_2_valor, fotos_prendas(url)')
     .eq('disponible', true)
     .order('created_at', { ascending: false });
 
@@ -393,9 +393,9 @@ async function loadCatalogo() {
       emoji:         p.emoji     || '👚',
       tallaEtiqueta: p.talla_etiqueta || '',
       tallaReal:     p.talla_real     || '',
-      precioMin:       p.precio_min || 0,
-      precioMax:       p.precio_max || 0,
-      precioVendedora: Math.ceil((p.precio_min || 0) * 0.70 / 10) * 10,
+      precioMin:       p.precio_min       || 0,
+      precioVendedora: p.precio_vendedora || 0,
+      precioMax:       p.precio_max       || 0,
       gradiente:     p.gradiente || 'linear-gradient(150deg, #130016 0%, #855AA2 100%)',
       descripcion:    p.descripcion || '',
       medida1Nombre:  p.medida_1_nombre || null,
@@ -472,9 +472,9 @@ async function loadInventario() {
       emoji: p.emoji || '👚',
       tallaEtiqueta: p.talla_etiqueta || '',
       tallaReal: p.talla_real || '',
-      precioMin:       p.precio_min || 0,
-      precioMax:       p.precio_max || 0,
-      precioVendedora: Math.ceil((p.precio_min || 0) * 0.70 / 10) * 10,
+      precioMin:       p.precio_min       || 0,
+      precioVendedora: p.precio_vendedora || 0,
+      precioMax:       p.precio_max       || 0,
       gradiente:     p.gradiente || 'linear-gradient(150deg, #130016 0%, #855AA2 100%)',
       descripcion:   p.descripcion || '',
       medida1Nombre: p.medida_1_nombre || null,
