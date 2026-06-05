@@ -2035,6 +2035,24 @@ h1, h2, h3, h4, h5, h6,
   gap: 0.75rem;
 }
 
+/* Mis Prendas — Modo Clienta */
+.inv-grid--clienta {
+  gap: 0.875rem;
+}
+
+.inv-card--clienta {
+  box-shadow: 0 2px 10px rgba(22, 0, 28, 0.09);
+}
+
+.inv-card-img--clienta {
+  aspect-ratio: 3 / 4;
+}
+
+.inv-card-body--clienta {
+  padding: 0.625rem 0.75rem 0.75rem;
+  gap: 0.3rem;
+}
+
 .inv-card {
   background: #fff;
   border-radius: 1rem;

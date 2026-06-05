@@ -353,7 +353,8 @@ function showChangePasswordScreen(userData) {
 
 let catalogo = [];
 let catalogFiltros = { categorias: new Set(), tallas: new Set(), marcas: new Set(), precio: null };
-let modoClientaActivo = false;
+let modoClientaActivo        = false;
+let modoClientaPrendasActivo = false;
 
 // URL base del bucket público de fotos en Supabase Storage
 const FOTOS_URL = `${SUPABASE_URL}/storage/v1/object/public/prenda-fotos`;
@@ -2530,6 +2531,53 @@ function openMatchesSheet(prenda) {
 
 // ── Render: Mis Prendas ─────────────────────────────────────────────────────
 
+function buildInvCardClienteMode(p) {
+  const fotos = p.fotos || [];
+  const primeraFoto = fotos.find(f => f.url);
+  return `
+    <article class="inv-card inv-card--clienta" data-id="${p.id}">
+      <div class="inv-card-img inv-card-img--clienta" style="background:${p.gradiente}"${fotos.length ? ` data-galeria-id="${p.id}"` : ''}>
+        ${primeraFoto
+          ? `<img class="inv-card-foto" src="${primeraFoto.url}" alt="${p.nombre}" loading="lazy">`
+          : `<span class="inv-card-emoji" aria-hidden="true">${p.emoji}</span>`}
+      </div>
+      <div class="inv-card-body inv-card-body--clienta">
+        <div class="clienta-nombre-row">
+          <p class="inv-card-nombre">${p.nombre}</p>
+          <button class="btn-ojito" aria-label="Mostrar precio" aria-pressed="false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" aria-hidden="true">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+        <span class="talla-chip-clienta">Talla ${p.tallaReal || '—'}</span>
+        <p class="clienta-precio" hidden>${formatPeso(p.precioMax)}</p>
+      </div>
+    </article>`;
+}
+
+function aplicarModoClientaPrendasUI(activo) {
+  modoClientaPrendasActivo = activo;
+
+  document.querySelector('.bottom-nav').style.display = activo ? 'none' : '';
+  const cartBtn = document.getElementById('cartBtn');
+  if (cartBtn) cartBtn.style.display = activo ? 'none' : '';
+
+  const btnToggle  = document.getElementById('btnModoClientaPrendas');
+  const btnRefresh = document.getElementById('btnRefreshPrendas');
+  const searchRow  = document.querySelector('#prendas .clientes-search-row');
+  if (btnToggle)  { btnToggle.setAttribute('aria-pressed', String(activo)); btnToggle.classList.toggle('btn-modo-clienta--activo', activo); }
+  if (btnRefresh) btnRefresh.hidden = activo;
+  if (searchRow)  searchRow.hidden  = activo;
+
+  const grid = document.getElementById('invGrid');
+  if (!grid) return;
+  grid.className = activo ? 'inv-grid inv-grid--clienta' : 'inv-grid';
+  grid.innerHTML = activo
+    ? inventario.map(buildInvCardClienteMode).join('') || `<p class="inv-empty">Sin prendas disponibles</p>`
+    : inventario.map(buildInvCard).join('') || `<p class="inv-empty">Sin prendas disponibles</p>`;
+}
+
 function buildInvCard(p) {
   const fotos = p.fotos || [];
   const primeraFoto  = fotos.find(f => f.url);
@@ -2604,26 +2652,36 @@ function renderMisPrendas() {
 
   container.innerHTML = `
     <div class="catalog-header">
-      <div class="section-header-row">
-        <div>
-          <h2 class="catalog-title">Mis Prendas</h2>
-          <p class="catalog-subtitle">${inventario.length} prenda${inventario.length !== 1 ? "s" : ""} disponible${inventario.length !== 1 ? "s" : ""}</p>
+      <div class="catalog-header-row">
+        <h2 class="catalog-title">Mis Prendas</h2>
+        <div class="header-actions">
+          <button class="btn-refresh" id="btnRefreshPrendas" aria-label="Actualizar prendas"${modoClientaPrendasActivo ? ' hidden' : ''}>${REFRESH_SVG}</button>
         </div>
-        <button class="btn-refresh" id="btnRefreshPrendas" aria-label="Actualizar prendas">${REFRESH_SVG}</button>
+      </div>
+      <div class="catalog-header-row2">
+        <p class="catalog-subtitle">${inventario.length} prenda${inventario.length !== 1 ? "s" : ""} disponible${inventario.length !== 1 ? "s" : ""}</p>
+        <button class="btn-modo-clienta${modoClientaPrendasActivo ? ' btn-modo-clienta--activo' : ''}" id="btnModoClientaPrendas" aria-pressed="${modoClientaPrendasActivo}">
+          <span class="modo-clienta-track"><span class="modo-clienta-thumb"></span></span>
+          <span class="modo-clienta-label">Modo Clienta</span>
+        </button>
       </div>
     </div>
-    <div class="clientes-search-row">
+    <div class="clientes-search-row"${modoClientaPrendasActivo ? ' hidden' : ''}>
       <input class="search-input" id="prendasBusqueda" type="search"
              placeholder="Buscar por ID, nombre o marca…" autocomplete="off"
              autocorrect="off" spellcheck="false">
     </div>
-    <div class="inv-grid" id="invGrid">${renderGrid(inventario)}</div>`;
+    <div class="inv-grid${modoClientaPrendasActivo ? ' inv-grid--clienta' : ''}" id="invGrid">${modoClientaPrendasActivo ? inventario.map(buildInvCardClienteMode).join('') || `<p class="inv-empty">Sin prendas disponibles</p>` : renderGrid(inventario)}</div>`;
 
   attachRefreshBtn('btnRefreshPrendas',
     () => Promise.all([loadInventario(), loadPrestamos(), loadDevoluciones()]),
     renderMisPrendas);
 
-  container.querySelector("#prendasBusqueda").addEventListener("input", (e) => {
+  container.querySelector('#btnModoClientaPrendas').addEventListener('click', () => {
+    aplicarModoClientaPrendasUI(!modoClientaPrendasActivo);
+  });
+
+  container.querySelector("#prendasBusqueda")?.addEventListener("input", (e) => {
     const q = e.target.value.trim().toLowerCase();
     const filtradas = q
       ? inventario.filter((p) =>
@@ -2635,6 +2693,27 @@ function renderMisPrendas() {
   });
 
   container.onclick = (e) => {
+    // Ojito: toggle precio individual en Modo Clienta
+    const ojitoBtn = e.target.closest(".btn-ojito");
+    if (ojitoBtn) {
+      const card     = ojitoBtn.closest(".inv-card--clienta");
+      const precioEl = card?.querySelector(".clienta-precio");
+      if (precioEl) {
+        const visible = !precioEl.hidden;
+        precioEl.hidden = visible;
+        ojitoBtn.setAttribute("aria-pressed", String(!visible));
+        ojitoBtn.classList.toggle("btn-ojito--activo", !visible);
+      }
+      return;
+    }
+
+    // En Modo Clienta: solo galería responde
+    if (modoClientaPrendasActivo) {
+      const imgDiv = e.target.closest(".inv-card-img[data-galeria-id]");
+      if (imgDiv) openGaleria(imgDiv.dataset.galeriaId);
+      return;
+    }
+
     const imgDiv = e.target.closest(".inv-card-img[data-galeria-id]");
     if (imgDiv) { openGaleria(imgDiv.dataset.galeriaId); return; }
     const infoBtn = e.target.closest(".btn-inv-info");
