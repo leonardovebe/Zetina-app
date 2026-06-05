@@ -351,6 +351,8 @@ function showChangePasswordScreen(userData) {
 
 let catalogo = [];
 let catalogFiltros = { categorias: new Set(), tallas: new Set(), marcas: new Set(), precio: null };
+let modoClientaActivo    = false;
+let mostrarPreciosCliente = false;
 
 // URL base del bucket público de fotos en Supabase Storage
 const FOTOS_URL = `${SUPABASE_URL}/storage/v1/object/public/prenda-fotos`;
@@ -818,6 +820,74 @@ function buildCatalogCards(items) {
   return items.map(buildCatalogCard).join('');
 }
 
+function buildCatalogCardClienteMode(p) {
+  return `
+    <article class="product-card product-card--clienta" data-id="${p.id}">
+      <div class="product-image${p.foto ? ' product-image--foto' : ''} product-image--clickable product-image--clienta"
+           data-gallery-id="${p.id}"
+           ${!p.foto ? `style="background:${p.gradiente}"` : ''}>
+        ${p.foto
+          ? `<img class="product-img" src="${p.foto}" alt="${p.nombre}" loading="lazy">`
+          : `<span class="product-emoji" aria-hidden="true">${p.emoji}</span>`}
+      </div>
+      <div class="product-info product-info--clienta">
+        <h3 class="product-name product-name--clienta">${p.nombre}</h3>
+        <span class="talla-chip-clienta">Talla ${p.tallaReal || '—'}</span>
+        ${mostrarPreciosCliente ? `<p class="clienta-precio">${formatPeso(p.precioMax)}</p>` : ''}
+      </div>
+    </article>`;
+}
+
+function buildCatalogCardsClienteMode(items) {
+  if (!items.length) return `<p class="catalog-empty-filtros">No se encontraron prendas</p>`;
+  return items.map(buildCatalogCardClienteMode).join('');
+}
+
+function aplicarModoClientaUI(activo) {
+  modoClientaActivo = activo;
+
+  // Nav inferior y carrito
+  document.querySelector('.bottom-nav').style.display   = activo ? 'none' : '';
+  const cartBtn = document.getElementById('cartBtn');
+  if (cartBtn) cartBtn.style.display = activo ? 'none' : '';
+
+  // Toggle visual
+  const btnToggle = document.getElementById('btnModoClienta');
+  if (btnToggle) {
+    btnToggle.setAttribute('aria-pressed', String(activo));
+    btnToggle.classList.toggle('btn-modo-clienta--activo', activo);
+  }
+
+  // Filtrar y refresh: solo en modo visionaria
+  const btnFiltrar = document.getElementById('btnFiltrar');
+  const btnRefresh = document.getElementById('btnRefreshCatalogo');
+  const filtrosPanel = document.getElementById('filtrosPanel');
+  if (btnFiltrar)   btnFiltrar.hidden   = activo;
+  if (btnRefresh)   btnRefresh.hidden   = activo;
+  if (filtrosPanel) filtrosPanel.hidden = true;
+
+  // Barra "Mostrar precios"
+  const barPrecios = document.getElementById('barMostrarPrecios');
+  if (barPrecios) barPrecios.hidden = !activo;
+
+  // Al desactivar: resetear toggle secundario
+  if (!activo) {
+    mostrarPreciosCliente = false;
+    const tgPrecios = document.getElementById('toggleMostrarPrecios');
+    if (tgPrecios) {
+      tgPrecios.setAttribute('aria-pressed', 'false');
+      tgPrecios.classList.remove('btn-modo-clienta--activo');
+    }
+  }
+
+  // Re-renderizar grid
+  const grid = document.getElementById('catalogGrid');
+  if (!grid) return;
+  const items = filtrarCatalogo();
+  grid.className = activo ? 'catalog-grid catalog-grid--clienta' : 'catalog-grid';
+  grid.innerHTML = activo ? buildCatalogCardsClienteMode(items) : buildCatalogCards(items);
+}
+
 function actualizarUiFiltros(container, total) {
   const n = catalogFiltros.categorias.size + catalogFiltros.tallas.size + catalogFiltros.marcas.size + (catalogFiltros.precio ? 1 : 0);
   const btn = container.querySelector("#btnFiltrar");
@@ -886,14 +956,24 @@ function renderCatalog() {
           <p class="catalog-subtitle" id="catalogSubtitle">${total} prenda${total !== 1 ? 's' : ''} disponible${total !== 1 ? 's' : ''}</p>
         </div>
         <div class="header-actions">
-          <button class="btn-refresh" id="btnRefreshCatalogo" aria-label="Actualizar catálogo">🔄</button>
-          <button class="btn-filtrar" id="btnFiltrar" aria-expanded="false">
+          <button class="btn-modo-clienta${modoClientaActivo ? ' btn-modo-clienta--activo' : ''}" id="btnModoClienta" aria-pressed="${modoClientaActivo}">
+            <span class="modo-clienta-track"><span class="modo-clienta-thumb"></span></span>
+            <span class="modo-clienta-label">Modo Clienta</span>
+          </button>
+          <button class="btn-refresh" id="btnRefreshCatalogo" aria-label="Actualizar catálogo"${modoClientaActivo ? ' hidden' : ''}>🔄</button>
+          <button class="btn-filtrar" id="btnFiltrar" aria-expanded="false"${modoClientaActivo ? ' hidden' : ''}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" aria-hidden="true">
               <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
             </svg>
             <span class="btn-filtrar-label">Filtrar</span>
           </button>
         </div>
+      </div>
+      <div class="bar-mostrar-precios" id="barMostrarPrecios"${modoClientaActivo ? '' : ' hidden'}>
+        <button class="btn-modo-clienta${mostrarPreciosCliente ? ' btn-modo-clienta--activo' : ''}" id="toggleMostrarPrecios" aria-pressed="${mostrarPreciosCliente}">
+          <span class="modo-clienta-track"><span class="modo-clienta-thumb"></span></span>
+          <span class="modo-clienta-label">Mostrar precios</span>
+        </button>
       </div>
     </div>
     <div class="filtros-panel" id="filtrosPanel" hidden>
@@ -905,9 +985,22 @@ function renderCatalog() {
       ${seccion('Marca', marcas.map(m => `<button class="filtro-chip" data-tipo="marca" data-valor="${m}">${m}</button>`).join(''))}
       ${seccion('Precio', precioOpts.map(o => `<button class="filtro-chip" data-tipo="precio" data-valor="${o.valor}">${o.label}</button>`).join(''))}
     </div>
-    <div class="catalog-grid" id="catalogGrid">${buildCatalogCards(catalogo)}</div>`;
+    <div class="catalog-grid${modoClientaActivo ? ' catalog-grid--clienta' : ''}" id="catalogGrid">${modoClientaActivo ? buildCatalogCardsClienteMode(catalogo) : buildCatalogCards(catalogo)}</div>`;
 
   attachRefreshBtn('btnRefreshCatalogo', loadCatalogo, renderCatalog);
+
+  container.querySelector('#btnModoClienta').addEventListener('click', () => {
+    aplicarModoClientaUI(!modoClientaActivo);
+  });
+
+  container.querySelector('#toggleMostrarPrecios').addEventListener('click', () => {
+    mostrarPreciosCliente = !mostrarPreciosCliente;
+    const btn = document.getElementById('toggleMostrarPrecios');
+    btn.setAttribute('aria-pressed', String(mostrarPreciosCliente));
+    btn.classList.toggle('btn-modo-clienta--activo', mostrarPreciosCliente);
+    const grid = document.getElementById('catalogGrid');
+    if (grid) grid.innerHTML = buildCatalogCardsClienteMode(filtrarCatalogo());
+  });
 
   container.querySelector("#btnFiltrar").addEventListener("click", () => {
     const panel = container.querySelector("#filtrosPanel");
