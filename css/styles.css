@@ -1990,6 +1990,14 @@ h1, h2, h3, h4, h5, h6,
   margin-top: 0.2rem;
 }
 
+.inv-precio-rango-venta {
+  font-family: var(--font-body);
+  font-size: 0.625rem;
+  font-weight: 500;
+  color: #855AA2;
+  margin-top: 0.1rem;
+}
+
 .inv-ganancia {
   font-size: 0.625rem;
   color: #855AA2;

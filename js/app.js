@@ -2464,7 +2464,8 @@ function buildInvCard(p) {
           <span class="inv-talla-chip">Etq&nbsp;<strong>${p.tallaEtiqueta}</strong></span>
           <span class="inv-talla-chip">Real&nbsp;<strong>${p.tallaReal}</strong></span>
         </div>
-        <p class="inv-precio-rango">${formatPeso(p.precioMax)}</p>
+        <p class="inv-precio-rango">${formatPeso(p.precioVendedora)}</p>
+        <p class="inv-precio-rango-venta">Venta: ${formatPeso(p.precioMin)} – ${formatPeso(p.precioMax)}</p>
         <button class="btn-inv-info" data-info="${p.id}" aria-label="Ver descripción">
           Ver descripción
         </button>
