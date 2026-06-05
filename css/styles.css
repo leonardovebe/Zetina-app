@@ -153,10 +153,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
-  line-height: 1;
   cursor: pointer;
   flex-shrink: 0;
+  color: #16001C;
   -webkit-tap-highlight-color: transparent;
   transition: opacity 0.15s ease, transform 0.15s ease;
 }
@@ -181,6 +180,14 @@ body {
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
+}
+
+/* Segunda línea del header: contador + Modo Clienta */
+.catalog-header-row2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.375rem;
 }
 
 /* Grupo de botones a la derecha del header de Catálogo */
