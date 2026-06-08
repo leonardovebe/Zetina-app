@@ -2005,20 +2005,23 @@ function createDevolucionSheet() {
     const waUrl = `https://wa.me/525579346962?text=${encodeURIComponent(waTexto)}`;
 
     // Guardar en Supabase (error no bloquea el flujo)
-    const { error } = await db.from("devoluciones").insert([{
-      prenda_id: prendaId,
+    const payload = {
+      prenda_id:    prendaId,
       vendedora_id: VENDEDORA_ID,
       motivo,
       nota,
-      estado: "Pendiente",
-    }]);
+      estado:       "Pendiente",
+    };
+    console.log('[devolucion] payload:', payload);
+    const { data: devData, error } = await db.from("devoluciones").insert([payload]).select();
+    console.log('[devolucion] respuesta Supabase — data:', devData, '| error:', error);
+    if (error) console.error('[devolucion] error completo:', JSON.stringify(error));
 
     btn.disabled = false;
     btn.textContent = "Enviar solicitud";
 
     if (!error && !devoluciones.includes(prendaId)) devoluciones.push(prendaId);
     if (!error) { renderMisPrendas(); actualizarStats('devolucion'); }
-    if (error) console.error("devolucion insert:", error.message);
 
     // Abrir WhatsApp siempre, haya o no error en Supabase
     e.target.reset();
