@@ -380,14 +380,16 @@ async function loadCatalogo() {
   // y b) la columna puede no existir si el schema-admin.sql no se ejecutó todavía.
   const { data, error } = await db
     .from('prendas')
-    .select('id, numero, nombre, marca, categoria, emoji, gradiente, talla_etiqueta, talla_real, precio_min, precio_vendedora, precio_max, descripcion, medida_1_nombre, medida_1_valor, medida_2_nombre, medida_2_valor, fotos_prendas(url)')
+    .select('id, numero, nombre, marca, categoria, emoji, gradiente, talla_etiqueta, talla_real, precio_min, precio_vendedora, precio_max, descripcion, medida_1_nombre, medida_1_valor, medida_2_nombre, medida_2_valor, fotos_prendas(url, orden)')
     .eq('disponible', true)
     .order('created_at', { ascending: false });
 
   if (error) { console.error('loadCatalogo:', error.message); return; }
 
   catalogo = (data || []).map((p) => {
-    const fotos = (p.fotos_prendas || []).map(f => fotoPublicUrl(f.url)).filter(Boolean);
+    const fotos = (p.fotos_prendas || [])
+      .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+      .map(f => fotoPublicUrl(f.url)).filter(Boolean);
     return {
       id:            p.id,
       numero:        p.numero    || null,
@@ -466,7 +468,9 @@ async function loadInventario() {
 
   inventario = (data || []).map(inv => {
     const p = inv.prendas || {};
-    const fotos = (p.fotos_prendas || []).map(f => ({ id: f.id, url: fotoPublicUrl(f.url) })).filter(f => f.url);
+    const fotos = (p.fotos_prendas || [])
+      .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+      .map(f => ({ id: f.id, url: fotoPublicUrl(f.url) })).filter(f => f.url);
     return {
       id: inv.prenda_id,
       invId: inv.id,
