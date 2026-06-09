@@ -3592,6 +3592,27 @@ h1, h2, h3, h4, h5, h6,
   color: #e05252;
 }
 
+.vision-stat-card--credito {
+  border: 1.5px solid rgba(133, 90, 162, 0.25);
+  background: #f7f2fc;
+}
+
+.vision-stat-label--upper {
+  font-weight: 700;
+  color: #855AA2;
+}
+
+.vision-stat-valor--credito {
+  font-size: 1.25rem;
+}
+
+.vision-stat-nota {
+  font-family: var(--font-body);
+  font-size: 0.625rem;
+  color: #aaa;
+  margin-top: 0.125rem;
+}
+
 .vision-progreso-wrap {
   margin-top: 0.75rem;
 }

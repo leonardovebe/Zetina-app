@@ -3759,6 +3759,11 @@ function renderCuenta() {
             <span class="vision-stat-label">Mejor mes</span>
             <span class="vision-stat-valor">${mejorMesStr}</span>
           </div>
+          <div class="vision-stat-card vision-stat-card--full vision-stat-card--credito">
+            <span class="vision-stat-label vision-stat-label--upper">Crédito disponible</span>
+            <span class="vision-stat-valor vision-stat-valor--credito">${formatPeso(perfil.credito || 0)}</span>
+            <span class="vision-stat-nota">Generado por devoluciones aprobadas</span>
+          </div>
         </div>
       </div>
 
