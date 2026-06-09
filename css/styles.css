@@ -2267,6 +2267,150 @@ h1, h2, h3, h4, h5, h6,
   margin-bottom: 1rem;
 }
 
+/* Botón Cobrar hoy */
+.btn-cobrar-hoy {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1rem;
+  background: #DEFF00;
+  color: #16001C;
+  font-family: var(--font-heading);
+  font-size: 0.9375rem;
+  font-weight: 800;
+  border: none;
+  border-radius: 0.875rem;
+  cursor: pointer;
+  margin-bottom: 0.875rem;
+  -webkit-tap-highlight-color: transparent;
+  letter-spacing: 0.01em;
+  transition: opacity 0.15s ease;
+}
+
+.btn-cobrar-hoy:active {
+  opacity: 0.85;
+}
+
+/* Sheet Cobrar hoy */
+.cobrar-hoy-sheet .sheet-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1.25rem 0.625rem;
+}
+
+.cobrar-hoy-titulo {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 800;
+  color: #16001C;
+}
+
+.cobrar-hoy-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.25rem;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.cobrar-hoy-empty-icon {
+  font-size: 2.5rem;
+}
+
+.cobrar-hoy-empty-text {
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  color: #555;
+  line-height: 1.5;
+}
+
+.cobro-hoy-card {
+  border: 1.5px solid #eee;
+  border-radius: 0.875rem;
+  padding: 0.875rem 1rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: #faf8fd;
+}
+
+.cobro-hoy-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.cobro-hoy-nombre {
+  font-family: var(--font-heading);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #16001C;
+}
+
+.cobro-hoy-prendas {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: #777;
+  margin-top: 0.15rem;
+}
+
+.cobro-hoy-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.cobro-hoy-saldo {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 800;
+  color: #855AA2;
+}
+
+.cobro-hoy-tipo {
+  font-family: var(--font-body);
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #fff;
+  background: #CCB8DD;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
+
+.cobro-hoy-tipo[data-tipo="2"] {
+  background: #855AA2;
+}
+
+.btn-cobro-wa {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  background: #25D366;
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 0.625rem;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease;
+}
+
+.btn-cobro-wa:active {
+  opacity: 0.8;
+}
+
 .cobros-total-bar {
   display: flex;
   align-items: center;

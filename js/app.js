@@ -1309,6 +1309,8 @@ async function loadClientes() {
       medidaCintura: row.medida_cintura != null ? +row.medida_cintura : null,
       medidaBusto:   row.medida_busto   != null ? +row.medida_busto   : null,
       medidaCadera:  row.medida_cadera  != null ? +row.medida_cadera  : null,
+      ultimoRecordatorioFecha: row.ultimo_recordatorio_fecha || null,
+      ultimoRecordatorioTipo:  row.ultimo_recordatorio_tipo  || null,
       compras: [],
       pagos: [],
     }));
@@ -4064,6 +4066,10 @@ function renderCobros() {
         <button class="btn-refresh" id="btnRefreshCobros" aria-label="Actualizar cuentas">${REFRESH_SVG}</button>
       </div>
     </div>
+    <button class="btn-cobrar-hoy" id="btnCobrarHoy">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      Cobrar hoy
+    </button>
     <div class="cobros-total-bar">
       <span class="cobros-total-label">Total por cobrar</span>
       <span class="cobros-total-value">${formatPeso(totalPorCobrar)}</span>
@@ -4077,6 +4083,8 @@ function renderCobros() {
 
   attachRefreshBtn('btnRefreshCobros', loadCobrosData, renderCobros);
 
+  container.querySelector('#btnCobrarHoy').addEventListener('click', openCobrarHoy);
+
   container.querySelector("#cuentasBusqueda").addEventListener("input", (e) => {
     const q = e.target.value.trim().toLowerCase();
     container.querySelectorAll(".cobro-cliente-card").forEach((card) => {
@@ -4089,6 +4097,130 @@ function renderCobros() {
     const card = e.target.closest(".cobro-cliente-card");
     if (card) openCobrosDetail(card.dataset.id);
   });
+}
+
+// ── Cobrar hoy ──────────────────────────────────────────────────────────────
+
+function getMensajeCobro(c, saldo) {
+  const ahora = Date.now();
+  const ms72h = 72 * 60 * 60 * 1000;
+  const fechaRec = c.ultimoRecordatorioFecha ? new Date(c.ultimoRecordatorioFecha).getTime() : null;
+  const dentrodeDentro72 = fechaRec && (ahora - fechaRec) < ms72h && c.ultimoRecordatorioTipo === 1;
+
+  if (dentrodeDentro72) {
+    // Verificar si pagó algo DESPUÉS del recordatorio
+    const pagoDespues = (c.pagos || []).some(p => p.fecha && new Date(p.fecha).getTime() > fechaRec);
+    if (!pagoDespues) return 2; // Sin pago desde el recordatorio → Mensaje 2
+  }
+  return 1;
+}
+
+function buildMensajeCobro(c, saldo, tipo) {
+  const prendas = (c.compras || []).map(v => v.prenda).filter(Boolean);
+  const prendasStr = prendas.length === 1
+    ? `la prenda *${prendas[0]}*`
+    : prendas.map(n => `*${n}*`).join(', ');
+
+  if (tipo === 1) {
+    return `Hola ${c.nombre}, buen día. Solo para recordarte que tenemos un saldo pendiente por *${formatPeso(saldo)}* por ${prendasStr}. Gracias. Saludos.`;
+  }
+  // Mensaje 2 — aleatorio A o B
+  return Math.random() < 0.5
+    ? `Hola ${c.nombre}, ¿sí tienes mis datos para la transferencia verdad? ¿O será en efectivo? 😊`
+    : `Hola ${c.nombre}, solo para recordarte del pago, porque luego a mí también se me pasa jaja. ¿Sí tienes mis datos? 😊`;
+}
+
+function createCobrarHoySheet() {
+  if (document.getElementById('cobrarHoyOverlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'cobrarHoyOverlay';
+  overlay.className = 'order-detail-overlay';
+  overlay.innerHTML = `
+    <div class="order-detail-sheet cobrar-hoy-sheet">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-topbar">
+        <h3 class="cobrar-hoy-titulo">Cobrar hoy</h3>
+        <button class="btn-sheet-close" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="sheet-body" id="cobrarHoyBody"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+  overlay.querySelector('.btn-sheet-close').addEventListener('click', () => overlay.classList.remove('open'));
+  overlay.querySelector('#cobrarHoyBody').addEventListener('click', async e => {
+    const btn = e.target.closest('.btn-cobro-wa');
+    if (!btn) return;
+    const clienteId = btn.dataset.clienteId;
+    const tipo      = parseInt(btn.dataset.tipo);
+    const c = clientes.find(x => x.id === clienteId);
+    if (!c) return;
+    // Registrar recordatorio en Supabase y en memoria
+    const ahora = new Date().toISOString();
+    await db.from('clientes').update({
+      ultimo_recordatorio_fecha: ahora,
+      ultimo_recordatorio_tipo:  tipo,
+    }).eq('id', clienteId);
+    c.ultimoRecordatorioFecha = ahora;
+    c.ultimoRecordatorioTipo  = tipo;
+    // Refrescar el tag de tipo en la card sin cerrar el sheet
+    const tag = btn.closest('.cobro-hoy-card')?.querySelector('.cobro-hoy-tipo');
+    if (tag) { tag.textContent = tipo === 2 ? 'Recordatorio 2' : 'Recordatorio 1'; tag.dataset.tipo = tipo; }
+  });
+}
+
+function openCobrarHoy() {
+  createCobrarHoySheet();
+  const overlay = document.getElementById('cobrarHoyOverlay');
+  const body    = document.getElementById('cobrarHoyBody');
+
+  const pendientes = clientes.filter(c => {
+    const tp  = (c.compras || []).reduce((s, v) => s + v.monto, 0);
+    const tpg = (c.pagos   || []).reduce((s, p) => s + p.monto, 0);
+    return tp - tpg > 0;
+  });
+
+  if (!pendientes.length) {
+    body.innerHTML = `<div class="cobrar-hoy-empty">
+      <p class="cobrar-hoy-empty-icon">🎉</p>
+      <p class="cobrar-hoy-empty-text">¡Todo al corriente!<br>No hay cobros pendientes.</p>
+    </div>`;
+    overlay.classList.add('open');
+    return;
+  }
+
+  body.innerHTML = pendientes.map(c => {
+    const tp    = (c.compras || []).reduce((s, v) => s + v.monto, 0);
+    const tpg   = (c.pagos   || []).reduce((s, p) => s + p.monto, 0);
+    const saldo = tp - tpg;
+    const tipo  = getMensajeCobro(c, saldo);
+    const msg   = buildMensajeCobro(c, saldo, tipo);
+    const tel   = (c.telefono || '').replace(/\D/g, '');
+    const waUrl = `https://wa.me/52${tel}?text=${encodeURIComponent(msg)}`;
+    const prendas = (c.compras || []).map(v => v.prenda).filter(Boolean);
+
+    return `
+      <div class="cobro-hoy-card" data-id="${c.id}">
+        <div class="cobro-hoy-head">
+          <div>
+            <p class="cobro-hoy-nombre">${c.nombre}</p>
+            <p class="cobro-hoy-prendas">${prendas.join(' · ') || '—'}</p>
+          </div>
+          <div class="cobro-hoy-right">
+            <span class="cobro-hoy-saldo">${formatPeso(saldo)}</span>
+            <span class="cobro-hoy-tipo" data-tipo="${tipo}">${tipo === 2 ? 'Recordatorio 2' : 'Recordatorio 1'}</span>
+          </div>
+        </div>
+        <a class="btn-cobro-wa" href="${waUrl}" target="_blank" rel="noopener noreferrer"
+           data-cliente-id="${c.id}" data-tipo="${tipo}">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" aria-hidden="true"><path d="${WA_PATH}"/></svg>
+          Enviar mensaje ${tipo === 2 ? '2' : '1'}
+        </a>
+      </div>`;
+  }).join('');
+
+  overlay.classList.add('open');
 }
 
 function createCobrosDetailSheet() {
@@ -4434,6 +4566,7 @@ async function initApp() {
   createDevolucionSheet();
   createVendidaSheet();
   createPrestadaSheet();
+  createCobrarHoySheet();
   createCobrosDetailSheet();
   createAbonoFormSheet();
   createCartSheet();
