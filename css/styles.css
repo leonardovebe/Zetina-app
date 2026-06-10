@@ -3066,6 +3066,22 @@ h1, h2, h3, h4, h5, h6,
 
 .btn-inv-melaquedo:active { opacity: 0.6; }
 
+/* Sheet Vender prenda prestada */
+.vp-prenda-nombre {
+  font-family: var(--font-heading);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #16001C;
+  margin-top: 0.25rem;
+}
+
+.vp-clienta-nombre {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: #855AA2;
+  margin-top: 0.25rem;
+}
+
 /* Sheet Me la quedo */
 .melaquedo-titulo {
   font-family: var(--font-heading);

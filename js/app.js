@@ -2538,6 +2538,121 @@ function openMatchesSheet(prenda) {
   overlay.classList.add('open');
 }
 
+// ── Vender prenda prestada ────────────────────────────────────────────────────
+
+function createVenderPrestadaSheet() {
+  if (document.getElementById('venderPrestadaOverlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'venderPrestadaOverlay';
+  overlay.className = 'order-detail-overlay';
+  overlay.innerHTML = `
+    <div class="order-detail-sheet">
+      <div class="detail-sheet-handle-row"><div class="sheet-drag-handle"></div></div>
+      <div class="sheet-topbar">
+        <h3 class="melaquedo-titulo">Confirmar venta</h3>
+        <button class="btn-sheet-close" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="sheet-body" style="padding:0 1.25rem 2rem">
+        <p class="vp-prenda-nombre" id="vpPrendaNombre"></p>
+        <p class="vp-clienta-nombre" id="vpClientaNombre"></p>
+        <div class="form-group" style="margin-top:1rem">
+          <label class="form-label" for="vpPrecio">Precio de venta</label>
+          <input class="form-input" type="number" id="vpPrecio" min="0" step="1" inputmode="numeric">
+        </div>
+        <button class="btn-confirmar-venta" id="vpConfirmar" style="margin-top:1.25rem">Confirmar venta</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+  overlay.querySelector('.btn-sheet-close').addEventListener('click', () => overlay.classList.remove('open'));
+
+  overlay.querySelector('#vpConfirmar').addEventListener('click', async () => {
+    const btn       = overlay.querySelector('#vpConfirmar');
+    const prendaId  = overlay.dataset.prendaId;
+    const prestamoId = overlay.dataset.prestamoId;
+    const invId     = overlay.dataset.invId;
+    const p         = inventario.find(x => x.id === prendaId);
+    const prestamo  = prestamos.find(x => x.id === prestamoId);
+    const c         = clientes.find(x => x.id === prestamo?.clienta_id);
+    const precio    = parseFloat(overlay.querySelector('#vpPrecio').value) || p?.precioMax || 0;
+
+    if (!p || !c) { showToast('Error: datos incompletos.'); return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Registrando…';
+
+    try {
+      // a) Cerrar préstamo
+      const { error: pe } = await db.from('prestamos')
+        .update({ estado: 'devuelto', fecha_devolucion: new Date().toISOString() })
+        .eq('id', prestamoId);
+      if (pe) throw pe;
+
+      // b) Registrar venta
+      const { error: ve } = await db.from('ventas').insert([{
+        vendedora_id:  VENDEDORA_ID,
+        cliente_id:    c.id,
+        prenda_id:     p.id,
+        nombre_prenda: p.nombre,
+        marca:         p.marca,
+        fecha:         new Date().toISOString().split('T')[0],
+        monto:         precio,
+        estado:        'pendiente',
+      }]);
+      if (ve) throw ve;
+
+      // c) Marcar inventario como vendido
+      await db.from('inventario_vendedoras').update({ estado: 'vendido' }).eq('id', invId);
+
+      // d) Stats y logros
+      const comprasAnteriores = (c.compras || []).length;
+      actualizarStats('match_valido');
+      if (comprasAnteriores > 0) {
+        actualizarStats('clienta_recurrente', { primeraVezRecurrente: comprasAnteriores === 1 });
+      } else {
+        actualizarStats('clienta_nueva_con_venta');
+      }
+
+      // e) Actualizar memoria y re-render
+      inventario = inventario.filter(x => x.invId !== invId);
+      overlay.classList.remove('open');
+      showToast('¡Venta registrada! 🎉');
+      renderMisPrendas();
+      renderCobros();
+
+      // f) WhatsApp
+      const waMsg = `Hola ${c.nombre}, te confirmo que te quedas con ${p.nombre} con un precio de ${formatPeso(precio)}. Cualquier duda estoy al pendiente 🙏`;
+      const tel   = (c.telefono || '').replace(/\D/g, '');
+      const waUrl = `https://wa.me/52${tel}?text=${encodeURIComponent(waMsg)}`;
+      window.location.href = waUrl;
+
+    } catch (err) {
+      console.error('[vender-prestada]', err);
+      btn.disabled = false;
+      btn.textContent = 'Confirmar venta';
+      showToast(`Error: ${err?.message || 'intenta de nuevo'}`);
+    }
+  });
+}
+
+function openVenderPrestadaSheet(prendaId, prestamoId, invId) {
+  createVenderPrestadaSheet();
+  const overlay = document.getElementById('venderPrestadaOverlay');
+  const p       = inventario.find(x => x.id === prendaId);
+  const prestamo = prestamos.find(x => x.id === prestamoId);
+  const c       = clientes.find(x => x.id === prestamo?.clienta_id);
+  if (!p || !c) return;
+  overlay.dataset.prendaId   = prendaId;
+  overlay.dataset.prestamoId = prestamoId;
+  overlay.dataset.invId      = invId;
+  document.getElementById('vpPrendaNombre').textContent = `${p.emoji} ${p.nombre} — ${p.marca}`;
+  document.getElementById('vpClientaNombre').textContent = `📦 En poder de: ${c.nombre}`;
+  document.getElementById('vpPrecio').value = p.precioMax || '';
+  overlay.classList.add('open');
+}
+
 // ── Me la quedo ──────────────────────────────────────────────────────────────
 
 function createMeLaQuedoSheet() {
@@ -2682,7 +2797,8 @@ function buildInvCard(p) {
         <div class="inv-btn-stack">
           <button class="inv-btn inv-btn--desc" data-info="${p.id}">Cómo vender</button>
           ${isPrestada
-            ? `<button class="inv-btn inv-btn--devolver" data-prestamo-id="${prestamo?.id}" data-inv-id="${p.invId}">Devuelta</button>`
+            ? `<button class="inv-btn inv-btn--vendida" data-vender-prestada-id="${p.id}" data-prestamo-id="${prestamo?.id}" data-inv-id="${p.invId}">Vender</button>
+               <button class="inv-btn inv-btn--devolver" data-prestamo-id="${prestamo?.id}" data-inv-id="${p.invId}">Devuelta</button>`
             : `<button class="inv-btn inv-btn--vendida" data-vendida-id="${p.id}">Vender</button>`}
           ${isPrestada
             ? `<button class="inv-btn inv-btn--disabled" disabled>Prestar</button>`
@@ -2792,7 +2908,14 @@ function renderMisPrendas() {
       return;
     }
     const vendidaBtn = e.target.closest(".btn-inv-vendida, .inv-btn--vendida");
-    if (vendidaBtn) { openVendidaSheet(vendidaBtn.dataset.vendidaId); return; }
+    if (vendidaBtn) {
+      if (vendidaBtn.dataset.venderPrestadaId) {
+        openVenderPrestadaSheet(vendidaBtn.dataset.venderPrestadaId, vendidaBtn.dataset.prestamoId, vendidaBtn.dataset.invId);
+      } else {
+        openVendidaSheet(vendidaBtn.dataset.vendidaId);
+      }
+      return;
+    }
     const prestadaBtn = e.target.closest(".btn-inv-prestada, .inv-btn--prestar");
     if (prestadaBtn) { openPrestadaSheet(prestadaBtn.dataset.prestadaId); return; }
     const devolverBtn = e.target.closest(".btn-inv-devolver, .inv-btn--devolver");
@@ -4684,6 +4807,7 @@ async function initApp() {
   createDevolucionSheet();
   createVendidaSheet();
   createPrestadaSheet();
+  createVenderPrestadaSheet();
   createMeLaQuedoSheet();
   createCobrarHoySheet();
   createCobrosDetailSheet();
