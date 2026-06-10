@@ -2799,13 +2799,9 @@ function buildInvCard(p) {
           ${isPrestada
             ? `<button class="inv-btn inv-btn--vendida" data-vender-prestada-id="${p.id}" data-prestamo-id="${prestamo?.id}" data-inv-id="${p.invId}">Vender</button>
                <button class="inv-btn inv-btn--devolver" data-prestamo-id="${prestamo?.id}" data-inv-id="${p.invId}">Devuelta</button>`
-            : `<button class="inv-btn inv-btn--vendida" data-vendida-id="${p.id}">Vender</button>`}
-          ${isPrestada
-            ? `<button class="inv-btn inv-btn--disabled" disabled>Prestar</button>`
-            : `<button class="inv-btn inv-btn--prestar" data-prestada-id="${p.id}">Prestar</button>`}
-          ${!isPrestada && !pendiente
-            ? `<button class="inv-btn inv-btn--melaquedo" data-inv-id="${p.invId}" data-prenda-id="${p.id}" data-nombre="${p.nombre}">Me la quedo</button>`
-            : `<button class="inv-btn inv-btn--disabled" disabled>Me la quedo</button>`}
+            : `<button class="inv-btn inv-btn--vendida" data-vendida-id="${p.id}">Vender</button>
+               <button class="inv-btn inv-btn--prestar" data-prestada-id="${p.id}">Prestar</button>
+               ${!pendiente ? `<button class="inv-btn inv-btn--melaquedo" data-inv-id="${p.invId}" data-prenda-id="${p.id}" data-nombre="${p.nombre}">Me la quedo</button>` : ''}`}
         </div>
 
         ${(p.medida1Valor || p.medida2Valor) ? `
@@ -2815,7 +2811,7 @@ function buildInvCard(p) {
         </button>` : ''}
 
         <div class="inv-card-secondary-actions">
-          ${!pendiente ? `<button class="btn-inv-devolucion" data-devolucion="${p.id}">Devolución</button>` : ""}
+          ${!isPrestada && !pendiente ? `<button class="btn-inv-devolucion" data-devolucion="${p.id}">Devolución</button>` : ""}
           <button class="btn-inv-eliminar" data-inv-id="${p.invId}" data-prenda-id="${p.id}">Eliminar</button>
         </div>
       </div>
