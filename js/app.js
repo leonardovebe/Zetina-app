@@ -2679,11 +2679,11 @@ function buildInvCard(p) {
         <p class="inv-precio-rango">${formatPeso(p.precioVendedora)}</p>
         <p class="inv-precio-rango-venta">Venta: ${formatPeso(p.precioMin)} – ${formatPeso(p.precioMax)}</p>
 
-        <div class="inv-btn-grid">
-          <button class="inv-btn inv-btn--desc" data-info="${p.id}">Ver descripción</button>
+        <div class="inv-btn-stack">
+          <button class="inv-btn inv-btn--desc" data-info="${p.id}">Cómo vender</button>
           ${isPrestada
             ? `<button class="inv-btn inv-btn--devolver" data-prestamo-id="${prestamo?.id}" data-inv-id="${p.invId}">Devuelta</button>`
-            : `<button class="inv-btn inv-btn--vendida" data-vendida-id="${p.id}">Vendida</button>`}
+            : `<button class="inv-btn inv-btn--vendida" data-vendida-id="${p.id}">Vender</button>`}
           ${isPrestada
             ? `<button class="inv-btn inv-btn--disabled" disabled>Prestar</button>`
             : `<button class="inv-btn inv-btn--prestar" data-prestada-id="${p.id}">Prestar</button>`}
