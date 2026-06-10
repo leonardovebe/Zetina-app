@@ -2678,42 +2678,29 @@ function buildInvCard(p) {
         </div>
         <p class="inv-precio-rango">${formatPeso(p.precioVendedora)}</p>
         <p class="inv-precio-rango-venta">Venta: ${formatPeso(p.precioMin)} – ${formatPeso(p.precioMax)}</p>
-        <button class="btn-inv-info" data-info="${p.id}" aria-label="Ver descripción">
-          Ver descripción
-        </button>
+
+        <div class="inv-btn-grid">
+          <button class="inv-btn inv-btn--desc" data-info="${p.id}">Ver descripción</button>
+          ${isPrestada
+            ? `<button class="inv-btn inv-btn--devolver" data-prestamo-id="${prestamo?.id}" data-inv-id="${p.invId}">Devuelta</button>`
+            : `<button class="inv-btn inv-btn--vendida" data-vendida-id="${p.id}">Vendida</button>`}
+          ${isPrestada
+            ? `<button class="inv-btn inv-btn--disabled" disabled>Prestar</button>`
+            : `<button class="inv-btn inv-btn--prestar" data-prestada-id="${p.id}">Prestar</button>`}
+          ${!isPrestada && !pendiente
+            ? `<button class="inv-btn inv-btn--melaquedo" data-inv-id="${p.invId}" data-prenda-id="${p.id}" data-nombre="${p.nombre}">Me la quedo</button>`
+            : `<button class="inv-btn inv-btn--disabled" disabled>Me la quedo</button>`}
+        </div>
+
         ${(p.medida1Valor || p.medida2Valor) ? `
         <button class="btn-inv-matches" data-matches-id="${p.id}" aria-label="Ver matches">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true" width="12" height="12"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
           Ver matches
         </button>` : ''}
-        ${isPrestada
-          ? `<button class="btn-inv-devolver" data-prestamo-id="${prestamo?.id}" data-inv-id="${p.invId}">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="12" height="12"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
-              Devuelta
-             </button>`
-          : `<button class="btn-inv-vendida" data-vendida-id="${p.id}">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="12" height="12"><polyline points="20 6 9 17 4 12"/></svg>
-              Vendida
-             </button>
-             <button class="btn-inv-prestada" data-prestada-id="${p.id}">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="12" height="12"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-              Prestar
-             </button>`}
+
         <div class="inv-card-secondary-actions">
-          ${!isPrestada && !pendiente ? `
-          <button class="btn-inv-melaquedo" data-inv-id="${p.invId}" data-prenda-id="${p.id}" data-nombre="${p.nombre}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="11" height="11"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-            Me la quedo
-          </button>` : ""}
-          ${!pendiente ? `
-          <button class="btn-inv-devolucion" data-devolucion="${p.id}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="11" height="11"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
-            Devolución
-          </button>` : ""}
-          <button class="btn-inv-eliminar" data-inv-id="${p.invId}" data-prenda-id="${p.id}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="11" height="11"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-            Eliminar
-          </button>
+          ${!pendiente ? `<button class="btn-inv-devolucion" data-devolucion="${p.id}">Devolución</button>` : ""}
+          <button class="btn-inv-eliminar" data-inv-id="${p.invId}" data-prenda-id="${p.id}">Eliminar</button>
         </div>
       </div>
     </article>`;
@@ -2792,9 +2779,9 @@ function renderMisPrendas() {
 
     const imgDiv = e.target.closest(".inv-card-img[data-galeria-id]");
     if (imgDiv) { openGaleria(imgDiv.dataset.galeriaId); return; }
-    const infoBtn = e.target.closest(".btn-inv-info");
+    const infoBtn = e.target.closest(".btn-inv-info, .inv-btn--desc");
     if (infoBtn) {
-      const p = inventario.find((x) => x.id === infoBtn.dataset.info);
+      const p = inventario.find((x) => x.id === (infoBtn.dataset.info || infoBtn.closest('.inv-card')?.dataset.id));
       if (p) openPrendaDetalle(p, true);
       return;
     }
@@ -2804,13 +2791,13 @@ function renderMisPrendas() {
       if (p) openMatchesSheet(p);
       return;
     }
-    const vendidaBtn = e.target.closest(".btn-inv-vendida");
+    const vendidaBtn = e.target.closest(".btn-inv-vendida, .inv-btn--vendida");
     if (vendidaBtn) { openVendidaSheet(vendidaBtn.dataset.vendidaId); return; }
-    const prestadaBtn = e.target.closest(".btn-inv-prestada");
+    const prestadaBtn = e.target.closest(".btn-inv-prestada, .inv-btn--prestar");
     if (prestadaBtn) { openPrestadaSheet(prestadaBtn.dataset.prestadaId); return; }
-    const devolverBtn = e.target.closest(".btn-inv-devolver");
+    const devolverBtn = e.target.closest(".btn-inv-devolver, .inv-btn--devolver");
     if (devolverBtn) { marcarDevuelta(devolverBtn.dataset.prestamoId, devolverBtn.dataset.invId); return; }
-    const mlqBtn = e.target.closest(".btn-inv-melaquedo");
+    const mlqBtn = e.target.closest(".btn-inv-melaquedo, .inv-btn--melaquedo");
     if (mlqBtn) { openMeLaQuedo(mlqBtn.dataset.invId, mlqBtn.dataset.nombre); return; }
     const devBtn = e.target.closest(".btn-inv-devolucion");
     if (devBtn) { openDevolucionForm(devBtn.dataset.devolucion); return; }
