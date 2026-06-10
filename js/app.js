@@ -2538,6 +2538,68 @@ function openMatchesSheet(prenda) {
   overlay.classList.add('open');
 }
 
+// ── Me la quedo ──────────────────────────────────────────────────────────────
+
+function createMeLaQuedoSheet() {
+  if (document.getElementById('meLaQuedoOverlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'meLaQuedoOverlay';
+  overlay.className = 'order-detail-overlay';
+  overlay.innerHTML = `
+    <div class="order-detail-sheet">
+      <div class="detail-sheet-handle-row"><div class="sheet-drag-handle"></div></div>
+      <div class="sheet-body" style="padding:1.5rem 1.25rem 2rem">
+        <h3 class="melaquedo-titulo">¿Me la quedo?</h3>
+        <p class="melaquedo-prenda" id="meLaQuedoPrendaNombre"></p>
+        <p class="melaquedo-desc">¿Deseas registrar esta prenda como compra personal? Esta acción retirará la prenda de tu inventario comercial y la agregará a tu historial de compras personales.</p>
+        <p class="melaquedo-nota">Esta acción no contará como Match.</p>
+        <div class="melaquedo-actions">
+          <button class="btn-melaquedo-cancelar" id="btnMeLaQuedoCancelar">Cancelar</button>
+          <button class="btn-melaquedo-confirmar" id="btnMeLaQuedoConfirmar">Confirmar</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+  overlay.querySelector('#btnMeLaQuedoCancelar').addEventListener('click', () => overlay.classList.remove('open'));
+  overlay.querySelector('#btnMeLaQuedoConfirmar').addEventListener('click', async () => {
+    const btn   = overlay.querySelector('#btnMeLaQuedoConfirmar');
+    const invId = overlay.dataset.invId;
+    btn.disabled = true;
+    btn.textContent = 'Guardando…';
+
+    const { error: e1 } = await db.from('inventario_vendedoras')
+      .update({ estado: 'personal' }).eq('id', invId);
+    if (e1) { console.error('[melaquedo] error inventario:', e1); btn.disabled = false; btn.textContent = 'Confirmar'; return; }
+
+    // Incrementar compras_personales en visionaria_stats
+    await ensureVisionariaStats();
+    const nuevasCompras = (visionariaStats.compras_personales || 0) + 1;
+    const { error: e2 } = await db.from('visionaria_stats')
+      .update({ compras_personales: nuevasCompras }).eq('vendedora_id', VENDEDORA_ID);
+    if (!e2) visionariaStats.compras_personales = nuevasCompras;
+
+    overlay.classList.remove('open');
+    showToast('¡Prenda registrada como compra personal! 🛍️');
+
+    // Quitar de inventario en memoria y re-renderizar
+    inventario = inventario.filter(p => p.invId !== invId);
+    renderMisPrendas();
+    verificarLogros();
+
+    btn.disabled = false;
+    btn.textContent = 'Confirmar';
+  });
+}
+
+function openMeLaQuedo(invId, nombre) {
+  createMeLaQuedoSheet();
+  const overlay = document.getElementById('meLaQuedoOverlay');
+  overlay.dataset.invId = invId;
+  document.getElementById('meLaQuedoPrendaNombre').textContent = nombre;
+  overlay.classList.add('open');
+}
+
 // ── Render: Mis Prendas ─────────────────────────────────────────────────────
 
 function buildInvCardClienteMode(p) {
@@ -2638,6 +2700,11 @@ function buildInvCard(p) {
               Prestar
              </button>`}
         <div class="inv-card-secondary-actions">
+          ${!isPrestada && !pendiente ? `
+          <button class="btn-inv-melaquedo" data-inv-id="${p.invId}" data-prenda-id="${p.id}" data-nombre="${p.nombre}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="11" height="11"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            Me la quedo
+          </button>` : ""}
           ${!pendiente ? `
           <button class="btn-inv-devolucion" data-devolucion="${p.id}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="11" height="11"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
@@ -2743,6 +2810,8 @@ function renderMisPrendas() {
     if (prestadaBtn) { openPrestadaSheet(prestadaBtn.dataset.prestadaId); return; }
     const devolverBtn = e.target.closest(".btn-inv-devolver");
     if (devolverBtn) { marcarDevuelta(devolverBtn.dataset.prestamoId, devolverBtn.dataset.invId); return; }
+    const mlqBtn = e.target.closest(".btn-inv-melaquedo");
+    if (mlqBtn) { openMeLaQuedo(mlqBtn.dataset.invId, mlqBtn.dataset.nombre); return; }
     const devBtn = e.target.closest(".btn-inv-devolucion");
     if (devBtn) { openDevolucionForm(devBtn.dataset.devolucion); return; }
     const eliminarBtn = e.target.closest(".btn-inv-eliminar");
@@ -3150,17 +3219,18 @@ function parseLogrosArray(val) {
 function buildInitialStatsRow() {
   const now = new Date();
   return {
-    vendedora_id:        VENDEDORA_ID,
-    puntos_historicos:   0,
-    puntos_temporada:    0,
-    matches_historicos:  0,
-    matches_temporada:   0,
+    vendedora_id:         VENDEDORA_ID,
+    puntos_historicos:    0,
+    puntos_temporada:     0,
+    matches_historicos:   0,
+    matches_temporada:    0,
     clientas_recurrentes: 0,
-    record_personal:     0,
-    racha_activa:        0,
-    logros_obtenidos:    [],
-    temporada_mes:       now.getMonth() + 1,
-    temporada_anio:      now.getFullYear(),
+    record_personal:      0,
+    racha_activa:         0,
+    compras_personales:   0,
+    logros_obtenidos:     [],
+    temporada_mes:        now.getMonth() + 1,
+    temporada_anio:       now.getFullYear(),
   };
 }
 
@@ -3263,16 +3333,21 @@ async function actualizarStats(evento, contexto = {}) {
 // ── Logros ───────────────────────────────────────────────────────────────────
 
 const LOGROS_NOMBRES = {
-  primer_match:               'Primer Match',
-  diez_matches:               '10 Matches',
-  veinticinco_matches:        '25 Matches',
-  cincuenta_matches:          '50 Matches',
-  cien_matches:               '100 Matches',
-  primera_clienta_recurrente: 'Primera Clienta Recurrente',
-  diez_clientas_recurrentes:  '10 Clientas Recurrentes',
-  record_superado:            'Récord Personal Superado',
-  mes_perfecto:               'Mes Perfecto',
-  primer_anio:                'Primer Año Activa',
+  primer_match:                   'Primer Match',
+  diez_matches:                   '10 Matches',
+  veinticinco_matches:            '25 Matches',
+  cincuenta_matches:              '50 Matches',
+  cien_matches:                   '100 Matches',
+  primera_clienta_recurrente:     'Primera Clienta Recurrente',
+  diez_clientas_recurrentes:      '10 Clientas Recurrentes',
+  record_superado:                'Récord Personal Superado',
+  mes_perfecto:                   'Mes Perfecto',
+  primer_anio:                    'Primer Año Activa',
+  primera_compra_personal:        'Primera Compra Personal',
+  cinco_compras_personales:       '5 Compras Personales',
+  diez_compras_personales:        '10 Compras Personales',
+  veinticinco_compras_personales: 'Curadora Activa',
+  cincuenta_compras_personales:   'Coleccionista Zetina',
 };
 
 function showToastLogro(msg) {
@@ -3319,6 +3394,11 @@ async function verificarLogros(contexto = {}) {
       record_superado:            (vs.record_personal || 0) > 0,
       mes_perfecto:               contexto.mes_perfecto === true,
       primer_anio:                antiguedadMeses >= 12,
+      primera_compra_personal:       (vs.compras_personales || 0) >= 1,
+      cinco_compras_personales:      (vs.compras_personales || 0) >= 5,
+      diez_compras_personales:       (vs.compras_personales || 0) >= 10,
+      veinticinco_compras_personales: (vs.compras_personales || 0) >= 25,
+      cincuenta_compras_personales:  (vs.compras_personales || 0) >= 50,
     };
 
     // Solo logros que cumplen la condición Y no están ya en logros_obtenidos
@@ -3647,6 +3727,8 @@ function getLogros() {
   const fechaMap = Object.fromEntries(logrosGuardados.map(l => [l.id, l.fecha]));
   const fecha = (id) => fechaMap[id] || null;
 
+  const cp = (visionariaStats || {}).compras_personales || 0;
+
   const condiciones = {
     primer_match:               stats.matchesHistoricos >= 1,
     diez_matches:               stats.matchesHistoricos >= 10,
@@ -3658,6 +3740,11 @@ function getLogros() {
     record_superado:            stats.recordPersonal > 0,
     mes_perfecto:               stats.cobradoMesCompleto === true,
     primer_anio:                stats.antiguedadMeses >= 12,
+    primera_compra_personal:        cp >= 1,
+    cinco_compras_personales:       cp >= 5,
+    diez_compras_personales:        cp >= 10,
+    veinticinco_compras_personales: cp >= 25,
+    cincuenta_compras_personales:   cp >= 50,
   };
 
   return [
@@ -3671,6 +3758,11 @@ function getLogros() {
     { id: 'record_superado',            nombre: 'Récord Personal Superado',   icono: '⚡', desc: 'Mejor que nunca',                                             obtenido: condiciones.record_superado,            fecha: fecha('record_superado') },
     { id: 'mes_perfecto',               nombre: 'Mes Perfecto',               icono: '💰', desc: '100% cobrado en un mes',                                     obtenido: condiciones.mes_perfecto,               fecha: fecha('mes_perfecto') },
     { id: 'primer_anio',                nombre: 'Primer Año Activa',          icono: '🌟', desc: 'Una Visionaria comprometida',                                obtenido: condiciones.primer_anio,                fecha: fecha('primer_anio') },
+    { id: 'primera_compra_personal',        nombre: 'Primera Compra Personal',   icono: '🛍️', desc: 'Registraste tu primera prenda como compra personal',        obtenido: condiciones.primera_compra_personal,        fecha: fecha('primera_compra_personal') },
+    { id: 'cinco_compras_personales',       nombre: '5 Compras Personales',       icono: '👗', desc: 'Has incorporado 5 prendas Zetina a tu guardarropa',          obtenido: condiciones.cinco_compras_personales,       fecha: fecha('cinco_compras_personales') },
+    { id: 'diez_compras_personales',        nombre: '10 Compras Personales',      icono: '✨', desc: 'Has incorporado 10 prendas Zetina a tu guardarropa',         obtenido: condiciones.diez_compras_personales,        fecha: fecha('diez_compras_personales') },
+    { id: 'veinticinco_compras_personales', nombre: 'Curadora Activa',            icono: '💎', desc: 'Tu guardarropa habla de tu criterio',                       obtenido: condiciones.veinticinco_compras_personales, fecha: fecha('veinticinco_compras_personales') },
+    { id: 'cincuenta_compras_personales',   nombre: 'Coleccionista Zetina',       icono: '👑', desc: '50 prendas que cuentan tu historia de estilo',              obtenido: condiciones.cincuenta_compras_personales,   fecha: fecha('cincuenta_compras_personales') },
   ];
 }
 
@@ -3820,12 +3912,51 @@ function renderCuenta() {
             <span class="vision-maestria-label">Racha activa</span>
             <span class="vision-maestria-valor">${racha} ${racha === 1 ? 'mes' : 'meses'} consecutivos</span>
           </div>
+          <div class="vision-maestria-item">
+            <span class="vision-maestria-label">Compras personales</span>
+            <span class="vision-maestria-valor">${vs.compras_personales || 0}</span>
+          </div>
           <div class="vision-maestria-item vision-maestria-item--last">
             <span class="vision-maestria-label">Puntos históricos</span>
             <span class="vision-maestria-valor vision-maestria-valor--puntos">${puntos} pts</span>
           </div>
         </div>
       </div>
+
+      ${(() => {
+        const cp = vs.compras_personales || 0;
+        const hitos = [
+          { n: 1,  nombre: 'Primera Compra Personal' },
+          { n: 5,  nombre: '5 Compras Personales' },
+          { n: 10, nombre: '10 Compras Personales' },
+          { n: 25, nombre: 'Curadora Activa' },
+          { n: 50, nombre: 'Coleccionista Zetina' },
+        ];
+        const proximo = hitos.find(h => h.n > cp);
+        return `
+      <div class="vision-bloque">
+        <h2 class="vision-bloque-titulo">Curaduría Personal</h2>
+        <div class="vision-maestria-lista">
+          <div class="vision-maestria-item">
+            <span class="vision-maestria-label">Prendas guardadas</span>
+            <span class="vision-maestria-valor">${cp}</span>
+          </div>
+          ${proximo ? `
+          <div class="vision-maestria-item">
+            <span class="vision-maestria-label">Próximo logro</span>
+            <span class="vision-maestria-valor">${proximo.nombre}</span>
+          </div>
+          <div class="vision-maestria-item vision-maestria-item--last">
+            <span class="vision-maestria-label">Faltan</span>
+            <span class="vision-maestria-valor">${proximo.n - cp} prenda${proximo.n - cp !== 1 ? 's' : ''}</span>
+          </div>` : `
+          <div class="vision-maestria-item vision-maestria-item--last">
+            <span class="vision-maestria-label">Logro máximo</span>
+            <span class="vision-maestria-valor vision-maestria-valor--nivel">Coleccionista Zetina 👑</span>
+          </div>`}
+        </div>
+      </div>`;
+      })()}
 
       <div class="vision-bloque">
         <h2 class="vision-bloque-titulo">Mis Logros</h2>
@@ -4566,6 +4697,7 @@ async function initApp() {
   createDevolucionSheet();
   createVendidaSheet();
   createPrestadaSheet();
+  createMeLaQuedoSheet();
   createCobrarHoySheet();
   createCobrosDetailSheet();
   createAbonoFormSheet();
