@@ -2775,6 +2775,17 @@ function buildInvCard(p) {
     : null;
 
   return `
+    ${(() => {
+    const diasTranscurridos = p.fechaEntrega
+      ? Math.floor((Date.now() - new Date(p.fechaEntrega).getTime()) / 86400000)
+      : null;
+    const diasRestantes = diasTranscurridos !== null ? 15 - diasTranscurridos : null;
+    const mostrarAlerta = diasRestantes !== null && diasRestantes <= 5;
+    const alertaClass   = diasRestantes <= 2 ? 'inv-tiempo-badge--urgente' : 'inv-tiempo-badge--aviso';
+    const alertaBadge   = mostrarAlerta
+      ? `<span class="inv-tiempo-badge ${alertaClass}">⏰ ${Math.max(0, diasRestantes)}d</span>`
+      : '';
+    return `
     <article class="inv-card" data-id="${p.id}" role="button" tabindex="0">
       <div class="inv-card-img" style="background:${p.gradiente}"${fotos.length ? ` data-galeria-id="${p.id}"` : ''}>
         ${primeraFoto
@@ -2782,7 +2793,9 @@ function buildInvCard(p) {
           : `<span class="inv-card-emoji" aria-hidden="true">${p.emoji}</span>`}
         ${isPrestada ? `<span class="inv-prestada-badge">Prestada · ${prestadaClientaNombre}</span>` : ""}
         ${pendiente ? `<span class="inv-devolucion-badge">Devolución pendiente</span>` : ""}
-      </div>
+        ${alertaBadge}
+      </div>`;
+  })()}
       <div class="inv-card-body">
         <p class="inv-card-id">${p.numero || formatZtId(p.id)}</p>
         <p class="inv-card-nombre">${p.nombre}</p>
@@ -3935,6 +3948,20 @@ function renderCuenta() {
         </div>
         <button class="btn-refresh" id="btnRefreshVision" aria-label="Actualizar Mi Visión" style="align-self:flex-start;margin-left:auto;">${REFRESH_SVG}</button>
       </div>
+
+      ${(() => {
+        const ahora = Date.now();
+        const prendasPorVencer = inventario.filter(p => {
+          if (!p.fechaEntrega) return false;
+          const dias = Math.floor((ahora - new Date(p.fechaEntrega).getTime()) / 86400000);
+          return (15 - dias) <= 5;
+        });
+        return prendasPorVencer.length ? `
+      <div class="vision-alerta-tiempo">
+        <span class="vision-alerta-tiempo-ico">⏰</span>
+        <span>Tienes <strong>${prendasPorVencer.length}</strong> prenda${prendasPorVencer.length !== 1 ? 's' : ''} a punto de cumplir 15 días en tu inventario</span>
+      </div>` : '';
+      })()}
 
       <div class="vision-bloque">
         <h2 class="vision-bloque-titulo">Mi Negocio</h2>

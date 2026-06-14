@@ -3048,6 +3048,59 @@ h1, h2, h3, h4, h5, h6,
   letter-spacing: 0.01em;
 }
 
+/* Badge de tiempo límite en la foto */
+.inv-tiempo-badge {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  font-family: var(--font-heading);
+  font-size: 0.5625rem;
+  font-weight: 800;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  line-height: 1;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+  z-index: 2;
+}
+
+.inv-tiempo-badge--aviso {
+  background: #CCB8DD;
+  color: #16001C;
+}
+
+.inv-tiempo-badge--urgente {
+  background: #855AA2;
+  color: #fff;
+}
+
+/* Aviso en Mi Visión */
+.vision-alerta-tiempo {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  background: #f7f2fc;
+  border: 1.5px solid rgba(133, 90, 162, 0.3);
+  border-radius: 0.75rem;
+  padding: 0.75rem 0.875rem;
+  margin-bottom: 0.75rem;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: #16001C;
+  line-height: 1.45;
+}
+
+.vision-alerta-tiempo-ico {
+  font-size: 1rem;
+  flex-shrink: 0;
+  margin-top: 0.05rem;
+}
+
+.vision-alerta-tiempo strong {
+  font-weight: 700;
+  color: #855AA2;
+}
+
 .btn-inv-melaquedo {
   display: inline-flex;
   align-items: center;
