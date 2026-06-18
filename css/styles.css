@@ -2586,6 +2586,34 @@ h1, h2, h3, h4, h5, h6,
   margin-bottom: 0.75rem;
 }
 
+/* Swipe-to-delete ventas en cobros */
+.cta-swipe-wrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.75rem;
+}
+
+.cta-delete-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 80px;
+  background: #e05252;
+  color: #fff;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease;
+  z-index: 0;
+}
+
+.cta-delete-btn:active { background: #c03030; }
+.cta-delete-btn:disabled { opacity: 0.5; cursor: default; }
+
 .cta-row {
   display: flex;
   align-items: center;
@@ -2594,6 +2622,9 @@ h1, h2, h3, h4, h5, h6,
   padding: 0.625rem 0.875rem;
   background: #f7f3fc;
   border-radius: 0.75rem;
+  position: relative;
+  z-index: 1;
+  will-change: transform;
 }
 
 .cta-info {

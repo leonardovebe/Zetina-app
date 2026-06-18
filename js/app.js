@@ -4580,13 +4580,16 @@ function openCobrosDetail(id) {
 
   const comprasHTML = c.compras.length
     ? c.compras.map((comp) => `
-        <div class="cta-row">
-          <div class="cta-info">
-            ${(comp.numero || comp.prendaId) ? `<p class="cta-prenda-id">ID: ${comp.numero || formatZtId(comp.prendaId)}</p>` : ""}
-            <p class="cta-nombre">${comp.prenda}</p>
-            <p class="cta-meta">${comp.marca} · ${formatFecha(comp.fecha)}</p>
+        <div class="cta-swipe-wrap" data-venta-id="${comp.id}">
+          <div class="cta-row">
+            <div class="cta-info">
+              ${(comp.numero || comp.prendaId) ? `<p class="cta-prenda-id">ID: ${comp.numero || formatZtId(comp.prendaId)}</p>` : ""}
+              <p class="cta-nombre">${comp.prenda}</p>
+              <p class="cta-meta">${comp.marca} · ${formatFecha(comp.fecha)}</p>
+            </div>
+            <span class="cta-monto">${formatPeso(comp.monto)}</span>
           </div>
-          <span class="cta-monto">${formatPeso(comp.monto)}</span>
+          <button class="cta-delete-btn" aria-label="Eliminar venta">Eliminar</button>
         </div>`).join("")
     : `<p class="cta-empty">Sin prendas registradas</p>`;
 
@@ -4628,6 +4631,86 @@ function openCobrosDetail(id) {
     <button class="btn-registrar-abono">+ Registrar abono</button>`;
 
   overlay.classList.add("open");
+  attachSwipeToDeleteVentas(id);
+}
+
+function attachSwipeToDeleteVentas(clienteId) {
+  const DELETE_W = 80;   // ancho del botón rojo (px)
+  const THRESHOLD = 40;  // px mínimos para que se quede abierto
+
+  document.querySelectorAll('.cta-swipe-wrap').forEach(wrap => {
+    const row = wrap.querySelector('.cta-row');
+    const btn = wrap.querySelector('.cta-delete-btn');
+    if (!row || !btn) return;
+
+    let startX = 0;
+    let startOffset = 0; // posición visual al iniciar el toque
+    let offset = 0;      // posición actual
+    let tracking = false;
+
+    const getOffset = () => {
+      const m = new DOMMatrix(getComputedStyle(row).transform);
+      return isNaN(m.e) ? 0 : m.e;
+    };
+
+    const snapTo = (target, animate = true) => {
+      offset = target;
+      row.style.transition = animate ? 'transform 0.22s ease' : 'none';
+      row.style.transform = `translateX(${offset}px)`;
+    };
+
+    wrap.addEventListener('touchstart', e => {
+      startX       = e.touches[0].clientX;
+      startOffset  = getOffset();
+      tracking     = true;
+      row.style.transition = 'none';
+    }, { passive: true });
+
+    wrap.addEventListener('touchmove', e => {
+      if (!tracking) return;
+      const dx = e.touches[0].clientX - startX;
+      offset = Math.max(-DELETE_W, Math.min(0, startOffset + dx));
+      row.style.transform = `translateX(${offset}px)`;
+    }, { passive: true });
+
+    wrap.addEventListener('touchend', () => {
+      if (!tracking) return;
+      tracking = false;
+      if (offset < -THRESHOLD) {
+        snapTo(-DELETE_W);
+      } else {
+        snapTo(0);
+      }
+    }, { passive: true });
+
+    wrap.addEventListener('touchcancel', () => { tracking = false; snapTo(0); }, { passive: true });
+
+    // Tocar la fila cuando está abierta → cerrar
+    row.addEventListener('click', () => {
+      if (getOffset() < -10) snapTo(0);
+    });
+
+    btn.addEventListener('click', async () => {
+      if (!confirm('¿Eliminar esta venta del historial?')) {
+        snapTo(0);
+        return;
+      }
+      const ventaId = wrap.dataset.ventaId;
+      btn.disabled = true;
+      const { error } = await db.from('ventas').delete().eq('id', ventaId);
+      if (error) {
+        console.error('[swipe-delete-venta]', error);
+        btn.disabled = false;
+        showToast('Error al eliminar la venta.');
+        snapTo(0);
+        return;
+      }
+      const c = clientes.find(cl => cl.id === clienteId);
+      if (c) c.compras = (c.compras || []).filter(v => v.id !== ventaId);
+      openCobrosDetail(clienteId);
+      renderCobros();
+    });
+  });
 }
 
 function createAbonoFormSheet() {
