@@ -4894,8 +4894,44 @@ async function initApp() {
   await initApp();
 })();
 
+function mostrarToastActualizar(worker) {
+  document.querySelector(".zt-update-toast")?.remove();
+  const t = document.createElement("button");
+  t.className = "zt-update-toast";
+  t.innerHTML = `<span>Nueva versión disponible.</span><strong>Toca para actualizar</strong>`;
+  t.addEventListener("click", () => {
+    t.disabled = true;
+    worker.postMessage({ type: "SKIP_WAITING" });
+  });
+  document.body.appendChild(t);
+  requestAnimationFrame(() => t.classList.add("zt-update-toast--visible"));
+}
+
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js");
+    navigator.serviceWorker.register("./sw.js").then((reg) => {
+      // Si ya hay un worker esperando al cargar
+      if (reg.waiting && navigator.serviceWorker.controller) {
+        mostrarToastActualizar(reg.waiting);
+      }
+      // Detectar nuevas versiones que se instalen mientras la app está abierta
+      reg.addEventListener("updatefound", () => {
+        const nuevo = reg.installing;
+        if (!nuevo) return;
+        nuevo.addEventListener("statechange", () => {
+          if (nuevo.state === "installed" && navigator.serviceWorker.controller) {
+            mostrarToastActualizar(nuevo);
+          }
+        });
+      });
+    });
+
+    // Cuando el nuevo SW toma control, recargar una sola vez
+    let recargando = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (recargando) return;
+      recargando = true;
+      window.location.reload();
+    });
   });
 }
