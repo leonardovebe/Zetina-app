@@ -1466,10 +1466,30 @@ function createClienteDetailSheet() {
   overlay.querySelector(".sheet-body").addEventListener("click", async (e) => {
     const ventaBtn = e.target.closest(".btn-registrar-venta");
     if (ventaBtn) openVentaForm(ventaBtn.dataset.id);
-    const delBtn = e.target.closest(".btn-eliminar-cliente");
-    if (delBtn) {
+
+    const delVentaBtn = e.target.closest(".btn-eliminar-venta");
+    if (delVentaBtn) {
+      if (!confirm("¿Eliminar esta venta del historial?")) return;
+      const ventaId   = delVentaBtn.dataset.ventaId;
+      const clienteId = delVentaBtn.dataset.clienteId;
+      delVentaBtn.disabled = true;
+      const { error } = await db.from('ventas').delete().eq('id', ventaId);
+      if (error) {
+        console.error('[eliminar-venta]', error);
+        delVentaBtn.disabled = false;
+        showToast('Error al eliminar la venta.');
+        return;
+      }
+      const c = clientes.find(cl => cl.id === clienteId);
+      if (c) c.compras = (c.compras || []).filter(v => v.id !== ventaId);
+      openClienteDetail(clienteId);
+      renderCobros();
+    }
+
+    const delClienteBtn = e.target.closest(".btn-eliminar-cliente");
+    if (delClienteBtn) {
       if (!confirm("¿Eliminar esta clienta? Esta acción no se puede deshacer.")) return;
-      const id = delBtn.dataset.id;
+      const id = delClienteBtn.dataset.id;
       const { error } = await db.from('clientes').delete().eq('id', id);
       if (!error) {
         clientes = clientes.filter((cl) => cl.id !== id);
@@ -1492,6 +1512,7 @@ function openClienteDetail(id) {
             <span class="compra-prenda">
               ${comp.numero ? `<span class="compra-numero">${comp.numero}</span> ` : ''}${comp.prenda}
             </span>
+            <button class="btn-eliminar-venta" data-venta-id="${comp.id}" data-cliente-id="${c.id}" aria-label="Eliminar venta">⚠️</button>
           </div>
           <div class="compra-card-body">
             <span class="compra-meta">${comp.marca} · ${formatFecha(comp.fecha)}</span>
@@ -1867,6 +1888,7 @@ function createVentaFormSheet() {
       const prendaIdStr = parts[0] || '';
       const nombre      = parts[1] || '';
       const marca       = parts[2] || '';
+      const numero      = parts[3] || null;
       const UUID_RE     = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const prendaId    = UUID_RE.test(prendaIdStr) ? prendaIdStr : null;
 
@@ -1903,7 +1925,7 @@ function createVentaFormSheet() {
       }
 
       console.log('[ventaForm] guardado:', venta);
-      c.compras.unshift({ id: venta.id, prendaId: venta.prenda_id, prenda: venta.nombre_prenda || nombre, marca: venta.marca || '', fecha: venta.fecha, monto: venta.monto });
+      c.compras.unshift({ id: venta.id, prendaId: venta.prenda_id, numero: numero || null, prenda: venta.nombre_prenda || nombre, marca: venta.marca || '', fecha: venta.fecha, monto: venta.monto });
       if (prendaId) {
         await marcarVendida(prendaId);
         const pVendida = inventario.find(x => x.id === prendaId);
@@ -1929,8 +1951,8 @@ function openVentaForm(clienteId) {
   const select = document.getElementById("fPrenda");
   const prendas = getMisPrendas();
   select.innerHTML = prendas.length
-    ? prendas.map((p) => `<option value="${p.id}|${p.nombre}|${p.marca}">${p.emoji} ${p.nombre} — ${p.marca} | ID: ${formatZtId(p.id)}</option>`).join("")
-    : `<option value="Otra prenda|">Sin prendas en inventario</option>`;
+    ? prendas.map((p) => `<option value="${p.id}|${p.nombre || ''}|${p.marca || ''}|${p.numero || ''}">${p.emoji} ${p.numero ? p.numero + ' — ' : ''}${p.nombre} | ${p.marca}</option>`).join("")
+    : `<option value="Otra prenda||">Sin prendas en inventario</option>`;
   document.getElementById("fFechaVenta").value = new Date().toISOString().split("T")[0];
   document.getElementById("ventaFormOverlay").classList.add("open");
 }
@@ -2239,7 +2261,8 @@ function showVentaWhatsAppSheet(c, p, precioVenta) {
   const waBtn = overlay.querySelector("#ventaWaBtn");
   if (tel) {
     const numero = tel.startsWith('521') ? tel : tel.startsWith('52') ? '521' + tel.slice(2) : '521' + tel;
-    const mensaje = encodeURIComponent(`Hola ${c.nombre}, te confirmo que te quedas con ${p.nombre} con un precio de ${formatPeso(precioVenta)}. Cualquier duda estoy al pendiente 🙏`);
+    const nombrePrenda = p.nombre || p.numero || 'la prenda';
+    const mensaje = encodeURIComponent(`Hola ${c.nombre}, te confirmo que te quedas con ${nombrePrenda} con un precio de ${formatPeso(precioVenta)}. Cualquier duda estoy al pendiente 🙏`);
     waBtn.href = `https://wa.me/${numero}?text=${mensaje}`;
     waBtn.style.display = "";
   } else {
@@ -2346,34 +2369,51 @@ function createVendidaSheet() {
 
   overlay.querySelector("#vendidaConfirmar").addEventListener("click", async () => {
     const btn = overlay.querySelector("#vendidaConfirmar");
+
+    // Deshabilitar inmediatamente para evitar doble clic
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.textContent = "Registrando…";
+
     const p = inventario.find(x => x.id === overlay.dataset.prendaId);
     const c = clientes.find(x => x.id === overlay.dataset.clienteId);
 
     if (!p || !c) {
       console.error("[vendida] p o c es null:", { prendaId: overlay.dataset.prendaId, clienteId: overlay.dataset.clienteId, p, c });
       showToast("Error: datos incompletos. Cierra y vuelve a intentar.");
+      btn.disabled = false;
+      btn.textContent = "Confirmar venta";
       return;
     }
 
     const precioVenta = parseFloat(overlay.querySelector("#vendidaPrecio").value) || p.precioMax;
 
-    const ventaPayload = {
-      vendedora_id:  VENDEDORA_ID,
-      cliente_id:    c.id,
-      prenda_id:     p.id,
-      nombre_prenda: p.nombre,
-      marca:         p.marca,
-      fecha:         new Date().toISOString().split("T")[0],
-      monto:         precioVenta,
-      estado:        "pendiente",
-    };
-    console.log("[vendida] payload ventas:", ventaPayload);
-    console.log("[vendida] invId para borrar:", p.invId);
-
-    btn.disabled = true;
-    btn.textContent = "Registrando…";
-
     try {
+      // Dedup: verificar que no exista ya una venta para esta prenda
+      const { count: existentes } = await db
+        .from("ventas")
+        .select("id", { count: "exact", head: true })
+        .eq("prenda_id", p.id);
+      if (existentes > 0) {
+        showToast("Esta prenda ya tiene una venta registrada.");
+        btn.disabled = false;
+        btn.textContent = "Confirmar venta";
+        return;
+      }
+
+      const ventaPayload = {
+        vendedora_id:  VENDEDORA_ID,
+        cliente_id:    c.id,
+        prenda_id:     p.id,
+        nombre_prenda: p.nombre || p.numero || '',
+        marca:         p.marca,
+        fecha:         new Date().toISOString().split("T")[0],
+        monto:         precioVenta,
+        estado:        "pendiente",
+      };
+      console.log("[vendida] payload ventas:", ventaPayload);
+      console.log("[vendida] invId para borrar:", p.invId);
+
       const { error: ve } = await db.from("ventas").insert([ventaPayload]);
       if (ve) {
         console.error("[vendida] error insert ventas:", ve.message, "| code:", ve.code, "| details:", ve.details, "| hint:", ve.hint);
@@ -2570,6 +2610,7 @@ function createVenderPrestadaSheet() {
 
   overlay.querySelector('#vpConfirmar').addEventListener('click', async () => {
     const btn       = overlay.querySelector('#vpConfirmar');
+    if (btn.disabled) return; // guard doble clic
     const prendaId  = overlay.dataset.prendaId;
     const prestamoId = overlay.dataset.prestamoId;
     const invId     = overlay.dataset.invId;
@@ -2595,8 +2636,8 @@ function createVenderPrestadaSheet() {
         vendedora_id:  VENDEDORA_ID,
         cliente_id:    c.id,
         prenda_id:     p.id,
-        nombre_prenda: p.nombre,
-        marca:         p.marca,
+        nombre_prenda: p.nombre || p.numero || 'Prenda',
+        marca:         p.marca || '',
         fecha:         new Date().toISOString().split('T')[0],
         monto:         precio,
         estado:        'pendiente',
@@ -4541,7 +4582,7 @@ function openCobrosDetail(id) {
     ? c.compras.map((comp) => `
         <div class="cta-row">
           <div class="cta-info">
-            ${comp.prendaId ? `<p class="cta-prenda-id">ID: ${formatZtId(comp.prendaId)}</p>` : ""}
+            ${(comp.numero || comp.prendaId) ? `<p class="cta-prenda-id">ID: ${comp.numero || formatZtId(comp.prendaId)}</p>` : ""}
             <p class="cta-nombre">${comp.prenda}</p>
             <p class="cta-meta">${comp.marca} · ${formatFecha(comp.fecha)}</p>
           </div>
