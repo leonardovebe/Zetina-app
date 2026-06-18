@@ -252,7 +252,9 @@ function hideLoginScreen() {
 }
 
 function initLoginForm() {
+  console.log('[login] initLoginForm ejecutado');
   document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    console.log('[login] submit disparado');
     e.preventDefault();
     const email    = document.getElementById('loginEmail').value.trim().toLowerCase();
     const password = document.getElementById('loginPassword').value;
@@ -5103,9 +5105,10 @@ async function initApp() {
   createDevolucionSheet();
   createVendidaSheet();
   createPrestadaSheet();
-  createVenderPrestadaSheet();
-  createMeLaQuedoSheet();
-  createCobrarHoySheet();
+  console.log('[boot] iniciando app');
+  try { createVenderPrestadaSheet(); } catch(e) { console.error('[boot] createVenderPrestadaSheet:', e); }
+  try { createMeLaQuedoSheet(); } catch(e) { console.error('[boot] createMeLaQuedoSheet:', e); }
+  try { createCobrarHoySheet(); } catch(e) { console.error('[boot] createCobrarHoySheet:', e); }
   createCobrosDetailSheet();
   createAbonoFormSheet();
   createCartSheet();
