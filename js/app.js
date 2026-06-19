@@ -2757,6 +2757,50 @@ function openMeLaQuedo(invId, nombre) {
   overlay.classList.add('open');
 }
 
+function createDetalleVendidaSheet() {
+  if (document.getElementById('detalleVendidaOverlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'detalleVendidaOverlay';
+  overlay.className = 'order-detail-overlay';
+  overlay.innerHTML = `
+    <div class="order-detail-sheet">
+      <div class="detail-sheet-handle-row"><div class="sheet-drag-handle"></div></div>
+      <div class="sheet-body" style="padding:1.5rem 1.25rem 2rem">
+        <h3 class="melaquedo-titulo">Detalle de venta</h3>
+        <div id="detalleVendidaBody"></div>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+}
+
+async function openDetalleVendida(prendaId) {
+  createDetalleVendidaSheet();
+  const overlay = document.getElementById('detalleVendidaOverlay');
+  const body    = document.getElementById('detalleVendidaBody');
+  body.innerHTML = `<p class="melaquedo-desc">Cargando…</p>`;
+  overlay.classList.add('open');
+
+  const { data, error } = await db.from('ventas')
+    .select('cliente_id, monto, fecha')
+    .eq('prenda_id', prendaId)
+    .eq('vendedora_id', VENDEDORA_ID)
+    .order('fecha', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) {
+    body.innerHTML = `<p class="melaquedo-desc">No se encontró el registro de venta.</p>`;
+    return;
+  }
+
+  const clienta = clientes.find(c => c.id === data.cliente_id)?.nombre || '—';
+  body.innerHTML = `
+    <p class="melaquedo-prenda">Clienta: ${clienta}</p>
+    <p class="melaquedo-desc">Precio de venta: ${formatPeso(data.monto || 0)}</p>
+    <p class="melaquedo-desc">Fecha de venta: ${formatFecha(data.fecha)}</p>`;
+}
+
 // ── Render: Mis Prendas ─────────────────────────────────────────────────────
 
 function buildInvCardClienteMode(p) {
@@ -2850,25 +2894,29 @@ function buildInvCard(p) {
         <p class="inv-precio-rango-venta">Venta: ${formatPeso(p.precioMin)} – ${formatPeso(p.precioMax)}</p>
 
         <div class="inv-btn-stack">
-          <button class="inv-btn inv-btn--desc" data-info="${p.id}">Cómo vender</button>
-          ${isPrestada
-            ? `<button class="inv-btn inv-btn--vendida" data-vender-prestada-id="${p.id}" data-prestamo-id="${prestamo?.id}" data-inv-id="${p.invId}">Vender</button>
-               <button class="inv-btn inv-btn--devolver" data-prestamo-id="${prestamo?.id}" data-inv-id="${p.invId}">Devuelta</button>`
-            : `<button class="inv-btn inv-btn--vendida" data-vendida-id="${p.id}">Vender</button>
-               <button class="inv-btn inv-btn--prestar" data-prestada-id="${p.id}">Prestar</button>
-               ${!pendiente ? `<button class="inv-btn inv-btn--melaquedo" data-inv-id="${p.invId}" data-prenda-id="${p.id}" data-nombre="${p.nombre}">Me la quedo</button>` : ''}`}
+          ${p.estado === 'vendido'
+            ? `<button class="inv-btn inv-btn--ver-detalle" data-detalle-vendida="${p.id}">Ver detalle</button>
+               <button class="inv-btn inv-btn--regresar" data-regresar-id="${p.id}" data-inv-id="${p.invId}">Regresar al stock</button>`
+            : `<button class="inv-btn inv-btn--desc" data-info="${p.id}">Cómo vender</button>
+               ${isPrestada
+                 ? `<button class="inv-btn inv-btn--vendida" data-vender-prestada-id="${p.id}" data-prestamo-id="${prestamo?.id}" data-inv-id="${p.invId}">Vender</button>
+                    <button class="inv-btn inv-btn--devolver" data-prestamo-id="${prestamo?.id}" data-inv-id="${p.invId}">Devuelta</button>`
+                 : `<button class="inv-btn inv-btn--vendida" data-vendida-id="${p.id}">Vender</button>
+                    <button class="inv-btn inv-btn--prestar" data-prestada-id="${p.id}">Prestar</button>
+                    ${!pendiente ? `<button class="inv-btn inv-btn--melaquedo" data-inv-id="${p.invId}" data-prenda-id="${p.id}" data-nombre="${p.nombre}">Me la quedo</button>` : ''}`}`}
         </div>
 
-        ${(p.medida1Valor || p.medida2Valor) ? `
+        ${(p.estado !== 'vendido' && (p.medida1Valor || p.medida2Valor)) ? `
         <button class="btn-inv-matches" data-matches-id="${p.id}" aria-label="Ver matches">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true" width="12" height="12"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
           Ver matches
         </button>` : ''}
 
+        ${p.estado !== 'vendido' ? `
         <div class="inv-card-secondary-actions">
           ${!isPrestada && !pendiente ? `<button class="btn-inv-devolucion" data-devolucion="${p.id}">Devolución</button>` : ""}
           <button class="btn-inv-eliminar" data-inv-id="${p.invId}" data-prenda-id="${p.id}">Eliminar</button>
-        </div>
+        </div>` : ''}
       </div>
     </article>`;
 }
@@ -2956,6 +3004,30 @@ function renderMisPrendas() {
 
     const imgDiv = e.target.closest(".inv-card-img[data-galeria-id]");
     if (imgDiv) { openGaleria(imgDiv.dataset.galeriaId); return; }
+
+    // Prendas vendidas: Ver detalle / Regresar al stock
+    const detalleVendidaBtn = e.target.closest("[data-detalle-vendida]");
+    if (detalleVendidaBtn) { openDetalleVendida(detalleVendidaBtn.dataset.detalleVendida); return; }
+    const regresarBtn = e.target.closest("[data-regresar-id]");
+    if (regresarBtn) {
+      if (!confirm("¿Regresar esta prenda a tu inventario? Esto cancelará la venta registrada.")) return;
+      const prendaId = regresarBtn.dataset.regresarId;
+      const invId    = regresarBtn.dataset.invId;
+      regresarBtn.disabled = true;
+      (async () => {
+        const { error: e1 } = await db.from('inventario_vendedoras').update({ estado: 'activo' }).eq('id', invId);
+        if (e1) { console.error('[regresar] inventario:', e1); regresarBtn.disabled = false; showToast('Error al regresar la prenda.'); return; }
+        const { error: e2 } = await db.from('ventas').delete().eq('prenda_id', prendaId).eq('vendedora_id', VENDEDORA_ID);
+        if (e2) { console.error('[regresar] ventas:', e2); }
+        clientes.forEach(c => { c.compras = (c.compras || []).filter(v => v.prendaId !== prendaId); });
+        inventario = inventario.filter(p => p.invId !== invId);
+        showToast('Prenda regresada a tu inventario');
+        await loadInventario();
+        renderMisPrendas();
+      })();
+      return;
+    }
+
     const infoBtn = e.target.closest(".btn-inv-info, .inv-btn--desc");
     if (infoBtn) {
       const p = inventario.find((x) => x.id === (infoBtn.dataset.info || infoBtn.closest('.inv-card')?.dataset.id));

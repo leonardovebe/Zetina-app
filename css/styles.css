@@ -2260,7 +2260,9 @@ h1, h2, h3, h4, h5, h6,
 .inv-btn--vendida  { background: #DEFF00; color: #16001C; }
 .inv-btn--devolver { background: #DEFF00; color: #16001C; }
 .inv-btn--prestar  { background: #CCB8DD; color: #16001C; }
-.inv-btn--melaquedo {
+.inv-btn--ver-detalle { background: #855AA2; color: #fff; }
+.inv-btn--melaquedo,
+.inv-btn--regresar {
   background: #fff;
   color: #855AA2;
   border: 1.5px solid #855AA2;
