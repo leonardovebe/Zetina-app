@@ -1,0 +1,189 @@
+/* ── Catálogo público ZETINA — estilos independientes ──────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --color-bg: #16001C;
+  --color-content: #ffffff;
+  --color-purple: #855AA2;
+  --color-lavender: #CCB8DD;
+  --color-accent: #DEFF00;
+  --font-body: 'Poppins', system-ui, -apple-system, sans-serif;
+  --font-heading: 'Montserrat', system-ui, -apple-system, sans-serif;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  min-height: 100dvh;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.5;
+  background-color: #ffffff;
+  color: #16001C;
+}
+
+/* Header */
+.cp-header {
+  background-color: var(--color-bg);
+  padding: calc(0.875rem + var(--safe-top)) 1.25rem 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.cp-logo {
+  height: 42px;
+  width: auto;
+  display: block;
+  object-fit: contain;
+}
+
+/* Nombre de la visionaria */
+.cp-titulo {
+  font-family: var(--font-heading);
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #16001C;
+  text-align: center;
+  padding: 1.25rem 1.25rem 0.5rem;
+}
+
+/* Tabs */
+.cp-tabs {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem 1.25rem 1rem;
+  justify-content: center;
+}
+
+.cp-tab {
+  flex: 1;
+  max-width: 220px;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--color-lavender);
+  background: transparent;
+  color: var(--color-purple);
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.cp-tab--activo {
+  background: var(--color-purple);
+  color: #ffffff;
+  border-color: var(--color-purple);
+}
+
+/* Grid de cards */
+.cp-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.875rem;
+  padding: 0 1.25rem calc(2rem + var(--safe-bottom));
+}
+
+.cp-card {
+  border-radius: 14px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(22, 0, 28, 0.09);
+  display: flex;
+  flex-direction: column;
+}
+
+.cp-card-img {
+  aspect-ratio: 3 / 4;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.cp-card-img img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cp-card-emoji {
+  font-size: 3rem;
+  line-height: 1;
+  user-select: none;
+}
+
+.cp-card-body {
+  padding: 0.625rem 0.75rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.cp-card-nombre {
+  font-family: var(--font-heading);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #16001C;
+  line-height: 1.3;
+}
+
+.cp-card-marca {
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  color: #777;
+}
+
+.cp-talla-chip {
+  display: inline-block;
+  width: fit-content;
+  background: #f3edf8;
+  color: var(--color-purple);
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  margin-top: 0.1rem;
+}
+
+/* Estados */
+.cp-estado {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: #888;
+  font-size: 0.9375rem;
+}
+
+.cp-loading {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: var(--color-purple);
+  font-size: 0.9375rem;
+}
+
+.cp-grid-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: #aaa;
+  font-size: 0.9375rem;
+  padding: 2rem 0;
+}
