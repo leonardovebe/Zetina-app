@@ -2448,9 +2448,9 @@ function createVendidaSheet() {
         throw ve;
       }
 
-      const { error: ie } = await db.from("inventario_vendedoras").delete().eq("id", p.invId);
+      const { error: ie } = await db.from("inventario_vendedoras").update({ estado: "vendido" }).eq("id", p.invId);
       if (ie) {
-        console.error("[vendida] error delete inventario:", ie.message, "| code:", ie.code, "| details:", ie.details);
+        console.error("[vendida] error update inventario:", ie.message, "| code:", ie.code, "| details:", ie.details);
         throw ie;
       }
 
