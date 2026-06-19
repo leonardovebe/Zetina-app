@@ -5060,53 +5060,9 @@ async function initApp() {
   await initApp();
 })();
 
-function mostrarToastActualizar(reg) {
-  document.querySelector(".zt-update-toast")?.remove();
-  const t = document.createElement("button");
-  t.className = "zt-update-toast";
-  t.innerHTML = `<span>Nueva versión disponible.</span><strong>Toca para actualizar</strong>`;
-  t.addEventListener("click", () => {
-    t.disabled = true;
-    t.classList.remove("zt-update-toast--visible");
-
-    const waiting = reg.waiting;
-    if (waiting) {
-      // Pedir al SW en espera que tome control
-      waiting.postMessage({ type: "SKIP_WAITING" });
-    }
-
-    // Fallback: si controllerchange no llega en 3s, recargar de todas formas
-    setTimeout(() => window.location.reload(true), 3000);
-  });
-  document.body.appendChild(t);
-  requestAnimationFrame(() => t.classList.add("zt-update-toast--visible"));
-}
-
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").then((reg) => {
-      // Si ya hay un worker esperando al cargar
-      if (reg.waiting && navigator.serviceWorker.controller) {
-        mostrarToastActualizar(reg);
-      }
-      // Detectar nuevas versiones que se instalen mientras la app está abierta
-      reg.addEventListener("updatefound", () => {
-        const nuevo = reg.installing;
-        if (!nuevo) return;
-        nuevo.addEventListener("statechange", () => {
-          if (nuevo.state === "installed" && navigator.serviceWorker.controller) {
-            mostrarToastActualizar(reg);
-          }
-        });
-      });
-    });
-
-    // Cuando el nuevo SW toma control, recargar una sola vez
-    let recargando = false;
-    navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (recargando) return;
-      recargando = true;
-      window.location.reload(true);
-    });
+    // Registro del SW: actualiza en segundo plano sin aviso visual al usuario
+    navigator.serviceWorker.register("./sw.js");
   });
 }
