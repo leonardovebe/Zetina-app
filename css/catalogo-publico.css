@@ -187,3 +187,102 @@ body {
   font-size: 0.9375rem;
   padding: 2rem 0;
 }
+
+.cp-card-img--clickable { cursor: pointer; }
+
+.cp-card-multi {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  background: rgba(22, 0, 28, 0.65);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 0.625rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  z-index: 1;
+}
+
+/* ── Visor de fotos a pantalla completa ────────────────────────────────────── */
+.cpg-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(22, 0, 28, 0.96);
+  z-index: 1000;
+  display: none;
+  flex-direction: column;
+}
+
+.cpg-overlay.open { display: flex; }
+
+.cpg-close {
+  position: absolute;
+  top: calc(0.75rem + var(--safe-top));
+  right: 0.875rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cpg-close svg { width: 22px; height: 22px; }
+
+.cpg-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: calc(3.5rem + var(--safe-top)) 1rem 1rem;
+}
+
+.cpg-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 0.5rem;
+  user-select: none;
+}
+
+.cpg-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0 1rem calc(1.5rem + var(--safe-bottom));
+}
+
+.cpg-counter {
+  font-family: var(--font-heading);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  letter-spacing: 0.04em;
+}
+
+.cpg-dots {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.cpg-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.cpg-dot--active {
+  background: var(--color-accent);
+  transform: scale(1.25);
+}
