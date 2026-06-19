@@ -2832,7 +2832,7 @@ function buildInvCard(p) {
         ${primeraFoto
           ? `<img class="inv-card-foto" src="${primeraFoto.url}" alt="${p.nombre}" loading="lazy">`
           : `<span class="inv-card-emoji" aria-hidden="true">${p.emoji}</span>`}
-        ${isPrestada ? `<span class="inv-prestada-badge">Prestada · ${prestadaClientaNombre}</span>` : ""}
+        ${isPrestada ? `<span class="inv-prestada-badge">Prestada · ${prestadaClientaNombre}</span>` : (p.estado === 'vendido' ? `<span class="inv-prestada-badge">Vendida</span>` : "")}
         ${pendiente ? `<span class="inv-devolucion-badge">Devolución pendiente</span>` : ""}
         ${alertaBadge}
       </div>`;
