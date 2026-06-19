@@ -355,8 +355,6 @@ let catalogo = [];
 let catalogFiltros = { categorias: new Set(), tallas: new Set(), marcas: new Set(), precio: null };
 let modoClientaActivo        = false;
 let modoClientaPrendasActivo = false;
-let verVendidasActivo        = false;
-let inventarioVendido        = [];
 
 // URL base del bucket público de fotos en Supabase Storage
 const FOTOS_URL = `${SUPABASE_URL}/storage/v1/object/public/prenda-fotos`;
@@ -494,35 +492,6 @@ async function loadInventario() {
       fotos,
       fechaEntrega:  inv.fecha_entrega,
       estado:        inv.estado || 'activo',
-    };
-  });
-}
-
-async function loadInventarioVendido() {
-  if (!VENDEDORA_ID) return;
-  const { data, error } = await db
-    .from('inventario_vendedoras')
-    .select('id, prenda_id, prendas(numero, nombre, marca, emoji, talla_real, precio_max, gradiente, fotos_prendas(id, url, orden))')
-    .eq('vendedora_id', VENDEDORA_ID)
-    .eq('estado', 'vendido')
-    .order('created_at', { ascending: false });
-  if (error) { console.error('loadInventarioVendido:', error); return; }
-  inventarioVendido = (data || []).map(inv => {
-    const p    = inv.prendas || {};
-    const fotos = (p.fotos_prendas || [])
-      .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
-      .map(f => ({ id: f.id, url: fotoPublicUrl(f.url) })).filter(f => f.url);
-    return {
-      id:       inv.prenda_id,
-      invId:    inv.id,
-      numero:   p.numero    || null,
-      nombre:   p.nombre    || '',
-      marca:    p.marca     || '',
-      emoji:    p.emoji     || '👚',
-      tallaReal: p.talla_real || '',
-      precioMax: p.precio_max || 0,
-      gradiente: p.gradiente || 'linear-gradient(150deg, #130016 0%, #855AA2 100%)',
-      fotos,
     };
   });
 }
@@ -2903,45 +2872,6 @@ function buildInvCard(p) {
     </article>`;
 }
 
-function getVentaPrenda(prendaId) {
-  for (const c of clientes) {
-    const comp = (c.compras || []).find(v => v.prendaId === prendaId);
-    if (comp) return { monto: comp.monto, fecha: comp.fecha, clienteNombre: c.nombre, clienteId: c.id, ventaId: comp.id };
-  }
-  return null;
-}
-
-function buildInvCardVendida(p) {
-  const venta  = getVentaPrenda(p.id);
-  const fotos  = p.fotos || [];
-  const foto   = fotos.find(f => f.url);
-  const imgTag = foto
-    ? `<img class="inv-card-foto" src="${foto.url}" alt="${p.nombre}" loading="lazy">`
-    : `<span class="inv-card-emoji" aria-hidden="true">${p.emoji}</span>`;
-  const infoLinea = venta
-    ? `<p class="inv-vendida-info">${formatPeso(venta.monto)} · ${venta.clienteNombre}</p>`
-    : '';
-  const btnDetalle = venta
-    ? `<button class="inv-btn inv-btn--desc" data-detalle-vendida="${p.id}">Ver detalle</button>`
-    : '';
-  return `
-    <article class="inv-card inv-card--vendida" data-id="${p.id}" data-inv-id="${p.invId}">
-      <div class="inv-card-img" style="background:${p.gradiente}"${fotos.length ? ` data-galeria-id="${p.id}"` : ''}>
-        ${imgTag}
-        <span class="inv-vendida-badge">Vendida</span>
-      </div>
-      <div class="inv-card-body">
-        <p class="inv-card-nombre">${p.nombre}</p>
-        <span class="inv-talla-chip">Real&nbsp;<strong>${p.tallaReal || '—'}</strong></span>
-        ${infoLinea}
-        <div class="inv-btn-stack" style="margin-top:0.5rem">
-          ${btnDetalle}
-          <button class="inv-btn inv-btn--melaquedo" data-regresar-id="${p.id}" data-inv-id="${p.invId}">Regresar al stock</button>
-        </div>
-      </div>
-    </article>`;
-}
-
 function renderMisPrendas() {
   const container = document.querySelector("#prendas .view-content");
 
@@ -2959,16 +2889,10 @@ function renderMisPrendas() {
       </div>
       <div class="catalog-header-row2">
         <p class="catalog-subtitle">${inventario.length} prenda${inventario.length !== 1 ? "s" : ""} disponible${inventario.length !== 1 ? "s" : ""}</p>
-        <div class="header-toggles">
-          <button class="btn-modo-clienta${verVendidasActivo ? ' btn-modo-clienta--activo' : ''}" id="btnVerVendidas" aria-pressed="${verVendidasActivo}">
-            <span class="modo-clienta-track"><span class="modo-clienta-thumb"></span></span>
-            <span class="modo-clienta-label">Vendidas</span>
-          </button>
-          <button class="btn-modo-clienta${modoClientaPrendasActivo ? ' btn-modo-clienta--activo' : ''}" id="btnModoClientaPrendas" aria-pressed="${modoClientaPrendasActivo}">
-            <span class="modo-clienta-track"><span class="modo-clienta-thumb"></span></span>
-            <span class="modo-clienta-label">Clienta</span>
-          </button>
-        </div>
+        <button class="btn-modo-clienta${modoClientaPrendasActivo ? ' btn-modo-clienta--activo' : ''}" id="btnModoClientaPrendas" aria-pressed="${modoClientaPrendasActivo}">
+          <span class="modo-clienta-track"><span class="modo-clienta-thumb"></span></span>
+          <span class="modo-clienta-label">Modo Clienta</span>
+        </button>
       </div>
     </div>
     <div class="clientes-search-row"${modoClientaPrendasActivo ? ' hidden' : ''}>
@@ -2976,25 +2900,11 @@ function renderMisPrendas() {
              placeholder="Buscar por ID, nombre o marca…" autocomplete="off"
              autocorrect="off" spellcheck="false">
     </div>
-    <div class="inv-grid${modoClientaPrendasActivo ? ' inv-grid--clienta' : ''}" id="invGrid">${
-      modoClientaPrendasActivo
-        ? (inventario.map(buildInvCardClienteMode).join('') || `<p class="inv-empty">Sin prendas disponibles</p>`)
-        : (renderGrid(inventario) + (verVendidasActivo ? inventarioVendido.map(buildInvCardVendida).join('') : ''))
-    }</div>`;
+    <div class="inv-grid${modoClientaPrendasActivo ? ' inv-grid--clienta' : ''}" id="invGrid">${modoClientaPrendasActivo ? inventario.map(buildInvCardClienteMode).join('') || `<p class="inv-empty">Sin prendas disponibles</p>` : renderGrid(inventario)}</div>`;
 
   attachRefreshBtn('btnRefreshPrendas',
-    () => {
-      const loads = [loadInventario(), loadPrestamos(), loadDevoluciones()];
-      if (verVendidasActivo) loads.push(loadInventarioVendido());
-      return Promise.all(loads);
-    },
+    () => Promise.all([loadInventario(), loadPrestamos(), loadDevoluciones()]),
     renderMisPrendas);
-
-  container.querySelector('#btnVerVendidas').addEventListener('click', async () => {
-    verVendidasActivo = !verVendidasActivo;
-    if (verVendidasActivo) await loadInventarioVendido();
-    renderMisPrendas();
-  });
 
   container.querySelector('#btnModoClientaPrendas').addEventListener('click', () => {
     aplicarModoClientaPrendasUI(!modoClientaPrendasActivo);
@@ -3022,42 +2932,6 @@ function renderMisPrendas() {
         precioEl.hidden = visible;
         ojitoBtn.setAttribute("aria-pressed", String(!visible));
         ojitoBtn.classList.toggle("btn-ojito--activo", !visible);
-      }
-      return;
-    }
-
-    // Ver detalle de prenda vendida
-    const detalleVendidaBtn = e.target.closest('[data-detalle-vendida]');
-    if (detalleVendidaBtn) {
-      const prendaId = detalleVendidaBtn.dataset.detalleVendida;
-      const venta    = getVentaPrenda(prendaId);
-      const p        = inventarioVendido.find(x => x.id === prendaId);
-      if (p && venta) {
-        const info = `${p.nombre}\nClienta: ${venta.clienteNombre}\nPrecio: ${formatPeso(venta.monto)}\nFecha: ${formatFecha(venta.fecha)}`;
-        alert(info);
-      }
-      return;
-    }
-
-    // Regresar al stock
-    const regresarBtn = e.target.closest('[data-regresar-id]');
-    if (regresarBtn) {
-      if (!confirm('¿Regresar esta prenda a tu inventario? Esto cancelará la venta registrada.')) return;
-      const prendaId = regresarBtn.dataset.regresarId;
-      const invId    = regresarBtn.dataset.invId;
-      regresarBtn.disabled = true;
-      try {
-        await db.from('inventario_vendedoras').update({ estado: 'activo' }).eq('id', invId);
-        await db.from('ventas').delete().eq('prenda_id', prendaId).eq('vendedora_id', VENDEDORA_ID);
-        inventarioVendido = inventarioVendido.filter(x => x.invId !== invId);
-        clientes.forEach(c => { c.compras = (c.compras || []).filter(v => v.prendaId !== prendaId); });
-        await loadInventario();
-        showToast('Prenda regresada a tu inventario ✓');
-        renderMisPrendas();
-      } catch (err) {
-        console.error('[regresar-stock]', err);
-        regresarBtn.disabled = false;
-        showToast('Error al regresar la prenda.');
       }
       return;
     }
