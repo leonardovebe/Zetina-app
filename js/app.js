@@ -463,7 +463,7 @@ async function loadInventario() {
     .from('inventario_vendedoras')
     .select('id, prenda_id, pedido_id, fecha_entrega, estado, prendas(*, fotos_prendas(*))')
     .eq('vendedora_id', VENDEDORA_ID)
-    .in('estado', verVendidasActivo ? ['activo', 'prestado', 'vendido'] : ['activo', 'prestado'])
+    .in('estado', verVendidasActivo ? ['vendido'] : ['activo', 'prestado'])
     .order('created_at', { ascending: false });
   if (error) { console.error('loadInventario:', error); return; }
 
