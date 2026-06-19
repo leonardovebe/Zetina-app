@@ -1385,6 +1385,56 @@ h1, h2, h3, h4, h5, h6,
   color: #DEFF00;
 }
 
+/* Crédito disponible en el carrito */
+.cart-credito-wrap {
+  margin-top: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: #f7f2fc;
+  border: 1.5px solid rgba(133, 90, 162, 0.3);
+  border-radius: 0.875rem;
+}
+
+.cart-credito-info {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: #16001C;
+}
+
+.cart-credito-info strong { color: #855AA2; font-weight: 700; }
+
+.cart-credito-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.625rem;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #16001C;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cart-credito-check input {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: #855AA2;
+  flex-shrink: 0;
+}
+
+.cart-credito-total {
+  margin-top: 0.625rem;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: #16001C;
+}
+
+.cart-credito-total strong {
+  font-family: var(--font-heading);
+  font-weight: 800;
+  color: #855AA2;
+}
+
 .btn-cart-whatsapp {
   display: flex;
   align-items: center;

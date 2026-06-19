@@ -3,6 +3,7 @@ const VIEWS = ["catalogo", "pedidos", "clientes", "cobros", "prendas", "cuenta"]
 // ── Carrito ──────────────────────────────────────────────────────────────────
 
 let carrito = [];
+let creditoDisponible = 0; // crédito de la vendedora, refrescado al abrir el carrito
 
 function addToCarrito(id) {
   const producto = catalogo.find((p) => p.id === id);
@@ -21,7 +22,7 @@ function totalCarrito() {
   return carrito.reduce((sum, p) => sum + p.precioVendedora, 0);
 }
 
-async function confirmarPedido(dirId = null) {
+async function confirmarPedido(dirId = null, creditoAplicado = 0) {
   if (!carrito.length || !VENDEDORA_ID) throw new Error('Carrito vacío o sesión inválida');
 
   const dir = dirId ? direcciones.find(d => d.id === dirId) : null;
@@ -29,6 +30,7 @@ async function confirmarPedido(dirId = null) {
     vendedora_id: VENDEDORA_ID,
     estado: 'En proceso',
     ...(dir && { direccion_entrega_id: dir.id, direccion_entrega_texto: formatDireccion(dir) }),
+    ...(creditoAplicado > 0 && { credito_aplicado: creditoAplicado }),
   };
 
   const { data: pedido, error: errPedido } = await db
@@ -128,6 +130,15 @@ function refreshCartSheet() {
       <span class="cart-total-label">Total a pagar a ZETINA</span>
       <span class="cart-total-value">${formatPeso(totalCarrito())}</span>
     </div>
+    ${creditoDisponible > 0 ? `
+    <div class="cart-credito-wrap">
+      <p class="cart-credito-info">Tienes <strong>${formatPeso(creditoDisponible)}</strong> de crédito disponible</p>
+      <label class="cart-credito-check">
+        <input type="checkbox" id="cartAplicarCredito">
+        <span>Aplicar crédito a este pedido</span>
+      </label>
+      <p class="cart-credito-total" id="cartCreditoTotal" hidden>Total con crédito aplicado: <strong>${formatPeso(totalCarrito() - Math.min(creditoDisponible, totalCarrito()))}</strong></p>
+    </div>` : ''}
     ${direcciones.length > 0 ? `
     <div class="cart-direccion-wrap">
       <p class="cart-direccion-label">📦 Dirección de entrega</p>
@@ -143,7 +154,12 @@ function refreshCartSheet() {
     <p class="cart-error" id="cartError" hidden></p>`;
 }
 
-function openCartSheet() {
+async function openCartSheet() {
+  creditoDisponible = 0;
+  if (VENDEDORA_ID) {
+    const { data } = await db.from('vendedoras').select('credito').eq('id', VENDEDORA_ID).maybeSingle();
+    creditoDisponible = (data && data.credito) || 0;
+  }
   refreshCartSheet();
   document.getElementById("cartOverlay").classList.add("open");
 }
@@ -175,16 +191,27 @@ function createCartSheet() {
   overlay.querySelector(".btn-sheet-close").addEventListener("click", closeCartSheet);
 
   overlay.querySelector("#cartSheetBody").addEventListener("click", async (e) => {
+    // Toggle del crédito: mostrar/ocultar el total con crédito aplicado
+    if (e.target.closest("#cartAplicarCredito")) {
+      const chk = document.getElementById("cartAplicarCredito");
+      const totalLine = document.getElementById("cartCreditoTotal");
+      if (totalLine) totalLine.hidden = !chk.checked;
+      return;
+    }
     if (e.target.closest("#btnConfirmarPedido")) {
       const btn = document.getElementById("btnConfirmarPedido");
       const errEl = document.getElementById("cartError");
       if (errEl) errEl.hidden = true;
       const waUrl = buildCartWhatsappUrl();
       const dirId = document.getElementById('cartDirSelect')?.value || null;
+      const aplicarChk = document.getElementById("cartAplicarCredito");
+      const creditoAplicado = (aplicarChk && aplicarChk.checked)
+        ? Math.min(creditoDisponible, totalCarrito())
+        : 0;
       btn.disabled = true;
       btn.textContent = "Guardando pedido…";
       try {
-        await confirmarPedido(dirId);
+        await confirmarPedido(dirId, creditoAplicado);
         clearCarrito();
         closeCartSheet();
         Promise.all([loadPedidos(), loadCatalogo()]).then(() => {
