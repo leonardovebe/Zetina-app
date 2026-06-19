@@ -3443,7 +3443,7 @@ async function loadPerfil() {
   if (!VENDEDORA_ID) return;
   const { data } = await db.from('vendedoras').select('*').eq('id', VENDEDORA_ID).single();
   if (data) {
-    perfil = { nombre: data.nombre, credito: data.credito || 0, foto: data.foto_url || null, createdAt: data.created_at || null };
+    perfil = { nombre: data.nombre, credito: data.credito || 0, foto: data.foto_url || null, createdAt: data.created_at || null, slug: data.slug || null };
   }
 }
 
@@ -4073,6 +4073,11 @@ function renderCuenta() {
         <button class="btn-refresh" id="btnRefreshVision" aria-label="Actualizar Mi Visión" style="align-self:flex-start;margin-left:auto;">${REFRESH_SVG}</button>
       </div>
 
+      <button class="btn-compartir-catalogo" id="btnCompartirCatalogo">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="18" height="18"><path d="${WA_PATH}"/></svg>
+        Compartir mi catálogo
+      </button>
+
       ${(() => {
         const ahora = Date.now();
         const prendasPorVencer = inventario.filter(p => {
@@ -4271,6 +4276,16 @@ function renderCuenta() {
   attachRefreshBtn('btnRefreshVision',
     () => loadVisionariaStats(),
     renderCuenta);
+
+  container.querySelector("#btnCompartirCatalogo").addEventListener("click", () => {
+    if (!perfil.slug) {
+      showToast("Tu catálogo aún no está configurado, contacta a ZETINA");
+      return;
+    }
+    const link = `https://zetina-app.vercel.app/catalogo-publico.html?v=${perfil.slug}`;
+    const msg  = `¡Hola! Te comparto mi catálogo de ZETINA Moda Selecta 💜 Aquí puedes ver todas las prendas disponibles: ${link}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+  });
 
   container.querySelector("#btnEditarPerfil").addEventListener("click", openPerfilEdit);
   container.querySelector("#btnCerrarSesion").addEventListener("click", openCerrarSesion);

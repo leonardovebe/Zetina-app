@@ -3892,6 +3892,29 @@ h1, h2, h3, h4, h5, h6,
   border-radius: 1.25rem;
 }
 
+.btn-compartir-catalogo {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.875rem;
+  padding: 0.875rem 1rem;
+  background: #DEFF00;
+  color: #16001C;
+  border: none;
+  border-radius: 0.875rem;
+  font-family: var(--font-heading);
+  font-size: 0.9375rem;
+  font-weight: 800;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease;
+}
+
+.btn-compartir-catalogo:active { opacity: 0.85; }
+
 .vision-avatar-btn {
   position: relative;
   flex-shrink: 0;
