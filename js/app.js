@@ -4283,7 +4283,7 @@ function renderCuenta() {
       return;
     }
     const link = `https://zetina-app.vercel.app/catalogo-publico.html?v=${perfil.slug}`;
-    const msg  = `¡Hola! Te comparto mi catálogo de ZETINA Moda Selecta 💜 Aquí puedes ver todas las prendas disponibles: ${link}`;
+    const msg  = `Hola, te comparto mi catálogo, aquí puedes ver todas las prendas disponibles. Si algo te gusta escríbeme y te lo muestro para que te lo puedas probar: ${link}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
   });
 
