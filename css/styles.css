@@ -322,6 +322,26 @@ h1, h2, h3, h4, h5, h6,
   transform: translateX(14px);
 }
 
+.btn-ver-vendidas {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+
+.btn-ver-vendidas--activo .modo-clienta-track {
+  background: #855AA2;
+}
+
+.btn-ver-vendidas--activo .modo-clienta-thumb {
+  transform: translateX(14px);
+}
+
 .modo-clienta-label {
   font-family: var(--font-body);
   font-size: 0.6875rem;

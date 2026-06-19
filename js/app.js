@@ -355,6 +355,7 @@ let catalogo = [];
 let catalogFiltros = { categorias: new Set(), tallas: new Set(), marcas: new Set(), precio: null };
 let modoClientaActivo        = false;
 let modoClientaPrendasActivo = false;
+let verVendidasActivo        = false;
 
 // URL base del bucket público de fotos en Supabase Storage
 const FOTOS_URL = `${SUPABASE_URL}/storage/v1/object/public/prenda-fotos`;
@@ -462,7 +463,7 @@ async function loadInventario() {
     .from('inventario_vendedoras')
     .select('id, prenda_id, pedido_id, fecha_entrega, estado, prendas(*, fotos_prendas(*))')
     .eq('vendedora_id', VENDEDORA_ID)
-    .in('estado', ['activo', 'prestado'])
+    .in('estado', verVendidasActivo ? ['activo', 'prestado', 'vendido'] : ['activo', 'prestado'])
     .order('created_at', { ascending: false });
   if (error) { console.error('loadInventario:', error); return; }
 
@@ -2893,6 +2894,10 @@ function renderMisPrendas() {
           <span class="modo-clienta-track"><span class="modo-clienta-thumb"></span></span>
           <span class="modo-clienta-label">Modo Clienta</span>
         </button>
+        <button class="btn-ver-vendidas${verVendidasActivo ? ' btn-ver-vendidas--activo' : ''}" id="btnVerVendidas" aria-pressed="${verVendidasActivo}">
+          <span class="modo-clienta-track"><span class="modo-clienta-thumb"></span></span>
+          <span class="modo-clienta-label">Ver vendidas</span>
+        </button>
       </div>
     </div>
     <div class="clientes-search-row"${modoClientaPrendasActivo ? ' hidden' : ''}>
@@ -2908,6 +2913,12 @@ function renderMisPrendas() {
 
   container.querySelector('#btnModoClientaPrendas').addEventListener('click', () => {
     aplicarModoClientaPrendasUI(!modoClientaPrendasActivo);
+  });
+
+  container.querySelector('#btnVerVendidas').addEventListener('click', async () => {
+    verVendidasActivo = !verVendidasActivo;
+    await loadInventario();
+    renderMisPrendas();
   });
 
   container.querySelector("#prendasBusqueda")?.addEventListener("input", (e) => {
