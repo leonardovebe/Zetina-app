@@ -190,6 +190,41 @@ body {
   margin-top: 0.375rem;
 }
 
+/* Par de toggles en Mis Prendas */
+.header-toggles {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+/* Badge y card de prendas vendidas */
+.inv-vendida-badge {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.4rem;
+  background: #855AA2;
+  color: #fff;
+  font-family: var(--font-heading);
+  font-size: 0.5625rem;
+  font-weight: 800;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  letter-spacing: 0.01em;
+  z-index: 2;
+}
+
+.inv-card--vendida {
+  opacity: 0.85;
+}
+
+.inv-vendida-info {
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #855AA2;
+  margin-top: 0.15rem;
+}
+
 /* Grupo de botones a la derecha del header de Catálogo */
 .header-actions {
   display: flex;
