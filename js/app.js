@@ -2462,11 +2462,11 @@ function createVendidaSheet() {
 
       // Puntos: check compras BEFORE this sale was added to local state
       const comprasAnteriores = (c.compras || []).length;
-      actualizarStats('match_valido');
+      await actualizarStats('match_valido');
       if (comprasAnteriores > 0) {
-        actualizarStats('clienta_recurrente', { primeraVezRecurrente: comprasAnteriores === 1 });
+        await actualizarStats('clienta_recurrente', { primeraVezRecurrente: comprasAnteriores === 1 });
       } else {
-        actualizarStats('clienta_nueva_con_venta');
+        await actualizarStats('clienta_nueva_con_venta');
       }
 
       showVentaWhatsAppSheet(c, p, precioVenta);
@@ -2677,11 +2677,11 @@ function createVenderPrestadaSheet() {
 
       // d) Stats y logros
       const comprasAnteriores = (c.compras || []).length;
-      actualizarStats('match_valido');
+      await actualizarStats('match_valido');
       if (comprasAnteriores > 0) {
-        actualizarStats('clienta_recurrente', { primeraVezRecurrente: comprasAnteriores === 1 });
+        await actualizarStats('clienta_recurrente', { primeraVezRecurrente: comprasAnteriores === 1 });
       } else {
-        actualizarStats('clienta_nueva_con_venta');
+        await actualizarStats('clienta_nueva_con_venta');
       }
 
       // e) Actualizar memoria y re-render
@@ -3589,8 +3589,14 @@ async function actualizarStats(evento, contexto = {}) {
   }
 
   try {
-    const { error } = await db.from('visionaria_stats')
-      .update(updates).eq('vendedora_id', VENDEDORA_ID);
+    const { error, data } = await db.from('visionaria_stats')
+      .update(updates)
+      .eq('vendedora_id', VENDEDORA_ID)
+      .select();
+    if (!error && (!data || data.length === 0)) {
+      console.error('[puntos] UPDATE no afectó ninguna fila, reintentando con upsert');
+      await db.from('visionaria_stats').upsert({ vendedora_id: VENDEDORA_ID, ...updates });
+    }
     if (!error) {
       Object.assign(visionariaStats, updates);
       verificarLogros();
