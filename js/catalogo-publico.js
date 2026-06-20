@@ -12,8 +12,6 @@ function fotoPublicUrl(raw) {
 }
 
 let visionaria = null;        // { id, nombre }
-let tabActiva  = 'catalogo';  // 'catalogo' | 'disponible'
-const cache    = { catalogo: null, disponible: null }; // resultados memoizados
 
 function getSlug() {
   const params = new URLSearchParams(window.location.search);
@@ -92,7 +90,7 @@ async function fetchDisponible() {
   });
 }
 
-let itemsActuales = []; // items del tab visible, para lookup al abrir el visor
+let itemsActuales = []; // items renderizados, para lookup al abrir el visor
 
 function renderGrid(items) {
   itemsActuales = items;
@@ -175,20 +173,19 @@ const cpGallery = {
   },
 };
 
-async function mostrarTab(tab) {
-  tabActiva = tab;
-  document.getElementById('cpTabCatalogo').classList.toggle('cp-tab--activo', tab === 'catalogo');
-  document.getElementById('cpTabDisponible').classList.toggle('cp-tab--activo', tab === 'disponible');
-
+async function cargarTodo() {
   const cont = document.getElementById('cpContenido');
-
-  if (cache[tab]) { renderGrid(cache[tab]); return; }
-
   cont.innerHTML = `<p class="cp-loading">Cargando…</p>`;
-  const items = tab === 'catalogo' ? await fetchCatalogo() : await fetchDisponible();
-  cache[tab] = items;
-  // Solo renderizar si el usuario no cambió de tab mientras cargaba
-  if (tabActiva === tab) renderGrid(items);
+
+  const [catalogo, disponible] = await Promise.all([fetchCatalogo(), fetchDisponible()]);
+
+  // Unir ambas fuentes evitando duplicados por id de prenda
+  const porId = new Map();
+  [...catalogo, ...disponible].forEach(item => {
+    if (item && item.id != null && !porId.has(item.id)) porId.set(item.id, item);
+  });
+
+  renderGrid([...porId.values()]);
 }
 
 async function init() {
@@ -215,10 +212,6 @@ async function init() {
 
   visionaria = { id: data.id, nombre: data.nombre };
   titulo.textContent = `Catálogo de ${data.nombre}`;
-  document.getElementById('cpTabs').hidden = false;
-
-  document.getElementById('cpTabCatalogo').addEventListener('click', () => mostrarTab('catalogo'));
-  document.getElementById('cpTabDisponible').addEventListener('click', () => mostrarTab('disponible'));
 
   // Abrir visor al tocar la foto de una card
   document.getElementById('cpContenido').addEventListener('click', (e) => {
@@ -228,7 +221,7 @@ async function init() {
     if (item && item.fotos && item.fotos.length) cpGallery.open(item.fotos);
   });
 
-  mostrarTab('catalogo');
+  cargarTodo();
 }
 
 init();
