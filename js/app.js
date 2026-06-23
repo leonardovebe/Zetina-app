@@ -1349,13 +1349,13 @@ async function loadCobrosData() {
   const clienteIds = clientes.map((c) => c.id);
   if (!clienteIds.length) return;
   const [{ data: ventas }, { data: abonos }] = await Promise.all([
-    db.from('ventas').select('*, prendas(numero, nombre)').in('cliente_id', clienteIds).order('fecha', { ascending: false }),
+    db.from('ventas').select('*, prendas(numero, nombre, precio_vendedora)').in('cliente_id', clienteIds).order('fecha', { ascending: false }),
     db.from('abonos').select('*').in('cliente_id', clienteIds).order('fecha', { ascending: false }),
   ]);
   clientes.forEach((c) => {
     c.compras = (ventas || [])
       .filter((v) => v.cliente_id === c.id)
-      .map((v) => ({ id: v.id, prendaId: v.prenda_id || null, numero: v.prendas?.numero || null, prenda: v.prendas?.nombre || v.nombre_prenda || '', marca: v.marca || '', fecha: v.fecha || '', monto: v.monto || 0 }));
+      .map((v) => ({ id: v.id, prendaId: v.prenda_id || null, numero: v.prendas?.numero || null, prenda: v.prendas?.nombre || v.nombre_prenda || '', marca: v.marca || '', fecha: v.fecha || '', monto: v.monto || 0, precioVendedora: v.prendas?.precio_vendedora || 0 }));
     c.pagos = (abonos || [])
       .filter((a) => a.cliente_id === c.id)
       .map((a) => ({ id: a.id, fecha: a.fecha || '', monto: a.monto || 0 }));
@@ -3949,6 +3949,8 @@ function getVisionStats() {
   const abonosMes = todosAbonos.filter(a => a.fecha?.slice(0, 7) === mesKey);
 
   const gananciaMes      = ventasMes.reduce((s, v) => s + v.monto, 0);
+  const costoVendedoraMes = ventasMes.reduce((s, v) => s + (v.precioVendedora || 0), 0);
+  const miGananciaMes    = gananciaMes - costoVendedoraMes;
   const cobradoMes       = abonosMes.reduce((s, a) => s + a.monto, 0);
   const porCobrarMes     = Math.max(0, gananciaMes - cobradoMes);
   const matchesMes       = ventasMes.length;
@@ -3987,7 +3989,7 @@ function getVisionStats() {
   const cobradoMesCompleto = gananciaMes > 0 && cobradoMes >= gananciaMes;
 
   return {
-    gananciaMes, cobradoMes, porCobrarMes, matchesMes,
+    gananciaMes, miGananciaMes, cobradoMes, porCobrarMes, matchesMes,
     gananciaHistorica, matchesHistoricos,
     mejorMontoMesEntry, clientasRecurrentes, antiguedadMeses,
     recordPersonal, cobradoMesCompleto,
@@ -4129,7 +4131,7 @@ function renderCuenta() {
         <h2 class="vision-bloque-titulo">Mi Negocio</h2>
         <div class="vision-negocio-grid">
           <div class="vision-stat-card">
-            <span class="vision-stat-label">Ganancia este mes</span>
+            <span class="vision-stat-label">Vendido este mes</span>
             <span class="vision-stat-valor">${formatPeso(stats.gananciaMes)}</span>
           </div>
           <div class="vision-stat-card">
@@ -4141,7 +4143,11 @@ function renderCuenta() {
             <span class="vision-stat-valor${stats.porCobrarMes > 0 ? ' vision-stat-valor--alerta' : ''}">${formatPeso(stats.porCobrarMes)}</span>
           </div>
           <div class="vision-stat-card">
-            <span class="vision-stat-label">Ganancia histórica</span>
+            <span class="vision-stat-label">Mi ganancia este mes</span>
+            <span class="vision-stat-valor"${stats.miGananciaMes > 0 ? ' style="color:#855AA2;font-weight:700;"' : ''}>${formatPeso(stats.miGananciaMes)}</span>
+          </div>
+          <div class="vision-stat-card">
+            <span class="vision-stat-label">Ventas históricas</span>
             <span class="vision-stat-valor">${formatPeso(stats.gananciaHistorica)}</span>
           </div>
           <div class="vision-stat-card vision-stat-card--full">
