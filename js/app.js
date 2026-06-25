@@ -4151,12 +4151,12 @@ function renderCuenta() {
             <span class="vision-stat-valor"${stats.miGananciaMesActual > 0 ? ' style="color:#855AA2;font-weight:700;"' : ''}>${formatPeso(stats.miGananciaMesActual)}</span>
           </div>
           <div class="vision-stat-card">
-            <span class="vision-stat-label">Mi ganancia ${stats.anio}</span>
-            <span class="vision-stat-valor"${stats.miGananciaMes > 0 ? ' style="color:#855AA2;font-weight:700;"' : ''}>${formatPeso(stats.miGananciaMes)}</span>
-          </div>
-          <div class="vision-stat-card">
             <span class="vision-stat-label">Ventas históricas</span>
             <span class="vision-stat-valor">${formatPeso(stats.gananciaHistorica)}</span>
+          </div>
+          <div class="vision-stat-card">
+            <span class="vision-stat-label">Mi ganancia ${stats.anio}</span>
+            <span class="vision-stat-valor"${stats.miGananciaMes > 0 ? ' style="color:#855AA2;font-weight:700;"' : ''}>${formatPeso(stats.miGananciaMes)}</span>
           </div>
           <div class="vision-stat-card vision-stat-card--full">
             <span class="vision-stat-label">Mejor mes</span>
