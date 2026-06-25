@@ -3949,6 +3949,8 @@ function getVisionStats() {
   const abonosMes = todosAbonos.filter(a => a.fecha?.slice(0, 7) === mesKey);
 
   const gananciaMes      = ventasMes.reduce((s, v) => s + v.monto, 0);
+  const costoVendedoraMesActual = ventasMes.reduce((s, v) => s + (v.precioVendedora || 0), 0);
+  const miGananciaMesActual = gananciaMes - costoVendedoraMesActual;
   const ventasAnio        = todasVentas.filter(v => v.fecha?.slice(0, 4) === String(anio));
   const ventasAnioMonto   = ventasAnio.reduce((s, v) => s + v.monto, 0);
   const costoVendedoraAnio = ventasAnio.reduce((s, v) => s + (v.precioVendedora || 0), 0);
@@ -3991,7 +3993,7 @@ function getVisionStats() {
   const cobradoMesCompleto = gananciaMes > 0 && cobradoMes >= gananciaMes;
 
   return {
-    gananciaMes, miGananciaMes, cobradoMes, porCobrarMes, matchesMes,
+    gananciaMes, miGananciaMes, miGananciaMesActual, cobradoMes, porCobrarMes, matchesMes,
     gananciaHistorica, matchesHistoricos,
     mejorMontoMesEntry, clientasRecurrentes, antiguedadMeses,
     recordPersonal, cobradoMesCompleto,
@@ -4143,6 +4145,10 @@ function renderCuenta() {
           <div class="vision-stat-card">
             <span class="vision-stat-label">Por cobrar</span>
             <span class="vision-stat-valor${stats.porCobrarMes > 0 ? ' vision-stat-valor--alerta' : ''}">${formatPeso(stats.porCobrarMes)}</span>
+          </div>
+          <div class="vision-stat-card">
+            <span class="vision-stat-label">Mi ganancia del mes</span>
+            <span class="vision-stat-valor"${stats.miGananciaMesActual > 0 ? ' style="color:#855AA2;font-weight:700;"' : ''}>${formatPeso(stats.miGananciaMesActual)}</span>
           </div>
           <div class="vision-stat-card">
             <span class="vision-stat-label">Mi ganancia ${stats.anio}</span>
