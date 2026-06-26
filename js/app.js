@@ -3474,6 +3474,16 @@ async function loadPerfil() {
   }
 }
 
+// SELECT fresco del crédito; sincroniza perfil.credito (mostrado en Mi Negocio)
+// y la variable global creditoDisponible (usada en el carrito).
+async function loadCreditoVendedora() {
+  if (!VENDEDORA_ID) return;
+  const { data } = await db.from('vendedoras').select('credito').eq('id', VENDEDORA_ID).maybeSingle();
+  const credito = (data && data.credito) || 0;
+  perfil.credito = credito;
+  creditoDisponible = credito;
+}
+
 function parseLogrosArray(val) {
   if (!val) return [];
   if (Array.isArray(val)) return val;
@@ -4321,7 +4331,7 @@ function renderCuenta() {
     <input type="file" id="avatarFileInput" accept="image/*" hidden>`;
 
   attachRefreshBtn('btnRefreshVision',
-    () => loadVisionariaStats(),
+    () => Promise.all([loadVisionariaStats(), loadCreditoVendedora()]),
     renderCuenta);
 
   container.querySelector("#btnCompartirCatalogo").addEventListener("click", () => {
@@ -5001,8 +5011,8 @@ function showView(viewId) {
   if (viewId === "catalogo" && 'clearAppBadge' in navigator) navigator.clearAppBadge();
   if (viewId === "cobros") renderCobros();
   if (viewId === "cuenta") {
-    // SELECT fresco de visionaria_stats antes de renderizar para que logros_obtenidos esté disponible
-    loadVisionariaStats().then(() => renderCuenta()).catch(() => renderCuenta());
+    // SELECT fresco de visionaria_stats y del crédito antes de renderizar
+    Promise.all([loadVisionariaStats(), loadCreditoVendedora()]).then(() => renderCuenta()).catch(() => renderCuenta());
   }
 }
 
