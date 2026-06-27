@@ -34,6 +34,7 @@ function buildCardPublica(p) {
         <p class="cp-card-nombre">${p.nombre || ''}</p>
         ${p.marca ? `<p class="cp-card-marca">${p.marca}</p>` : ''}
         <span class="cp-talla-chip">Talla ${p.tallaReal || '—'}</span>
+        ${p.descripcionPublica ? `<p class="cp-card-desc">${p.descripcionPublica}</p>` : ''}
       </div>
     </article>`;
 }
@@ -49,7 +50,7 @@ function todasFotosUrls(fotosPrendas) {
 async function fetchCatalogo() {
   const { data, error } = await db
     .from('prendas')
-    .select('id, nombre, marca, emoji, gradiente, talla_real, fotos_prendas(url, orden)')
+    .select('id, nombre, marca, emoji, gradiente, talla_real, descripcion_publica, fotos_prendas(url, orden)')
     .eq('disponible', true);
   if (error) { console.error('[cp] fetchCatalogo:', error); return []; }
   return (data || []).map(p => {
@@ -61,6 +62,7 @@ async function fetchCatalogo() {
       emoji:     p.emoji  || '👗',
       gradiente: p.gradiente || 'linear-gradient(150deg, #16001C 0%, #855AA2 100%)',
       tallaReal: p.talla_real || '',
+      descripcionPublica: p.descripcion_publica || '',
       fotos,
       foto:      fotos[0] || null,
     };
@@ -70,7 +72,7 @@ async function fetchCatalogo() {
 async function fetchDisponible() {
   const { data, error } = await db
     .from('inventario_vendedoras')
-    .select('id, prenda_id, estado, prendas(id, nombre, marca, emoji, gradiente, talla_real, fotos_prendas(url, orden))')
+    .select('id, prenda_id, estado, prendas(id, nombre, marca, emoji, gradiente, talla_real, descripcion_publica, fotos_prendas(url, orden))')
     .eq('vendedora_id', visionaria.id)
     .eq('estado', 'activo');
   if (error) { console.error('[cp] fetchDisponible:', error); return []; }
@@ -84,6 +86,7 @@ async function fetchDisponible() {
       emoji:     p.emoji  || '👗',
       gradiente: p.gradiente || 'linear-gradient(150deg, #16001C 0%, #855AA2 100%)',
       tallaReal: p.talla_real || '',
+      descripcionPublica: p.descripcion_publica || '',
       fotos,
       foto:      fotos[0] || null,
     };
