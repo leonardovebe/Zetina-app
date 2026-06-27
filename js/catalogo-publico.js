@@ -25,7 +25,7 @@ function buildCardPublica(p) {
     ? `<img src="${foto}" alt="${p.nombre}" loading="lazy">`
     : `<span class="cp-card-emoji" aria-hidden="true">${p.emoji || '👗'}</span>`;
   return `
-    <article class="cp-card">
+    <article class="cp-card" data-card-id="${p.id}">
       <div class="cp-card-img${tieneFotos ? ' cp-card-img--clickable' : ''}"${tieneFotos ? ` data-prenda-id="${p.id}"` : ''}${foto ? '' : ` style="background:${p.gradiente}"`}>
         ${imgHTML}
         ${(p.fotos || []).length > 1 ? `<span class="cp-card-multi" aria-hidden="true">📷 ${p.fotos.length}</span>` : ''}
@@ -176,6 +176,124 @@ const cpGallery = {
   },
 };
 
+// ── Sheet de detalle de prenda ──────────────────────────────────────────────
+const cpDetalle = {
+  overlay: null, sheet: null, photoEl: null, img: null, dotsEl: null,
+  nombreEl: null, marcaEl: null, tallaEl: null, descEl: null,
+  fotos: [], current: 0, touchStartX: 0, dragStartY: 0, dragging: false,
+
+  init() {
+    const el = document.createElement('div');
+    el.className = 'cpd-overlay';
+    el.innerHTML = `
+      <div class="cpd-sheet" id="cpdSheet">
+        <div class="cpd-handle" id="cpdHandle"></div>
+        <button class="cpd-close" id="cpdClose" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+        <div class="cpd-photo" id="cpdPhoto">
+          <img class="cpd-img" id="cpdImg" src="" alt="">
+          <div class="cpd-dots" id="cpdDots"></div>
+        </div>
+        <div class="cpd-body">
+          <h2 class="cpd-nombre" id="cpdNombre"></h2>
+          <p class="cpd-marca" id="cpdMarca"></p>
+          <span class="cpd-talla" id="cpdTalla"></span>
+          <p class="cpd-desc" id="cpdDesc"></p>
+        </div>
+      </div>`;
+    document.body.appendChild(el);
+    this.overlay  = el;
+    this.sheet    = el.querySelector('#cpdSheet');
+    this.photoEl  = el.querySelector('#cpdPhoto');
+    this.img      = el.querySelector('#cpdImg');
+    this.dotsEl   = el.querySelector('#cpdDots');
+    this.nombreEl = el.querySelector('#cpdNombre');
+    this.marcaEl  = el.querySelector('#cpdMarca');
+    this.tallaEl  = el.querySelector('#cpdTalla');
+    this.descEl   = el.querySelector('#cpdDesc');
+
+    el.querySelector('#cpdClose').addEventListener('click', () => this.close());
+    el.addEventListener('click', e => { if (e.target === el) this.close(); });
+
+    // Swipe horizontal entre fotos
+    this.photoEl.addEventListener('touchstart', e => { this.touchStartX = e.touches[0].clientX; }, { passive: true });
+    this.photoEl.addEventListener('touchend', e => {
+      const dx = e.changedTouches[0].clientX - this.touchStartX;
+      if (Math.abs(dx) > 48) dx < 0 ? this.next() : this.prev();
+    });
+
+    // Swipe vertical hacia abajo (desde el handle) para cerrar
+    const handle = el.querySelector('#cpdHandle');
+    handle.addEventListener('touchstart', e => {
+      this.dragStartY = e.touches[0].clientY;
+      this.dragging = true;
+      this.sheet.style.transition = 'none';
+    }, { passive: true });
+    handle.addEventListener('touchmove', e => {
+      if (!this.dragging) return;
+      const dy = e.touches[0].clientY - this.dragStartY;
+      if (dy > 0) this.sheet.style.transform = `translateY(${dy}px)`;
+    }, { passive: true });
+    handle.addEventListener('touchend', e => {
+      if (!this.dragging) return;
+      this.dragging = false;
+      this.sheet.style.transition = '';
+      const dy = e.changedTouches[0].clientY - this.dragStartY;
+      if (dy > 100) this.close();
+      else this.sheet.style.transform = '';
+    }, { passive: true });
+  },
+
+  open(item) {
+    if (!this.overlay) this.init();
+    this.fotos = item.fotos || [];
+    this.current = 0;
+
+    this.nombreEl.textContent = item.nombre || '';
+    this.marcaEl.textContent  = item.marca || '';
+    this.marcaEl.hidden       = !item.marca;
+    this.tallaEl.textContent  = `Talla ${item.tallaReal || '—'}`;
+    this.descEl.textContent   = item.descripcionPublica || '';
+    this.descEl.hidden        = !item.descripcionPublica;
+
+    if (this.fotos.length) {
+      this.photoEl.hidden = false;
+      this.renderDots();
+      this.showPhoto();
+    } else {
+      this.photoEl.hidden = true;
+    }
+
+    this.sheet.style.transform = '';
+    this.overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  },
+
+  close() {
+    this.overlay.classList.remove('open');
+    this.sheet.style.transform = '';
+    document.body.style.overflow = '';
+  },
+
+  next() { if (this.current < this.fotos.length - 1) { this.current++; this.showPhoto(); } },
+  prev() { if (this.current > 0)                     { this.current--; this.showPhoto(); } },
+
+  showPhoto() {
+    this.img.src = this.fotos[this.current];
+    this.dotsEl.querySelectorAll('.cpd-dot').forEach((d, i) =>
+      d.classList.toggle('cpd-dot--active', i === this.current));
+  },
+
+  renderDots() {
+    this.dotsEl.innerHTML = this.fotos.length > 1
+      ? this.fotos.map((_, i) => `<span class="cpd-dot${i === 0 ? ' cpd-dot--active' : ''}"></span>`).join('')
+      : '';
+  },
+};
+
 async function cargarTodo() {
   const cont = document.getElementById('cpContenido');
   cont.innerHTML = `<p class="cp-loading">Cargando…</p>`;
@@ -216,12 +334,20 @@ async function init() {
   visionaria = { id: data.id, nombre: data.nombre };
   titulo.textContent = `Catálogo de ${data.nombre}`;
 
-  // Abrir visor al tocar la foto de una card
   document.getElementById('cpContenido').addEventListener('click', (e) => {
+    // Tocar la foto (con galería) → visor a pantalla completa
     const imgDiv = e.target.closest('.cp-card-img[data-prenda-id]');
-    if (!imgDiv) return;
-    const item = itemsActuales.find(it => String(it.id) === imgDiv.dataset.prendaId);
-    if (item && item.fotos && item.fotos.length) cpGallery.open(item.fotos);
+    if (imgDiv) {
+      const item = itemsActuales.find(it => String(it.id) === imgDiv.dataset.prendaId);
+      if (item && item.fotos && item.fotos.length) cpGallery.open(item.fotos);
+      return;
+    }
+    // Tocar cualquier otra parte de la card → sheet de detalle
+    const card = e.target.closest('.cp-card[data-card-id]');
+    if (card) {
+      const item = itemsActuales.find(it => String(it.id) === card.dataset.cardId);
+      if (item) cpDetalle.open(item);
+    }
   });
 
   cargarTodo();
