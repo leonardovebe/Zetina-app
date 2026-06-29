@@ -534,6 +534,23 @@ async function loadPrestamos() {
   prestamos = data || [];
 }
 
+// Tasa de conversión de préstamos: cerrados (devueltos) vs. los que terminaron en venta
+let prestamosConversion = { cerrados: 0, conVenta: 0 };
+
+async function loadPrestamosConversion() {
+  if (!VENDEDORA_ID) return;
+  const [devueltos, ventas] = await Promise.all([
+    db.from('prestamos').select('prenda_id').eq('vendedora_id', VENDEDORA_ID).eq('estado', 'devuelto'),
+    db.from('ventas').select('prenda_id').eq('vendedora_id', VENDEDORA_ID),
+  ]);
+  const devList  = devueltos.data || [];
+  const ventaIds = new Set((ventas.data || []).map(v => v.prenda_id).filter(Boolean));
+  prestamosConversion = {
+    cerrados: devList.length,
+    conVenta: devList.filter(p => ventaIds.has(p.prenda_id)).length,
+  };
+}
+
 async function loadDevoluciones() {
   if (!VENDEDORA_ID) return;
   const { data } = await db
@@ -4002,11 +4019,19 @@ function getVisionStats() {
 
   const cobradoMesCompleto = gananciaMes > 0 && cobradoMes >= gananciaMes;
 
+  // Tasa de aciertos de préstamos
+  const prestamosCerrados = prestamosConversion.cerrados;
+  const prestamosConVenta = prestamosConversion.conVenta;
+  const tasaAciertos = prestamosCerrados > 0
+    ? Math.round((prestamosConVenta / prestamosCerrados) * 100 * 10) / 10
+    : null;
+
   return {
     gananciaMes, miGananciaMes, miGananciaMesActual, cobradoMes, porCobrarMes, matchesMes,
     gananciaHistorica, matchesHistoricos,
     mejorMontoMesEntry, clientasRecurrentes, antiguedadMeses,
     recordPersonal, cobradoMesCompleto,
+    prestamosCerrados, prestamosConVenta, tasaAciertos,
     mesNombre: MESES_FULL[mesIdx], anio,
   };
 }
@@ -4218,6 +4243,13 @@ function renderCuenta() {
           <div class="vision-maestria-item">
             <span class="vision-maestria-label">Clientas recurrentes</span>
             <span class="vision-maestria-valor">${stats.clientasRecurrentes}</span>
+          </div>
+          <div class="vision-maestria-item">
+            <span class="vision-maestria-label" style="display:flex;flex-direction:column;gap:0.15rem;">
+              Tasa de aciertos
+              <span style="font-size:0.6875rem;color:#aaa;font-weight:400;">${stats.prestamosConVenta} de ${stats.prestamosCerrados} préstamos terminaron en venta</span>
+            </span>
+            <span class="vision-maestria-valor" style="color:#855AA2;font-weight:700;">${stats.tasaAciertos === null ? '--' : stats.tasaAciertos + '%'}</span>
           </div>
           <div class="vision-maestria-item">
             <span class="vision-maestria-label">Récord personal mensual</span>
@@ -5063,7 +5095,7 @@ async function initApp() {
     '<div class="catalog-loading"><span>Cargando catálogo…</span></div>';
 
   await loadPerfil();
-  await Promise.all([loadCatalogo(), loadInventario(), loadPedidos(), loadDevoluciones(), loadClientes(), loadPrestamos(), loadVisionariaStats(), loadDirecciones()]);
+  await Promise.all([loadCatalogo(), loadInventario(), loadPedidos(), loadDevoluciones(), loadClientes(), loadPrestamos(), loadPrestamosConversion(), loadVisionariaStats(), loadDirecciones()]);
   await loadCobrosData();
   await checkResetTemporada();
 
