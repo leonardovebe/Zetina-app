@@ -3590,7 +3590,7 @@ const PUNTOS_REGLAS = {
   venta_cobrada_completa:  { puntos_historicos: 5,   puntos_temporada: 5 },
   record_superado:         { puntos_historicos: 30,  puntos_temporada: 30 },
   mes_activo:              { puntos_historicos: 10 },
-  devolucion:              { puntos_historicos: -15, puntos_temporada: -15 },
+  devolucion:              { puntos_historicos: -2,  puntos_temporada: -2 },
 };
 
 async function actualizarStats(evento, contexto = {}) {
