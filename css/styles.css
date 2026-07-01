@@ -4172,6 +4172,78 @@ h1, h2, h3, h4, h5, h6,
   font-weight: 700;
 }
 
+/* Botón "¿Cómo acumulo puntos?" */
+.vision-puntos-ayuda {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.875rem auto 0;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #855AA2;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.vision-puntos-ayuda:active { opacity: 0.6; }
+
+/* Modal "¿Cómo acumulo puntos?" */
+.como-puntos-titulo {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 800;
+  color: #16001C;
+}
+
+.como-puntos-lista {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+}
+
+.como-puntos-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid #f0eaf7;
+}
+
+.como-puntos-regla {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: #16001C;
+  line-height: 1.35;
+}
+
+.como-puntos-valor {
+  flex-shrink: 0;
+  font-family: var(--font-heading);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #855AA2;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.como-puntos-item--resta .como-puntos-valor {
+  color: #e05252;
+}
+
+.como-puntos-nota {
+  margin-top: 0.875rem;
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  font-style: italic;
+  color: #aaa;
+  line-height: 1.4;
+}
+
 .vision-maestria-lista {
   display: flex;
   flex-direction: column;

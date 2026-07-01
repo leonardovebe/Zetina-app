@@ -3590,7 +3590,7 @@ const PUNTOS_REGLAS = {
   venta_cobrada_completa:  { puntos_historicos: 5,   puntos_temporada: 5 },
   record_superado:         { puntos_historicos: 30,  puntos_temporada: 30 },
   mes_activo:              { puntos_historicos: 10 },
-  devolucion:              { puntos_historicos: -2,  puntos_temporada: -2 },
+  devolucion:              { puntos_historicos: -5,  puntos_temporada: -5 },
 };
 
 async function actualizarStats(evento, contexto = {}) {
@@ -4083,6 +4083,41 @@ function getLogros() {
   ];
 }
 
+function openComoPuntosSheet() {
+  let overlay = document.getElementById('comoPuntosOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'comoPuntosOverlay';
+    overlay.className = 'order-detail-overlay';
+    overlay.innerHTML = `
+      <div class="order-detail-sheet">
+        <div class="detail-sheet-handle-row"><div class="sheet-drag-handle"></div></div>
+        <div class="sheet-topbar">
+          <h3 class="como-puntos-titulo">¿Cómo acumulo puntos?</h3>
+          <button class="btn-sheet-close" aria-label="Cerrar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="sheet-body" style="padding:0 1.25rem 2rem">
+          <ul class="como-puntos-lista">
+            <li class="como-puntos-item"><span class="como-puntos-regla">✅ Por cada prenda vendida</span><span class="como-puntos-valor">+10 pts</span></li>
+            <li class="como-puntos-item"><span class="como-puntos-regla">✅ Si es una clienta nueva</span><span class="como-puntos-valor">+5 pts adicionales</span></li>
+            <li class="como-puntos-item"><span class="como-puntos-regla">✅ Si es una clienta recurrente</span><span class="como-puntos-valor">+15 pts</span></li>
+            <li class="como-puntos-item"><span class="como-puntos-regla">✅ Por cada venta cobrada completamente</span><span class="como-puntos-valor">+5 pts</span></li>
+            <li class="como-puntos-item"><span class="como-puntos-regla">✅ Al superar tu récord personal del mes</span><span class="como-puntos-valor">+30 pts</span></li>
+            <li class="como-puntos-item"><span class="como-puntos-regla">✅ Por cada mes que vendas al menos una prenda</span><span class="como-puntos-valor">+10 pts</span></li>
+            <li class="como-puntos-item como-puntos-item--resta"><span class="como-puntos-regla">❌ Por cada devolución aprobada</span><span class="como-puntos-valor">-5 pts</span></li>
+          </ul>
+          <p class="como-puntos-nota">La clienta recurrente otorga +15 pts en lugar de los +10 base.</p>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+    overlay.querySelector('.btn-sheet-close').addEventListener('click', () => overlay.classList.remove('open'));
+  }
+  overlay.classList.add('open');
+}
+
 function renderCuenta() {
   const container = document.querySelector("#cuenta .view-content");
   const stats     = getVisionStats();
@@ -4227,6 +4262,10 @@ function renderCuenta() {
           </div>
         </div>
         ${recordMsg ? `<p class="vision-record-msg${stats.matchesMes >= recordPersonal && recordPersonal > 0 ? ' vision-record-msg--logro' : ''}">${recordMsg}</p>` : ''}
+        <button class="vision-puntos-ayuda" id="btnComoPuntos" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          ¿Cómo acumulo puntos?
+        </button>
       </div>
 
       <div class="vision-bloque">
@@ -4375,6 +4414,8 @@ function renderCuenta() {
     const msg  = `Hola, te comparto mi catálogo, aquí puedes ver todas las prendas disponibles. Si algo te gusta escríbeme y te lo muestro para que te lo puedas probar: ${link}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
   });
+
+  container.querySelector("#btnComoPuntos").addEventListener("click", openComoPuntosSheet);
 
   container.querySelector("#btnEditarPerfil").addEventListener("click", openPerfilEdit);
   container.querySelector("#btnCerrarSesion").addEventListener("click", openCerrarSesion);
