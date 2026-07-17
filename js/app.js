@@ -4708,16 +4708,24 @@ function openCobrarHoy() {
   const overlay = document.getElementById('cobrarHoyOverlay');
   const body    = document.getElementById('cobrarHoyBody');
 
+  // Solo clientas sin abono en los últimos 10 días (o que nunca han abonado).
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 10);
+
   const pendientes = clientes.filter(c => {
     const tp  = (c.compras || []).reduce((s, v) => s + v.monto, 0);
     const tpg = (c.pagos   || []).reduce((s, p) => s + p.monto, 0);
-    return tp - tpg > 0;
+    if (tp - tpg <= 0) return false;
+    const fechas = (c.pagos || []).map(p => p.fecha).filter(Boolean);
+    if (!fechas.length) return true; // nunca ha abonado
+    const ultimoAbono = fechas.reduce((max, f) => (f > max ? f : max));
+    return new Date(ultimoAbono) < cutoff;
   });
 
   if (!pendientes.length) {
     body.innerHTML = `<div class="cobrar-hoy-empty">
       <p class="cobrar-hoy-empty-icon">🎉</p>
-      <p class="cobrar-hoy-empty-text">¡Todo al corriente!<br>No hay cobros pendientes.</p>
+      <p class="cobrar-hoy-empty-text">¡Todo al corriente!<br>Ninguna clienta tiene más de 10 días sin abonar.</p>
     </div>`;
     overlay.classList.add('open');
     return;
