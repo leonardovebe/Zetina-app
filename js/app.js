@@ -1349,6 +1349,8 @@ async function loadClientes() {
       tallaRopa: row.talla_ropa || '',
       tallaPantalon: row.talla_pantalon || '',
       tallaCalzado: row.talla_calzado || '',
+      ocupacion: row.ocupacion || '',
+      hobbies: row.hobbies || '',
       fechaCumpleanos: row.fecha_cumpleanos || '',
       notas: row.notas || '',
       medidaCintura: row.medida_cintura != null ? +row.medida_cintura : null,
@@ -1578,16 +1580,26 @@ function openClienteDetail(id) {
       </div>
       <div class="detail-field">
         <span class="detail-label">Talla de ropa</span>
-        <span class="detail-value">${c.tallaRopa}</span>
+        <span class="detail-value" style="display:flex;flex-direction:column;align-items:flex-end;line-height:1.2;">${c.tallaRopa}<span style="font-size:0.625rem;color:#aaa;font-weight:400;">Declarada</span></span>
       </div>
       <div class="detail-field">
         <span class="detail-label">Talla de pantalón</span>
-        <span class="detail-value">${c.tallaPantalon}</span>
+        <span class="detail-value" style="display:flex;flex-direction:column;align-items:flex-end;line-height:1.2;">${c.tallaPantalon}<span style="font-size:0.625rem;color:#aaa;font-weight:400;">Declarada</span></span>
       </div>
       ${c.tallaCalzado ? `
       <div class="detail-field">
         <span class="detail-label">Talla de calzado</span>
-        <span class="detail-value">${c.tallaCalzado}</span>
+        <span class="detail-value" style="display:flex;flex-direction:column;align-items:flex-end;line-height:1.2;">${c.tallaCalzado}<span style="font-size:0.625rem;color:#aaa;font-weight:400;">Declarada</span></span>
+      </div>` : ""}
+      ${c.ocupacion ? `
+      <div class="detail-field">
+        <span class="detail-label">Ocupación</span>
+        <span class="detail-value">${c.ocupacion}</span>
+      </div>` : ""}
+      ${c.hobbies ? `
+      <div class="detail-field">
+        <span class="detail-label">Hobbies/Deportes</span>
+        <span class="detail-value detail-notes">${c.hobbies}</span>
       </div>` : ""}
       ${c.fechaCumpleanos ? `
       <div class="detail-field">
@@ -1686,6 +1698,16 @@ function createClienteFormSheet() {
             </div>
           </div>
           <div class="form-group">
+            <label class="form-label" for="fOcupacion">Ocupación</label>
+            <input class="form-input" id="fOcupacion" name="ocupacion" type="text"
+                   placeholder="Ej. oficina, negocio propio, freelance, docente..." autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="fHobbies">Hobbies/Deportes</label>
+            <textarea class="form-textarea" id="fHobbies" name="hobbies"
+                      placeholder="Ej. yoga, ciclismo, pintura, cocina..."></textarea>
+          </div>
+          <div class="form-group">
             <label class="form-label" for="fNotas">Notas adicionales</label>
             <textarea class="form-textarea" id="fNotas" name="notas"
                       placeholder="Colores favoritos, estilo, forma de pago..."></textarea>
@@ -1714,6 +1736,8 @@ function createClienteFormSheet() {
       talla_ropa: data.get("tallaRopa"),
       talla_pantalon: data.get("tallaPantalon").trim(),
       talla_calzado: data.get("tallaCalzado").trim(),
+      ocupacion: (data.get("ocupacion") || "").trim(),
+      hobbies: (data.get("hobbies") || "").trim(),
       fecha_cumpleanos: data.get("fechaCumpleanos") || null,
       notas: data.get("notas").trim(),
     }).select().single();
@@ -1727,6 +1751,8 @@ function createClienteFormSheet() {
       tallaRopa: row.talla_ropa || '',
       tallaPantalon: row.talla_pantalon || '',
       tallaCalzado: row.talla_calzado || '',
+      ocupacion: row.ocupacion || '',
+      hobbies: row.hobbies || '',
       fechaCumpleanos: row.fecha_cumpleanos || '',
       notas: row.notas || '',
       compras: [],
@@ -1794,6 +1820,16 @@ function createClienteEditSheet() {
             </div>
           </div>
           <div class="form-group">
+            <label class="form-label" for="eOcupacion">Ocupación</label>
+            <input class="form-input" id="eOcupacion" name="ocupacion" type="text"
+                   placeholder="Ej. oficina, negocio propio, freelance, docente..." autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="eHobbies">Hobbies/Deportes</label>
+            <textarea class="form-textarea" id="eHobbies" name="hobbies"
+                      placeholder="Ej. yoga, ciclismo, pintura, cocina..."></textarea>
+          </div>
+          <div class="form-group">
             <label class="form-label" for="eNotas">Notas adicionales</label>
             <textarea class="form-textarea" id="eNotas" name="notas"
                       placeholder="Colores favoritos, estilo, forma de pago..."></textarea>
@@ -1822,6 +1858,8 @@ function createClienteEditSheet() {
       talla_ropa: data.get("tallaRopa"),
       talla_pantalon: data.get("tallaPantalon").trim(),
       talla_calzado: data.get("tallaCalzado").trim(),
+      ocupacion: (data.get("ocupacion") || "").trim(),
+      hobbies: (data.get("hobbies") || "").trim(),
       fecha_cumpleanos: data.get("fechaCumpleanos") || null,
       notas: data.get("notas").trim(),
     };
@@ -1836,6 +1874,8 @@ function createClienteEditSheet() {
       c.tallaRopa = updates.talla_ropa;
       c.tallaPantalon = updates.talla_pantalon;
       c.tallaCalzado = updates.talla_calzado;
+      c.ocupacion = updates.ocupacion;
+      c.hobbies = updates.hobbies;
       c.fechaCumpleanos = updates.fecha_cumpleanos || '';
       c.notas = updates.notas;
     }
@@ -1856,6 +1896,8 @@ function openClienteEdit(id) {
   overlay.querySelector("#eTallaRopa").value = c.tallaRopa;
   overlay.querySelector("#eTallaPant").value = c.tallaPantalon;
   overlay.querySelector("#eTallaCalzado").value = c.tallaCalzado;
+  overlay.querySelector("#eOcupacion").value = c.ocupacion || "";
+  overlay.querySelector("#eHobbies").value = c.hobbies || "";
   overlay.querySelector("#eCumpleanos").value = c.fechaCumpleanos;
   overlay.querySelector("#eNotas").value = c.notas;
 
