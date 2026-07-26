@@ -2793,11 +2793,12 @@ function openVenderPrestadaSheet(prendaId, prestamoId, invId) {
 
 // No incluye 'compro': una venta se registra con el botón "Vender".
 const INTENTO_RESULTADOS = [
-  { valor: 'no_le_quedo',      label: 'No le quedó' },
-  { valor: 'le_gusto_no_pago', label: 'Le gustó pero no pagó' },
-  { valor: 'precio',           label: 'El precio no le funcionó' },
-  { valor: 'no_se_la_probo',   label: 'No se la probó' },
-  { valor: 'otro',             label: 'Otro motivo' },
+  { valor: 'no_le_quedo',        label: 'No le quedó' },
+  { valor: 'no_le_gusto_corte',  label: 'No le gustó el corte' },
+  { valor: 'precio',             label: 'El precio no le funcionó' },
+  { valor: 'no_es_su_estilo',    label: 'No es su estilo' },
+  { valor: 'no_le_gusto_color',  label: 'No le gustó el color' },
+  { valor: 'otro',               label: 'Otro motivo' },
 ];
 
 function createIntentoSheet() {
