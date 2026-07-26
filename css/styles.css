@@ -1899,6 +1899,133 @@ h1, h2, h3, h4, h5, h6,
   flex-shrink: 0;
 }
 
+/* Botón "Ver perfil completo" */
+.btn-perfil-completo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.5rem 0 0.25rem;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #855AA2;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 600;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-perfil-completo:active { opacity: 0.6; }
+
+/* Sheet Perfil inferido */
+.perfil-inf-titulo {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  font-weight: 800;
+  color: #16001C;
+}
+
+.perfil-inf-seccion {
+  padding: 1rem 0;
+  border-bottom: 1px solid #f0eaf7;
+}
+
+.perfil-inf-subtitulo {
+  font-family: var(--font-heading);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #855AA2;
+  margin-bottom: 0.625rem;
+}
+
+.perfil-inf-resumen {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.perfil-inf-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.75rem 0.5rem;
+  background: #faf8fd;
+  border-radius: 0.75rem;
+  text-align: center;
+}
+
+.perfil-inf-stat-num {
+  font-family: var(--font-heading);
+  font-size: 0.875rem;
+  font-weight: 800;
+  color: #16001C;
+}
+
+.perfil-inf-stat-lbl {
+  font-family: var(--font-body);
+  font-size: 0.625rem;
+  color: #999;
+}
+
+.perfil-inf-grupo-label {
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #aaa;
+  margin: 0.75rem 0 0.25rem;
+}
+
+.perfil-inf-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.375rem 0;
+}
+
+.perfil-inf-row-label {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  color: #16001C;
+}
+
+.perfil-inf-row-meta {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: #777;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.perfil-inf-nivel {
+  font-weight: 700;
+}
+
+.perfil-inf-nivel--alta  { color: #2e9e5b; }
+.perfil-inf-nivel--media { color: #855AA2; }
+.perfil-inf-nivel--baja  { color: #bbb; }
+
+.perfil-inf-vacio {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: #bbb;
+  font-style: italic;
+  padding: 0.25rem 0;
+}
+
+.perfil-inf-nota {
+  padding: 1rem 0 0.5rem;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: #888;
+  line-height: 1.5;
+  text-align: center;
+}
+
 .compras-list {
   display: flex;
   flex-direction: column;

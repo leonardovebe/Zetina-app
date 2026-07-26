@@ -1511,6 +1511,9 @@ function createClienteDetailSheet() {
     if (id) openClienteEdit(id);
   });
   overlay.querySelector(".sheet-body").addEventListener("click", async (e) => {
+    const perfilBtn = e.target.closest(".btn-perfil-completo");
+    if (perfilBtn) { openPerfilInferido(perfilBtn.dataset.perfilId, perfilBtn.dataset.perfilNombre); return; }
+
     const ventaBtn = e.target.closest(".btn-registrar-venta");
     if (ventaBtn) openVentaForm(ventaBtn.dataset.id);
 
@@ -1573,6 +1576,10 @@ function openClienteDetail(id) {
       <h3 class="detail-nombre">${c.nombre}</h3>
       ${pendiente ? `<span class="badge-pendiente">Pago pendiente</span>` : ""}
     </div>
+    <button class="btn-perfil-completo" data-perfil-id="${c.id}" data-perfil-nombre="${c.nombre}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Ver perfil completo
+    </button>
     <div class="detail-fields">
       <div class="detail-field">
         <span class="detail-label">Teléfono</span>
@@ -1644,6 +1651,178 @@ function openClienteDetail(id) {
   const detailOverlay = document.getElementById("clienteDetailOverlay");
   detailOverlay.dataset.currentId = c.id;
   detailOverlay.classList.add("open");
+}
+
+// ── Perfil inferido de la clienta ───────────────────────────────────────────
+
+const INTERACCION_LABELS = {
+  no_le_quedo:        'No le quedó',
+  no_le_gusto_corte:  'No le gustó el corte',
+  precio:             'El precio no le funcionó',
+  no_es_su_estilo:    'No es su estilo',
+  no_le_gusto_color:  'No le gustó el color',
+  le_gusto_no_pago:   'Le gustó pero no pagó',
+  no_se_la_probo:     'No se la probó',
+  otro:               'Otro motivo',
+  compro:             'La compró',
+};
+
+function _perfilColorDePrenda(pr) {
+  if (!pr) return null;
+  if (pr.color) return String(pr.color).trim();
+  try {
+    const d = JSON.parse(pr.descripcion || '');
+    if (d && typeof d === 'object' && d.color) return String(d.color).trim();
+  } catch (_) {}
+  return null;
+}
+
+function _perfilContar(items) {
+  const m = new Map();
+  items.filter(Boolean).forEach(k => m.set(k, (m.get(k) || 0) + 1));
+  return [...m.entries()].sort((a, b) => b[1] - a[1]); // [[valor, conteo], ...]
+}
+
+function _perfilNivel(n) {
+  if (n >= 4) return 'Alta';
+  if (n >= 2) return 'Media';
+  return 'Baja';
+}
+
+// Query defensiva: intenta traer prendas.color; si la columna no existe, reintenta sin ella.
+async function _perfilQuery(tabla, campoCliente, id) {
+  let res = await db.from(tabla)
+    .select(`${tabla === 'ventas' ? 'monto, ' : 'resultado, '}prendas(marca, categoria, talla_real, color, descripcion)`)
+    .eq(campoCliente, id);
+  if (res.error) {
+    res = await db.from(tabla)
+      .select(`${tabla === 'ventas' ? 'monto, ' : 'resultado, '}prendas(marca, categoria, talla_real, descripcion)`)
+      .eq(campoCliente, id);
+  }
+  return res.data || [];
+}
+
+function createPerfilInferidoSheet() {
+  if (document.getElementById('perfilInferidoOverlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'perfilInferidoOverlay';
+  overlay.className = 'order-detail-overlay';
+  overlay.innerHTML = `
+    <div class="order-detail-sheet">
+      <div class="detail-sheet-handle-row"><div class="sheet-drag-handle"></div></div>
+      <div class="sheet-topbar">
+        <h3 class="perfil-inf-titulo" id="perfilInfTitulo"></h3>
+        <button class="btn-sheet-close" aria-label="Cerrar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="sheet-body" id="perfilInfBody"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+  overlay.querySelector('.btn-sheet-close').addEventListener('click', () => overlay.classList.remove('open'));
+}
+
+async function openPerfilInferido(clienteId, nombre) {
+  createPerfilInferidoSheet();
+  const overlay = document.getElementById('perfilInferidoOverlay');
+  const body    = document.getElementById('perfilInfBody');
+  document.getElementById('perfilInfTitulo').textContent = `Perfil de ${nombre}`;
+  body.innerHTML = `<p class="cp-loading" style="color:#855AA2;text-align:center;padding:2rem 0">Calculando perfil…</p>`;
+  overlay.classList.add('open');
+
+  const [ventas, interacciones] = await Promise.all([
+    _perfilQuery('ventas', 'cliente_id', clienteId),
+    _perfilQuery('interacciones_clienta', 'clienta_id', clienteId),
+  ]);
+
+  const prendasComp = ventas.map(v => v.prendas).filter(Boolean);
+  const montos      = ventas.map(v => +v.monto || 0);
+  const totalCompras = ventas.length;
+  const gastoProm   = totalCompras ? Math.round(montos.reduce((s, m) => s + m, 0) / totalCompras) : 0;
+  const precioMin   = montos.length ? Math.min(...montos) : 0;
+  const precioMax   = montos.length ? Math.max(...montos) : 0;
+
+  const marcas     = _perfilContar(prendasComp.map(p => p.marca));
+  const categorias = _perfilContar(prendasComp.map(p => p.categoria));
+  const colores    = _perfilContar(prendasComp.map(_perfilColorDePrenda));
+
+  // Tallas confirmadas por categoría (talla más frecuente de cada categoría)
+  const tallasPorCat = {};
+  prendasComp.forEach(p => {
+    if (!p.categoria || !p.talla_real) return;
+    (tallasPorCat[p.categoria] = tallasPorCat[p.categoria] || {});
+    tallasPorCat[p.categoria][p.talla_real] = (tallasPorCat[p.categoria][p.talla_real] || 0) + 1;
+  });
+  const tallasConf = Object.entries(tallasPorCat).map(([cat, tallas]) => {
+    const [talla, n] = Object.entries(tallas).sort((a, b) => b[1] - a[1])[0];
+    return { cat, talla, n };
+  });
+
+  // Rechazos (interacciones con resultado != 'compro')
+  const rechazos     = interacciones.filter(i => i.resultado !== 'compro');
+  const prendasRech  = rechazos.map(i => i.prendas).filter(Boolean);
+  const coloresRech  = _perfilContar(prendasRech.map(_perfilColorDePrenda));
+  const catsRech     = _perfilContar(prendasRech.map(p => p.categoria));
+  const motivos      = _perfilContar(rechazos.map(i => i.resultado));
+
+  const listaPref = (entries, conNivel) => entries.length
+    ? entries.map(([val, n]) => `
+        <div class="perfil-inf-row">
+          <span class="perfil-inf-row-label">${val}</span>
+          <span class="perfil-inf-row-meta">${n} ${n === 1 ? 'compra' : 'compras'}${conNivel ? ` · <span class="perfil-inf-nivel perfil-inf-nivel--${_perfilNivel(n).toLowerCase()}">${_perfilNivel(n)}</span>` : ''}</span>
+        </div>`).join('')
+    : `<p class="perfil-inf-vacio">Sin datos aún</p>`;
+
+  const listaRech = (entries, sufijo) => entries.length
+    ? entries.map(([val, n]) => `
+        <div class="perfil-inf-row">
+          <span class="perfil-inf-row-label">${val}</span>
+          <span class="perfil-inf-row-meta">${n} ${sufijo}</span>
+        </div>`).join('')
+    : `<p class="perfil-inf-vacio">Sin datos aún</p>`;
+
+  const notaSistema = totalCompras < 3
+    ? `Aún hay pocos datos. El perfil mejorará con más interacciones.`
+    : `Perfil basado en ${totalCompras} ${totalCompras === 1 ? 'compra' : 'compras'} y ${interacciones.length} ${interacciones.length === 1 ? 'interacción' : 'interacciones'} registradas.`;
+
+  body.innerHTML = `
+    <div class="perfil-inf-seccion">
+      <h4 class="perfil-inf-subtitulo">Resumen rápido</h4>
+      <div class="perfil-inf-resumen">
+        <div class="perfil-inf-stat"><span class="perfil-inf-stat-num">${totalCompras}</span><span class="perfil-inf-stat-lbl">Compras</span></div>
+        <div class="perfil-inf-stat"><span class="perfil-inf-stat-num">${formatPeso(gastoProm)}</span><span class="perfil-inf-stat-lbl">Gasto prom.</span></div>
+        <div class="perfil-inf-stat"><span class="perfil-inf-stat-num">${totalCompras ? `${formatPeso(precioMin)}–${formatPeso(precioMax)}` : '—'}</span><span class="perfil-inf-stat-lbl">Rango</span></div>
+      </div>
+    </div>
+
+    <div class="perfil-inf-seccion">
+      <h4 class="perfil-inf-subtitulo">Preferencias confirmadas</h4>
+      <p class="perfil-inf-grupo-label">Marcas</p>
+      ${listaPref(marcas, false)}
+      <p class="perfil-inf-grupo-label">Categorías</p>
+      ${listaPref(categorias, false)}
+      <p class="perfil-inf-grupo-label">Colores</p>
+      ${listaPref(colores, true)}
+      <p class="perfil-inf-grupo-label">Tallas confirmadas</p>
+      ${tallasConf.length
+        ? tallasConf.map(t => `<div class="perfil-inf-row"><span class="perfil-inf-row-label">${t.cat}</span><span class="perfil-inf-row-meta">talla ${t.talla} (${t.n} ${t.n === 1 ? 'compra' : 'compras'})</span></div>`).join('')
+        : `<p class="perfil-inf-vacio">Sin datos aún</p>`}
+    </div>
+
+    <div class="perfil-inf-seccion">
+      <h4 class="perfil-inf-subtitulo">Patrones de rechazo</h4>
+      <p class="perfil-inf-grupo-label">Colores rechazados</p>
+      ${listaRech(coloresRech, coloresRech.length === 1 ? 'vez' : 'veces')}
+      <p class="perfil-inf-grupo-label">Categorías rechazadas</p>
+      ${listaRech(catsRech, 'veces')}
+      <p class="perfil-inf-grupo-label">Motivos más comunes</p>
+      ${motivos.length
+        ? motivos.map(([val, n]) => `<div class="perfil-inf-row"><span class="perfil-inf-row-label">${INTERACCION_LABELS[val] || val}</span><span class="perfil-inf-row-meta">${n} ${n === 1 ? 'vez' : 'veces'}</span></div>`).join('')
+        : `<p class="perfil-inf-vacio">Sin datos aún</p>`}
+    </div>
+
+    <p class="perfil-inf-nota">${notaSistema}</p>`;
 }
 
 function createClienteFormSheet() {
