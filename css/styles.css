@@ -3338,6 +3338,72 @@ h1, h2, h3, h4, h5, h6,
 
 .btn-inv-devolucion:active { opacity: 0.6; }
 
+.btn-inv-intento {
+  background: none;
+  border: none;
+  color: #855AA2;
+  font-family: var(--font-body);
+  font-size: 0.625rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.15rem 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s ease;
+}
+
+.btn-inv-intento:active { opacity: 0.6; }
+
+/* Sheet Registrar intento */
+.intento-clientes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow-y: auto;
+  max-height: 30vh;
+}
+
+.intento-cliente-item--sel {
+  background: #ece2f7;
+  outline: 1.5px solid #855AA2;
+}
+
+.intento-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.intento-chip {
+  padding: 0.5rem 0.875rem;
+  border-radius: 999px;
+  border: 1.5px solid #CCB8DD;
+  background: transparent;
+  color: #855AA2;
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.intento-chip--sel {
+  background: #855AA2;
+  color: #fff;
+  border-color: #855AA2;
+}
+
+.intento-sugerencia {
+  margin-top: 0.875rem;
+  padding: 0.625rem 0.75rem;
+  background: #f7f2fc;
+  border-radius: 0.625rem;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: #855AA2;
+  line-height: 1.4;
+}
+
 .btn-inv-eliminar {
   background: none;
   border: none;
