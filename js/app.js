@@ -2305,12 +2305,20 @@ async function marcarDevuelta(prestamoId, invId) {
   console.log("[devolucion prestamo] resultado UPDATE inventario_vendedoras:", r2, "| error:", ie);
   if (ie) { console.error("[devolucion prestamo] error en inventario:", ie); showToast("Error al actualizar inventario."); return; }
 
+  // Datos para el registro de interacción (antes de mutar el estado local)
+  const clientaId  = prestamo?.clienta_id || null;
+  const invPrenda  = inventario.find(x => x.invId === invId);
+  const nombrePren = invPrenda ? invPrenda.nombre : '';
+
   // Actualizar estado local
   prestamos = prestamos.filter(p => p.id !== prestamoId);
   const inv = inventario.find(x => x.invId === invId);
   if (inv) inv.estado = 'activo';
   renderMisPrendas();
   showToast("¡Prenda marcada como devuelta!");
+
+  // Registrar qué pasó con la prenda prestada
+  openIntentoDevuelta(prendaId, nombrePren, clientaId);
 }
 
 // ── Mini-sheet: WhatsApp post-venta ─────────────────────────────────────────
@@ -2781,38 +2789,16 @@ function openVenderPrestadaSheet(prendaId, prestamoId, invId) {
   overlay.classList.add('open');
 }
 
-// ── Registrar intento (interacción prenda-clienta) ──────────────────────────
+// ── Registrar intento (interacción prenda-clienta) tras devolución ──────────
 
+// No incluye 'compro': una venta se registra con el botón "Vender".
 const INTENTO_RESULTADOS = [
-  { valor: 'compro',           label: 'La compró' },
   { valor: 'no_le_quedo',      label: 'No le quedó' },
   { valor: 'le_gusto_no_pago', label: 'Le gustó pero no pagó' },
   { valor: 'precio',           label: 'El precio no le funcionó' },
   { valor: 'no_se_la_probo',   label: 'No se la probó' },
   { valor: 'otro',             label: 'Otro motivo' },
 ];
-
-function renderIntentoClientasList(overlay, query) {
-  const list = overlay.querySelector('#intentoClientesList');
-  if (!clientes.length) {
-    list.innerHTML = `<p class="vendida-empty">No tienes clientas registradas.<br>
-      <a class="vendida-empty-link" href="#clientes">Ir a Clientes →</a></p>`;
-    list.querySelector('.vendida-empty-link').addEventListener('click', () => overlay.classList.remove('open'));
-    return;
-  }
-  const filtered = query
-    ? clientes.filter(c => c.nombre.toLowerCase().includes(query))
-    : clientes;
-  if (!filtered.length) { list.innerHTML = `<p class="vendida-empty">Sin resultados</p>`; return; }
-  list.innerHTML = filtered.map(c => {
-    const pal = avatarPalette(c.id);
-    const sel = overlay.dataset.clienteId === c.id ? ' intento-cliente-item--sel' : '';
-    return `<button class="vendida-cliente-item intento-cliente-item${sel}" data-cliente-id="${c.id}">
-      <div class="vendida-cliente-avatar" style="background:${pal.bg};color:${pal.color}">${iniciales(c.nombre)}</div>
-      <span class="vendida-cliente-nombre">${c.nombre}</span>
-    </button>`;
-  }).join('');
-}
 
 function createIntentoSheet() {
   if (document.getElementById('intentoOverlay')) return;
@@ -2829,9 +2815,6 @@ function createIntentoSheet() {
       </div>
       <div class="sheet-body">
         <h3 class="cart-title" id="intentoTitulo" style="margin-bottom:1rem"></h3>
-        <p class="form-label" style="margin-bottom:0.35rem">Clienta</p>
-        <input class="search-input" id="intentoBusqueda" type="search" placeholder="Buscar clienta…" autocomplete="off" autocorrect="off" spellcheck="false">
-        <div class="intento-clientes-list" id="intentoClientesList" style="margin:0.5rem 0 1rem"></div>
         <p class="form-label" style="margin-bottom:0.5rem">¿Qué pasó?</p>
         <div class="intento-chips" id="intentoChips">
           ${INTENTO_RESULTADOS.map(r => `<button type="button" class="intento-chip" data-resultado="${r.valor}">${r.label}</button>`).join('')}
@@ -2840,26 +2823,15 @@ function createIntentoSheet() {
           <label class="form-label" for="intentoNota">Nota (opcional)</label>
           <textarea class="form-textarea" id="intentoNota" placeholder="Observaciones…"></textarea>
         </div>
-        <p class="intento-sugerencia" id="intentoSugerencia" hidden>💡 Marca también la venta con el botón "Vender" para mantener el registro consistente.</p>
         <button class="btn-save-cliente" id="intentoGuardar">Guardar</button>
+        <button class="btn-melaquedo-cancelar" id="intentoOmitir" style="width:100%;margin-top:0.5rem">Omitir</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
 
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
   overlay.querySelector('.btn-sheet-close').addEventListener('click', () => overlay.classList.remove('open'));
-
-  overlay.querySelector('#intentoBusqueda').addEventListener('input', e => {
-    renderIntentoClientasList(overlay, e.target.value.trim().toLowerCase());
-  });
-
-  overlay.querySelector('#intentoClientesList').addEventListener('click', e => {
-    const item = e.target.closest('.intento-cliente-item');
-    if (!item) return;
-    overlay.dataset.clienteId = item.dataset.clienteId;
-    overlay.querySelectorAll('.intento-cliente-item').forEach(el =>
-      el.classList.toggle('intento-cliente-item--sel', el === item));
-  });
+  overlay.querySelector('#intentoOmitir').addEventListener('click', () => overlay.classList.remove('open'));
 
   overlay.querySelector('#intentoChips').addEventListener('click', e => {
     const chip = e.target.closest('.intento-chip');
@@ -2867,15 +2839,14 @@ function createIntentoSheet() {
     overlay.dataset.resultado = chip.dataset.resultado;
     overlay.querySelectorAll('.intento-chip').forEach(el =>
       el.classList.toggle('intento-chip--sel', el === chip));
-    overlay.querySelector('#intentoSugerencia').hidden = chip.dataset.resultado !== 'compro';
   });
 
   overlay.querySelector('#intentoGuardar').addEventListener('click', async () => {
     const btn = overlay.querySelector('#intentoGuardar');
     const clienteId = overlay.dataset.clienteId;
     const resultado = overlay.dataset.resultado;
-    if (!clienteId) { showToast('Selecciona una clienta.'); return; }
     if (!resultado) { showToast('Selecciona qué pasó.'); return; }
+    if (!clienteId) { overlay.classList.remove('open'); return; }
 
     btn.disabled = true;
     btn.textContent = 'Guardando…';
@@ -2900,18 +2871,15 @@ function createIntentoSheet() {
   });
 }
 
-function openIntentoSheet(prendaId, nombre) {
+function openIntentoDevuelta(prendaId, nombre, clienteId) {
   createIntentoSheet();
   const overlay = document.getElementById('intentoOverlay');
-  overlay.dataset.prendaId = prendaId;
-  overlay.dataset.clienteId = '';
+  overlay.dataset.prendaId  = prendaId;
+  overlay.dataset.clienteId = clienteId || '';
   overlay.dataset.resultado = '';
   overlay.querySelector('#intentoTitulo').textContent = `¿Qué pasó con ${nombre}?`;
-  overlay.querySelector('#intentoBusqueda').value = '';
   overlay.querySelector('#intentoNota').value = '';
-  overlay.querySelector('#intentoSugerencia').hidden = true;
   overlay.querySelectorAll('.intento-chip').forEach(el => el.classList.remove('intento-chip--sel'));
-  renderIntentoClientasList(overlay, '');
   overlay.classList.add('open');
 }
 
@@ -3134,7 +3102,6 @@ function buildInvCard(p) {
 
         ${p.estado !== 'vendido' ? `
         <div class="inv-card-secondary-actions">
-          <button class="btn-inv-intento" data-intento-id="${p.id}" data-nombre="${p.nombre}">Registrar intento</button>
           ${!isPrestada && !pendiente ? `<button class="btn-inv-devolucion" data-devolucion="${p.id}">Devolución</button>` : ""}
           <button class="btn-inv-eliminar" data-inv-id="${p.invId}" data-prenda-id="${p.id}">Eliminar</button>
         </div>` : ''}
@@ -3276,8 +3243,6 @@ function renderMisPrendas() {
     if (devolverBtn) { marcarDevuelta(devolverBtn.dataset.prestamoId, devolverBtn.dataset.invId); return; }
     const mlqBtn = e.target.closest(".btn-inv-melaquedo, .inv-btn--melaquedo");
     if (mlqBtn) { openMeLaQuedo(mlqBtn.dataset.invId, mlqBtn.dataset.nombre); return; }
-    const intentoBtn = e.target.closest(".btn-inv-intento");
-    if (intentoBtn) { openIntentoSheet(intentoBtn.dataset.intentoId, intentoBtn.dataset.nombre); return; }
     const devBtn = e.target.closest(".btn-inv-devolucion");
     if (devBtn) { openDevolucionForm(devBtn.dataset.devolucion); return; }
     const eliminarBtn = e.target.closest(".btn-inv-eliminar");
