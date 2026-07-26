@@ -2790,66 +2790,167 @@ function createMatchesSheet() {
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
 }
 
-function openMatchesSheet(prenda) {
+// Trae ventas o interacciones de toda la vendedora, con retry defensivo por prendas.color
+async function _matchesFetch(tabla) {
+  const idField = tabla === 'ventas' ? 'cliente_id' : 'clienta_id';
+  const extra   = tabla === 'ventas' ? 'monto' : 'resultado';
+  let res = await db.from(tabla)
+    .select(`${idField}, ${extra}, prendas(marca, categoria, color, descripcion)`)
+    .eq('vendedora_id', VENDEDORA_ID);
+  if (res.error) {
+    res = await db.from(tabla)
+      .select(`${idField}, ${extra}, prendas(marca, categoria, descripcion)`)
+      .eq('vendedora_id', VENDEDORA_ID);
+  }
+  return { rows: res.data || [], idField };
+}
+
+function _agruparPorCliente(rows, idField) {
+  const m = new Map();
+  rows.forEach(r => { const arr = m.get(r[idField]) || []; arr.push(r); m.set(r[idField], arr); });
+  return m;
+}
+
+function _prefsClienta(ventasCli) {
+  const marcas = new Map(), categorias = new Map(), colores = new Map();
+  const montos = [];
+  ventasCli.forEach(v => {
+    const p = v.prendas || {};
+    if (p.marca)     marcas.set(p.marca, (marcas.get(p.marca) || 0) + 1);
+    if (p.categoria) categorias.set(p.categoria, (categorias.get(p.categoria) || 0) + 1);
+    const col = _perfilColorDePrenda(p);
+    if (col) colores.set(col, (colores.get(col) || 0) + 1);
+    if (v.monto != null) montos.push(+v.monto);
+  });
+  return { marcas, categorias, colores, montos };
+}
+
+function _rechazosClienta(interCli) {
+  const catsRech = new Set(), colsRech = new Set();
+  interCli.filter(i => i.resultado !== 'compro').forEach(i => {
+    const p = i.prendas || {};
+    if (p.categoria) catsRech.add(p.categoria);
+    const col = _perfilColorDePrenda(p);
+    if (col) colsRech.add(col);
+  });
+  return { catsRech, colsRech };
+}
+
+function calcularScoreCompat(prenda, clienta, prefs, rech) {
+  const razones = [];
+
+  // MEDIDAS (40) — prorrateado entre las comparables
+  const prendaMedidas = [
+    { nombre: prenda.medida1Nombre, valor: prenda.medida1Valor },
+    { nombre: prenda.medida2Nombre, valor: prenda.medida2Valor },
+  ].filter(m => m.nombre && m.valor != null);
+  const fracs = [];
+  let hayFull = false, hayPartial = false;
+  prendaMedidas.forEach(m => {
+    const field = _MEDIDA_LOCAL[m.nombre];
+    if (!field) return;
+    const cv = clienta[field];
+    if (cv == null) return;
+    const diff = Math.abs(cv - m.valor);
+    if (diff <= 2)      { fracs.push(1);   hayFull = true; }
+    else if (diff <= 5) { fracs.push(0.5); hayPartial = true; }
+    else                { fracs.push(0); }
+  });
+  const medidasScore = fracs.length ? (fracs.reduce((s, f) => s + f, 0) / fracs.length) * 40 : 0;
+  if (hayFull)         razones.push('Talla confirmada ✅');
+  else if (hayPartial) razones.push('Medidas cercanas 🟡');
+
+  // CATEGORÍA (20)
+  const catCount = prefs.categorias.get(prenda.categoria) || 0;
+  let catScore = catCount >= 4 ? 20 : catCount >= 2 ? 15 : catCount === 1 ? 8 : 10;
+  const catRechazada = prenda.categoria && rech.catsRech.has(prenda.categoria);
+  if (catRechazada) { catScore -= 10; razones.push('Categoría que rechazó ⚠️'); }
+  else if (catCount >= 4) razones.push('Categoría que suele comprar ✅');
+
+  // COLOR (15)
+  const prendaColor = _perfilColorDePrenda({ color: prenda.color, descripcion: prenda.descripcion });
+  let colScore = 8;
+  if (prendaColor) {
+    const colCount = prefs.colores.get(prendaColor) || 0;
+    colScore = colCount >= 4 ? 15 : colCount >= 1 ? 10 : 8;
+    if (rech.colsRech.has(prendaColor)) { colScore -= 10; razones.push('Color rechazado antes ⚠️'); }
+    else if (colCount >= 4) razones.push('Su color favorito ✅');
+  }
+
+  // PRECIO (15)
+  let precioScore = 10;
+  if (prefs.montos.length) {
+    const maxHab = Math.max(...prefs.montos);
+    const precio = prenda.precioMax || prenda.precioMin || 0;
+    if (precio <= maxHab)            { precioScore = 15; razones.push('Dentro de su rango de precio ✅'); }
+    else if (precio <= maxHab * 1.2) { precioScore = 8;  razones.push('Algo sobre su rango de precio 🟡'); }
+    else                             { precioScore = 0;  razones.push('Sobre su rango de precio ⚠️'); }
+  }
+
+  // MARCA (10)
+  const compróMarca = (prefs.marcas.get(prenda.marca) || 0) >= 1;
+  const marcaScore = compróMarca ? 10 : 5;
+  if (compróMarca) razones.push('Marca que ya compró ✅');
+
+  const total = Math.max(0, Math.min(100, Math.round(medidasScore + catScore + colScore + precioScore + marcaScore)));
+  return { total, razones };
+}
+
+function _clasifCompat(score) {
+  if (score >= 80) return { emoji: '🟢', label: 'Match excelente',      clase: 'excelente' };
+  if (score >= 60) return { emoji: '🟡', label: 'Match posible',        clase: 'posible' };
+  if (score >= 40) return { emoji: '🟠', label: 'Match con reservas',   clase: 'reservas' };
+  return             { emoji: '🔴', label: 'Poco probable',          clase: 'improbable' };
+}
+
+async function openMatchesSheet(prenda) {
   createMatchesSheet();
   const overlay = document.getElementById('matchesOverlay');
   const body    = document.getElementById('matchesSheetBody');
+  body.innerHTML = `
+    <h3 class="cart-title" style="margin-bottom:0.25rem">Ver matches</h3>
+    <p class="cp-loading" style="color:#855AA2;text-align:center;padding:1.5rem 0">Calculando compatibilidad…</p>`;
+  overlay.classList.add('open');
 
-  const clientasConMedidas = clientes.filter(c =>
-    c.medidaCintura != null || c.medidaBusto != null || c.medidaCadera != null
-  );
+  const [ventasRes, interRes] = await Promise.all([
+    _matchesFetch('ventas'),
+    _matchesFetch('interacciones_clienta'),
+  ]);
+  const ventasPorCli = _agruparPorCliente(ventasRes.rows, ventasRes.idField);
+  const interPorCli  = _agruparPorCliente(interRes.rows,  interRes.idField);
 
-  if (!clientasConMedidas.length) {
-    body.innerHTML = `
-      <h3 class="cart-title" style="margin-bottom:0.5rem">Ver matches</h3>
-      <p class="matches-empty-msg">Aún no hay suficiente historial para sugerir matches.<br>¡Registra más ventas para generar medidas!</p>`;
-    overlay.classList.add('open');
-    return;
-  }
+  const scoradas = clientes.map(c => {
+    const prefs = _prefsClienta(ventasPorCli.get(c.id) || []);
+    const rech  = _rechazosClienta(interPorCli.get(c.id) || []);
+    const { total, razones } = calcularScoreCompat(prenda, c, prefs, rech);
+    return { clienta: c, total, razones };
+  })
+  .filter(x => x.total >= 40)
+  .sort((a, b) => b.total - a.total);
 
-  const scoradas = clientasConMedidas.map(c => ({
-    clienta: c,
-    score: calcularMatchPrenda(prenda, c),
-  })).filter(x => x.score !== 'none');
-
-  const perfectas = scoradas.filter(x => x.score === 'perfect');
-  const posibles  = scoradas.filter(x => x.score === 'possible');
-
-  const buildRow = ({ clienta, score }) => {
+  const buildRow = ({ clienta, total, razones }) => {
     const pal = avatarPalette(clienta.id);
-    const icon = score === 'perfect' ? '✅' : '🟡';
-    const label = score === 'perfect' ? 'Match perfecto' : 'Match posible';
+    const cl  = _clasifCompat(total);
     return `
-      <div class="match-row">
-        <div class="match-avatar" style="background:${pal.bg};color:${pal.color}">${iniciales(clienta.nombre)}</div>
-        <div class="match-info">
-          <p class="match-nombre">${clienta.nombre}</p>
-          <p class="match-medidas">${[
-            clienta.medidaBusto   ? `Busto ${clienta.medidaBusto}cm`   : '',
-            clienta.medidaCintura ? `Cintura ${clienta.medidaCintura}cm` : '',
-            clienta.medidaCadera  ? `Cadera ${clienta.medidaCadera}cm`  : '',
-          ].filter(Boolean).join(' · ')}</p>
+      <div class="match-score-item">
+        <div class="match-score-head">
+          <div class="match-avatar" style="background:${pal.bg};color:${pal.color}">${iniciales(clienta.nombre)}</div>
+          <div class="match-score-info">
+            <p class="match-nombre">${clienta.nombre}</p>
+            <p class="match-clasif match-clasif--${cl.clase}">${cl.emoji} ${cl.label}</p>
+          </div>
+          <span class="match-score-pct">${total}%</span>
         </div>
-        <span class="match-badge match-badge--${score}" title="${label}">${icon}</span>
+        ${razones.length ? `<div class="match-razones">${razones.slice(0, 3).map(r => `<span class="match-razon">${r}</span>`).join('')}</div>` : ''}
       </div>`;
   };
 
   body.innerHTML = `
     <h3 class="cart-title" style="margin-bottom:0.25rem">Ver matches</h3>
-    <p class="matches-prenda-info">${prenda.nombre} · ${prenda.medida1Nombre ? `${prenda.medida1Nombre} ${prenda.medida1Valor}cm` : ''}${prenda.medida2Nombre ? ` / ${prenda.medida2Nombre} ${prenda.medida2Valor}cm` : ''}</p>
-
-    ${perfectas.length ? `
-    <p class="matches-seccion-label">✅ Match perfecto <span class="matches-seccion-hint">±2cm</span></p>
-    ${perfectas.map(buildRow).join('')}` : ''}
-
-    ${posibles.length ? `
-    <p class="matches-seccion-label" style="margin-top:1rem">🟡 Match posible <span class="matches-seccion-hint">3–5cm</span></p>
-    ${posibles.map(buildRow).join('')}` : ''}
-
-    ${!perfectas.length && !posibles.length ? `
-    <p class="matches-empty-msg">Ninguna clienta encaja en este rango.<br>Sigue registrando ventas para ampliar el historial.</p>` : ''}`;
-
-  overlay.classList.add('open');
+    <p class="matches-prenda-info">${prenda.nombre}${prenda.medida1Nombre ? ` · ${prenda.medida1Nombre} ${prenda.medida1Valor}cm` : ''}${prenda.medida2Nombre ? ` / ${prenda.medida2Nombre} ${prenda.medida2Valor}cm` : ''}</p>
+    ${scoradas.length
+      ? scoradas.map(buildRow).join('')
+      : `<p class="matches-empty-msg">Ninguna clienta tiene alta compatibilidad con esta prenda por ahora.</p>`}`;
 }
 
 // ── Vender prenda prestada ────────────────────────────────────────────────────
