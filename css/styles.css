@@ -5174,6 +5174,14 @@ h1, h2, h3, h4, h5, h6,
 .match-clasif--reservas   { color: #d1731f; }
 .match-clasif--improbable { color: #c0392b; }
 
+.match-medidas-src {
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: #855AA2;
+  margin-top: 1px;
+}
+
 .match-score-pct {
   flex-shrink: 0;
   font-family: var(--font-heading);

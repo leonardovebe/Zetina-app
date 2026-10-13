@@ -408,7 +408,7 @@ async function loadCatalogo() {
   // y b) la columna puede no existir si el schema-admin.sql no se ejecutó todavía.
   const { data, error } = await db
     .from('prendas')
-    .select('id, numero, nombre, marca, categoria, emoji, gradiente, talla_etiqueta, talla_real, precio_min, precio_vendedora, precio_max, descripcion, medida_1_nombre, medida_1_valor, medida_2_nombre, medida_2_valor, fotos_prendas(url, orden)')
+    .select('id, numero, nombre, marca, categoria, emoji, gradiente, talla_etiqueta, talla_real, precio_min, precio_vendedora, precio_max, descripcion, medida_1_nombre, medida_1_valor, medida_2_nombre, medida_2_valor, medida_3_nombre, medida_3_valor, fotos_prendas(url, orden)')
     .eq('disponible', true)
     .order('created_at', { ascending: false });
 
@@ -436,6 +436,8 @@ async function loadCatalogo() {
       medida1Valor:   p.medida_1_valor  != null ? +p.medida_1_valor  : null,
       medida2Nombre:  p.medida_2_nombre || null,
       medida2Valor:   p.medida_2_valor  != null ? +p.medida_2_valor  : null,
+      medida3Nombre:  p.medida_3_nombre || null,
+      medida3Valor:   p.medida_3_valor  != null ? +p.medida_3_valor  : null,
       fotos,
       foto:           fotos[0] || null,
     };
@@ -517,6 +519,8 @@ async function loadInventario() {
       medida1Valor:  p.medida_1_valor  != null ? +p.medida_1_valor  : null,
       medida2Nombre: p.medida_2_nombre || null,
       medida2Valor:  p.medida_2_valor  != null ? +p.medida_2_valor  : null,
+      medida3Nombre: p.medida_3_nombre || null,
+      medida3Valor:  p.medida_3_valor  != null ? +p.medida_3_valor  : null,
       fotos,
       fechaEntrega:  inv.fecha_entrega,
       estado:        inv.estado || 'activo',
@@ -597,6 +601,40 @@ async function actualizarMedidasClienta(clienteId, prenda) {
   await db.from('clientes').update(updates).eq('id', clienteId).then(({ error }) => {
     if (error) console.warn('[medidas clienta] error:', error.message);
   });
+}
+
+// ── Medidas aprendidas de compras (tabla medidas_clienta) ──────────────────
+// Cada venta confirma las medidas de la prenda: confirmaciones + 1 y valor = promedio ponderado.
+function _medidasDePrenda(p) {
+  return [
+    { nombre: p.medida1Nombre, valor: p.medida1Valor },
+    { nombre: p.medida2Nombre, valor: p.medida2Valor },
+    { nombre: p.medida3Nombre, valor: p.medida3Valor },
+  ].filter(m => m.nombre && m.valor != null);
+}
+
+async function registrarMedidasAprendidas(clientaId, prenda) {
+  const medidas = _medidasDePrenda(prenda || {});
+  if (!clientaId || !medidas.length) return;
+  try {
+    const { data: previas, error } = await db.from('medidas_clienta')
+      .select('medida_nombre, medida_valor, confirmaciones')
+      .eq('clienta_id', clientaId)
+      .in('medida_nombre', medidas.map(m => m.nombre));
+    if (error) throw error;
+    const porNombre = new Map((previas || []).map(r => [r.medida_nombre, r]));
+    const ahora = new Date().toISOString();
+    const filas = medidas.map(m => {
+      const prev  = porNombre.get(m.nombre);
+      const conf  = (prev ? +prev.confirmaciones || 0 : 0) + 1;
+      const valor = prev ? ((+prev.medida_valor || 0) * (conf - 1) + m.valor) / conf : m.valor;
+      return { clienta_id: clientaId, medida_nombre: m.nombre, medida_valor: Math.round(valor * 10) / 10, confirmaciones: conf, updated_at: ahora };
+    });
+    const { error: ue } = await db.from('medidas_clienta').upsert(filas, { onConflict: 'clienta_id,medida_nombre' });
+    if (ue) throw ue;
+  } catch (err) {
+    console.warn('[medidas aprendidas] error:', err?.message || err);
+  }
 }
 
 async function marcarVendida(prendaId) {
@@ -2195,7 +2233,10 @@ function createVentaFormSheet() {
       if (prendaId) {
         await marcarVendida(prendaId);
         const pVendida = inventario.find(x => x.id === prendaId);
-        if (pVendida) actualizarMedidasClienta(currentVentaClienteId, pVendida);
+        if (pVendida) {
+          actualizarMedidasClienta(currentVentaClienteId, pVendida);
+          await registrarMedidasAprendidas(currentVentaClienteId, pVendida);
+        }
         inventario = inventario.filter((p) => p.id !== prendaId);
         renderMisPrendas();
       }
@@ -2705,6 +2746,7 @@ function createVendidaSheet() {
       renderMisPrendas();
       renderCobros();
       actualizarMedidasClienta(c.id, p);
+      await registrarMedidasAprendidas(c.id, p);
 
       // Puntos: check compras BEFORE this sale was added to local state
       const comprasAnteriores = (c.compras || []).length;
@@ -2836,27 +2878,25 @@ function _rechazosClienta(interCli) {
   return { catsRech, colsRech };
 }
 
-function calcularScoreCompat(prenda, clienta, prefs, rech) {
+function calcularScoreCompat(prenda, clienta, prefs, rech, medidasAprendidas) {
   const razones = [];
 
-  // MEDIDAS (40) — prorrateado entre las comparables
-  const prendaMedidas = [
-    { nombre: prenda.medida1Nombre, valor: prenda.medida1Valor },
-    { nombre: prenda.medida2Nombre, valor: prenda.medida2Valor },
-  ].filter(m => m.nombre && m.valor != null);
+  // MEDIDAS (40) — medidas aprendidas de compras (medidas_clienta), prorrateado entre las comparables.
+  // Confianza por confirmaciones: 1 → 1x, 2-3 → 1.2x, 4+ → 1.5x.
+  // Sin medidas aprendidas comparables, el factor se omite y el resto se escala a 100.
   const fracs = [];
   let hayFull = false, hayPartial = false;
-  prendaMedidas.forEach(m => {
-    const field = _MEDIDA_LOCAL[m.nombre];
-    if (!field) return;
-    const cv = clienta[field];
-    if (cv == null) return;
-    const diff = Math.abs(cv - m.valor);
-    if (diff <= 2)      { fracs.push(1);   hayFull = true; }
-    else if (diff <= 5) { fracs.push(0.5); hayPartial = true; }
+  _medidasDePrenda(prenda).forEach(m => {
+    const aprendida = medidasAprendidas?.get(m.nombre);
+    if (!aprendida || aprendida.valor == null) return;
+    const peso = aprendida.confirmaciones >= 4 ? 1.5 : aprendida.confirmaciones >= 2 ? 1.2 : 1;
+    const diff = Math.abs(aprendida.valor - m.valor);
+    if (diff <= 2)      { fracs.push(1 * peso);   hayFull = true; }
+    else if (diff <= 5) { fracs.push(0.5 * peso); hayPartial = true; }
     else                { fracs.push(0); }
   });
-  const medidasScore = fracs.length ? (fracs.reduce((s, f) => s + f, 0) / fracs.length) * 40 : 0;
+  const usaMedidas   = fracs.length > 0;
+  const medidasScore = usaMedidas ? (fracs.reduce((s, f) => s + f, 0) / fracs.length) * 40 : 0;
   if (hayFull)         razones.push('Talla confirmada ✅');
   else if (hayPartial) razones.push('Medidas cercanas 🟡');
 
@@ -2892,7 +2932,9 @@ function calcularScoreCompat(prenda, clienta, prefs, rech) {
   const marcaScore = compróMarca ? 10 : 5;
   if (compróMarca) razones.push('Marca que ya compró ✅');
 
-  const total = Math.max(0, Math.min(100, Math.round(medidasScore + catScore + colScore + precioScore + marcaScore)));
+  const resto = catScore + colScore + precioScore + marcaScore;           // máx. 60
+  const bruto = usaMedidas ? medidasScore + resto : resto * (100 / 60);
+  const total = Math.max(0, Math.min(100, Math.round(bruto)));
   return { total, razones };
 }
 
@@ -2912,23 +2954,40 @@ async function openMatchesSheet(prenda) {
     <p class="cp-loading" style="color:#855AA2;text-align:center;padding:1.5rem 0">Calculando compatibilidad…</p>`;
   overlay.classList.add('open');
 
-  const [ventasRes, interRes] = await Promise.all([
+  const idsClientas = clientes.map(c => c.id);
+  const [ventasRes, interRes, medidasRes] = await Promise.all([
     _matchesFetch('ventas'),
     _matchesFetch('interacciones_clienta'),
+    idsClientas.length
+      ? db.from('medidas_clienta').select('clienta_id, medida_nombre, medida_valor, confirmaciones').in('clienta_id', idsClientas)
+      : Promise.resolve({ data: [] }),
   ]);
+  if (medidasRes.error) console.warn('[matches] error medidas_clienta:', medidasRes.error.message);
   const ventasPorCli = _agruparPorCliente(ventasRes.rows, ventasRes.idField);
   const interPorCli  = _agruparPorCliente(interRes.rows,  interRes.idField);
+
+  // clienta_id → Map(medida_nombre → { valor, confirmaciones })
+  const medidasPorCli = new Map();
+  (medidasRes.data || []).forEach(r => {
+    const m = medidasPorCli.get(r.clienta_id) || new Map();
+    m.set(r.medida_nombre, { valor: r.medida_valor != null ? +r.medida_valor : null, confirmaciones: +r.confirmaciones || 1 });
+    medidasPorCli.set(r.clienta_id, m);
+  });
 
   const scoradas = clientes.map(c => {
     const prefs = _prefsClienta(ventasPorCli.get(c.id) || []);
     const rech  = _rechazosClienta(interPorCli.get(c.id) || []);
-    const { total, razones } = calcularScoreCompat(prenda, c, prefs, rech);
-    return { clienta: c, total, razones };
+    const medidas = medidasPorCli.get(c.id);
+    const { total, razones } = calcularScoreCompat(prenda, c, prefs, rech, medidas);
+    // Cada compra con medidas suma 1 confirmación a cada medida de la prenda → el máximo ≈ compras con medidas
+    const comprasMedidas = medidas ? Math.max(...[...medidas.values()].map(x => x.confirmaciones)) : 0;
+    return { clienta: c, total, razones, comprasMedidas };
   })
-  .filter(x => x.total >= 40)
-  .sort((a, b) => b.total - a.total);
+  .filter(x => x.total >= 30)
+  // Empate de score: primero las clientas con medidas aprendidas
+  .sort((a, b) => b.total - a.total || (b.comprasMedidas > 0) - (a.comprasMedidas > 0));
 
-  const buildRow = ({ clienta, total, razones }) => {
+  const buildRow = ({ clienta, total, razones, comprasMedidas }) => {
     const pal = avatarPalette(clienta.id);
     const cl  = _clasifCompat(total);
     return `
@@ -2938,6 +2997,7 @@ async function openMatchesSheet(prenda) {
           <div class="match-score-info">
             <p class="match-nombre">${clienta.nombre}</p>
             <p class="match-clasif match-clasif--${cl.clase}">${cl.emoji} ${cl.label}</p>
+            ${comprasMedidas ? `<p class="match-medidas-src">Medidas aprendidas de ${comprasMedidas} compra${comprasMedidas === 1 ? '' : 's'}</p>` : ''}
           </div>
           <span class="match-score-pct">${total}%</span>
         </div>
@@ -3018,6 +3078,9 @@ function createVenderPrestadaSheet() {
         estado:        'pendiente',
       }]);
       if (ve) throw ve;
+
+      // b2) Medidas aprendidas de la clienta
+      await registrarMedidasAprendidas(c.id, p);
 
       // c) Marcar inventario como vendido
       await db.from('inventario_vendedoras').update({ estado: 'vendido' }).eq('id', invId);
