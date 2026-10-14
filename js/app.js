@@ -2287,7 +2287,7 @@ function createDevolucionSheet() {
             <label class="form-label" for="fMotivo">Motivo</label>
             <select class="form-select" id="fMotivo" name="motivo" required>
               <option value="">Selecciona un motivo…</option>
-              <option value="cambio_talla">Cambio de talla</option>
+              <option value="no_encontre_clienta">No encontré clienta</option>
               <option value="defecto">Defecto</option>
               <option value="otro">Otro</option>
             </select>
@@ -2324,7 +2324,7 @@ function createDevolucionSheet() {
 
     // Construir mensaje WA antes del await para tenerlo listo siempre
     const p = inventario.find(x => x.id === prendaId);
-    const motivoLabel = { cambio_talla: "Cambio de talla", defecto: "Defecto", otro: "Otro" }[motivo] || motivo;
+    const motivoLabel = { no_encontre_clienta: "No encontré clienta", defecto: "Defecto", otro: "Otro" }[motivo] || motivo;
     const waTexto = [
       `Hola ZETINA, quiero reportar una devolución:`,
       `Vendedora: ${perfil.nombre}`,
