@@ -2883,7 +2883,7 @@ function calcularScoreCompat(prenda, clienta, prefs, rech, medidasAprendidas) {
 
   // MEDIDAS (40) — medidas aprendidas de compras (medidas_clienta), prorrateado entre las comparables.
   // Confianza por confirmaciones: 1 → 1x, 2-3 → 1.2x, 4+ → 1.5x.
-  // Sin medidas aprendidas comparables, el factor se omite y el resto se escala a 100.
+  // Las medidas además son filtro de entrada en openMatchesSheet (ver `comparables` y `tallaCompatible`).
   const fracs = [];
   let hayFull = false, hayPartial = false;
   _medidasDePrenda(prenda).forEach(m => {
@@ -2895,8 +2895,7 @@ function calcularScoreCompat(prenda, clienta, prefs, rech, medidasAprendidas) {
     else if (diff <= 5) { fracs.push(0.5 * peso); hayPartial = true; }
     else                { fracs.push(0); }
   });
-  const usaMedidas   = fracs.length > 0;
-  const medidasScore = usaMedidas ? (fracs.reduce((s, f) => s + f, 0) / fracs.length) * 40 : 0;
+  const medidasScore = fracs.length ? (fracs.reduce((s, f) => s + f, 0) / fracs.length) * 40 : 0;
   if (hayFull)         razones.push('Talla confirmada ✅');
   else if (hayPartial) razones.push('Medidas cercanas 🟡');
 
@@ -2932,10 +2931,10 @@ function calcularScoreCompat(prenda, clienta, prefs, rech, medidasAprendidas) {
   const marcaScore = compróMarca ? 10 : 5;
   if (compróMarca) razones.push('Marca que ya compró ✅');
 
-  const resto = catScore + colScore + precioScore + marcaScore;           // máx. 60
-  const bruto = usaMedidas ? medidasScore + resto : resto * (100 / 60);
-  const total = Math.max(0, Math.min(100, Math.round(bruto)));
-  return { total, razones };
+  const total = Math.max(0, Math.min(100, Math.round(medidasScore + catScore + colScore + precioScore + marcaScore)));
+  // comparables: medidas aprendidas con el mismo nombre que las de la prenda
+  // tallaCompatible: al menos una de ellas dentro de ±5 cm
+  return { total, razones, comparables: fracs.length, tallaCompatible: hayFull || hayPartial };
 }
 
 function _clasifCompat(score) {
@@ -2974,18 +2973,27 @@ async function openMatchesSheet(prenda) {
     medidasPorCli.set(r.clienta_id, m);
   });
 
-  const scoradas = clientes.map(c => {
+  const evaluadas = clientes.map(c => {
     const prefs = _prefsClienta(ventasPorCli.get(c.id) || []);
     const rech  = _rechazosClienta(interPorCli.get(c.id) || []);
     const medidas = medidasPorCli.get(c.id);
-    const { total, razones } = calcularScoreCompat(prenda, c, prefs, rech, medidas);
+    const { total, razones, comparables, tallaCompatible } = calcularScoreCompat(prenda, c, prefs, rech, medidas);
     // Cada compra con medidas suma 1 confirmación a cada medida de la prenda → el máximo ≈ compras con medidas
     const comprasMedidas = medidas ? Math.max(...[...medidas.values()].map(x => x.confirmaciones)) : 0;
-    return { clienta: c, total, razones, comprasMedidas };
-  })
-  .filter(x => x.total >= 30)
+    return { clienta: c, total, razones, comprasMedidas, comparables, tallaCompatible };
+  });
+  // Filtro de entrada: medida aprendida comparable y al menos una dentro de ±5 cm
+  const compatibles = evaluadas.filter(x => x.comparables > 0 && x.tallaCompatible);
+  const scoradas = compatibles
+  .filter(x => x.total >= 40)
   // Empate de score: primero las clientas con medidas aprendidas
   .sort((a, b) => b.total - a.total || (b.comprasMedidas > 0) - (a.comprasMedidas > 0));
+
+  const _msgSinMatches = () => {
+    if (!evaluadas.some(x => x.comprasMedidas > 0)) return 'Aún no hay medidas registradas. Las medidas se aprenden automáticamente cuando registras ventas de prendas con medidas.';
+    if (!compatibles.length) return 'Ninguna clienta tiene talla compatible con esta prenda.';
+    return 'Ninguna clienta tiene alta compatibilidad con esta prenda por ahora.';
+  };
 
   const buildRow = ({ clienta, total, razones, comprasMedidas }) => {
     const pal = avatarPalette(clienta.id);
@@ -3010,7 +3018,7 @@ async function openMatchesSheet(prenda) {
     <p class="matches-prenda-info">${prenda.nombre}${prenda.medida1Nombre ? ` · ${prenda.medida1Nombre} ${prenda.medida1Valor}cm` : ''}${prenda.medida2Nombre ? ` / ${prenda.medida2Nombre} ${prenda.medida2Valor}cm` : ''}</p>
     ${scoradas.length
       ? scoradas.map(buildRow).join('')
-      : `<p class="matches-empty-msg">Ninguna clienta tiene alta compatibilidad con esta prenda por ahora.</p>`}`;
+      : `<p class="matches-empty-msg">${_msgSinMatches()}</p>`}`;
 }
 
 // ── Vender prenda prestada ────────────────────────────────────────────────────
