@@ -1,4 +1,5 @@
 /* ── Catálogo público ZETINA — estilos independientes ──────────────────────── */
+/* Compartido por catalogo-publico.html y prenda-publica.html                   */
 
 *,
 *::before,
@@ -18,6 +19,8 @@
   --font-heading: 'Montserrat', system-ui, -apple-system, sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --gutter: 1rem;
+  --max-w: 560px;
 }
 
 html { -webkit-text-size-adjust: 100%; }
@@ -27,9 +30,11 @@ body {
   font-family: var(--font-body);
   font-size: 1rem;
   line-height: 1.5;
-  background-color: #ffffff;
-  color: #16001C;
+  background-color: var(--color-content);
+  color: var(--color-bg);
 }
+
+a { color: inherit; text-decoration: none; }
 
 /* Header */
 .cp-header {
@@ -55,393 +60,331 @@ body {
   font-family: var(--font-heading);
   font-size: 1.125rem;
   font-weight: 700;
-  color: #16001C;
+  color: var(--color-bg);
   text-align: center;
-  padding: 1.25rem 1.25rem 0.5rem;
+  padding: 1.25rem var(--gutter) 0.75rem;
 }
 
-/* Tabs */
-.cp-tabs {
+/* ── Filtro por talla ──────────────────────────────────────────────────────── */
+.cp-filtros {
+  max-width: var(--max-w);
+  margin: 0 auto;
+}
+
+.cp-filtros[hidden] { display: none; }
+
+.cp-chips {
   display: flex;
   gap: 0.5rem;
-  padding: 0.5rem 1.25rem 1rem;
-  justify-content: center;
+  overflow-x: auto;
+  padding: 0.25rem var(--gutter) 0.5rem;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 
-.cp-tab {
-  flex: 1;
-  max-width: 220px;
-  padding: 0.55rem 1rem;
+.cp-chips::-webkit-scrollbar { display: none; }
+
+.cp-chip {
+  flex: 0 0 auto;
+  padding: 0.4rem 1rem;
   border-radius: 999px;
-  border: 1.5px solid var(--color-lavender);
-  background: transparent;
-  color: var(--color-purple);
-  font-family: var(--font-body);
+  border: 1px solid var(--color-lavender);
+  background: var(--color-content);
+  color: var(--color-bg);
+  font-family: var(--font-heading);
   font-size: 0.8125rem;
   font-weight: 600;
+  letter-spacing: 0.02em;
   cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.cp-tab--activo {
-  background: var(--color-purple);
-  color: #ffffff;
-  border-color: var(--color-purple);
+.cp-chip--activo {
+  background: var(--color-bg);
+  border-color: var(--color-bg);
+  color: var(--color-accent);
 }
 
-/* Grid de cards */
-.cp-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 0.875rem;
-  padding: 0 1.25rem calc(2rem + var(--safe-bottom));
+.cp-conteo {
+  font-size: 0.8125rem;
+  color: var(--color-purple);
+  padding: 0 var(--gutter) 0.75rem;
+}
+
+/* ── Lista (una columna) ───────────────────────────────────────────────────── */
+.cp-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 0 var(--gutter) calc(2.5rem + var(--safe-bottom));
 }
 
 .cp-card {
-  border-radius: 14px;
-  overflow: hidden;
-  background: #fff;
-  box-shadow: 0 2px 10px rgba(22, 0, 28, 0.09);
-  display: flex;
-  flex-direction: column;
+  position: relative;
+  background: var(--color-content);
 }
 
+.cp-card-link { display: block; }
+
 .cp-card-img {
-  aspect-ratio: 3 / 4;
+  position: relative;
   width: 100%;
+  aspect-ratio: 3 / 4;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #f6f3f8;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  overflow: hidden;
 }
 
 .cp-card-img img {
-  position: absolute;
-  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 
 .cp-card-emoji {
-  font-size: 3rem;
+  font-size: 4rem;
   line-height: 1;
-  user-select: none;
 }
 
 .cp-card-body {
-  padding: 0.625rem 0.75rem 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
+  padding: 0.75rem 0.125rem 0;
+}
+
+.cp-card--wa .cp-card-body {
+  padding-right: 7.5rem;
+  min-height: 4.25rem;
 }
 
 .cp-card-nombre {
   font-family: var(--font-heading);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: #16001C;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-bg);
   line-height: 1.3;
 }
 
 .cp-card-marca {
-  font-family: var(--font-body);
-  font-size: 0.6875rem;
-  color: #777;
-}
-
-.cp-talla-chip {
-  display: inline-block;
-  width: fit-content;
-  background: #f3edf8;
+  font-size: 0.875rem;
   color: var(--color-purple);
-  font-family: var(--font-body);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  border-radius: 999px;
-  padding: 0.15rem 0.55rem;
-  margin-top: 0.1rem;
+  margin-top: 0.125rem;
 }
 
-.cp-card-desc {
-  font-family: var(--font-body);
-  font-size: 0.6875rem;
-  color: #444;
-  line-height: 1.4;
-  margin-top: 0.15rem;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.cp-card-talla {
+  font-size: 0.8125rem;
+  color: var(--color-bg);
+  margin-top: 0.125rem;
 }
+
+/* Distinción JOY */
+.cp-joy-tag {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 2;
+  background: var(--color-bg);
+  color: var(--color-accent);
+  font-family: var(--font-heading);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  padding: 0.25rem 0.4rem 0.25rem 0.6rem;
+  border-radius: 2px;
+}
+
+.cp-joy-line {
+  display: block;
+  width: 2rem;
+  height: 2px;
+  background: var(--color-accent);
+  margin: 0.375rem 0 0.25rem;
+}
+
+/* Botón WhatsApp pequeño en la card */
+.cp-wa-mini {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: var(--color-bg);
+  font-family: var(--font-heading);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.cp-wa-mini svg { width: 16px; height: 16px; flex-shrink: 0; }
 
 /* Estados */
-.cp-estado {
-  text-align: center;
-  padding: 3rem 1.5rem;
-  color: #888;
-  font-size: 0.9375rem;
-}
-
+.cp-estado,
 .cp-loading {
   text-align: center;
-  padding: 3rem 1.5rem;
+  padding: 2.5rem var(--gutter);
   color: var(--color-purple);
   font-size: 0.9375rem;
 }
 
-.cp-grid-empty {
-  grid-column: 1 / -1;
-  text-align: center;
-  color: #aaa;
-  font-size: 0.9375rem;
-  padding: 2rem 0;
+/* ── Subpágina de prenda ───────────────────────────────────────────────────── */
+.pp-body--con-wa main { padding-bottom: calc(5.5rem + var(--safe-bottom)); }
+
+.pp-nav {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 0.875rem var(--gutter) 0.5rem;
 }
 
-.cp-card-img--clickable { cursor: pointer; }
-
-.cp-card-multi {
-  position: absolute;
-  top: 0.4rem;
-  right: 0.4rem;
-  background: rgba(22, 0, 28, 0.65);
-  color: #fff;
-  font-family: var(--font-body);
-  font-size: 0.625rem;
-  font-weight: 600;
-  padding: 0.15rem 0.45rem;
-  border-radius: 999px;
-  z-index: 1;
-}
-
-/* ── Visor de fotos a pantalla completa ────────────────────────────────────── */
-.cpg-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(22, 0, 28, 0.96);
-  z-index: 1000;
-  display: none;
-  flex-direction: column;
-}
-
-.cpg-overlay.open { display: flex; }
-
-.cpg-close {
-  position: absolute;
-  top: calc(0.75rem + var(--safe-top));
-  right: 0.875rem;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 50%;
-  border: none;
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 2;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.cpg-close svg { width: 22px; height: 22px; }
-
-.cpg-stage {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  padding: calc(3.5rem + var(--safe-top)) 1rem 1rem;
-}
-
-.cpg-img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  border-radius: 0.5rem;
-  user-select: none;
-}
-
-.cpg-footer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.625rem;
-  padding: 0 1rem calc(1.5rem + var(--safe-bottom));
-}
-
-.cpg-counter {
+.pp-volver {
   font-family: var(--font-heading);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: var(--color-accent);
-  letter-spacing: 0.04em;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-purple);
 }
 
-.cpg-dots {
+#ppContenido {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding-left: var(--gutter);
+  padding-right: var(--gutter);
+}
+
+.pp-foto { position: relative; }
+
+.pp-galeria-wrap { position: relative; }
+
+.pp-galeria {
   display: flex;
-  gap: 0.4rem;
-}
-
-.cpg-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.35);
-  transition: background 0.15s ease, transform 0.15s ease;
-}
-
-.cpg-dot--active {
-  background: var(--color-accent);
-  transform: scale(1.25);
-}
-
-/* ── Sheet de detalle de prenda (deslizable desde abajo) ────────────────────── */
-.cpd-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(22, 0, 28, 0.5);
-  z-index: 1050;
-  display: flex;
-  align-items: flex-end;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.25s ease;
-}
-
-.cpd-overlay.open {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.cpd-sheet {
-  position: relative;
-  width: 100%;
-  max-height: 90dvh;
-  background: #fff;
-  border-radius: 1.25rem 1.25rem 0 0;
-  overflow-y: auto;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  transform: translateY(100%);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  padding-bottom: calc(2rem + var(--safe-bottom));
-  will-change: transform;
+  border-radius: 6px;
+  aspect-ratio: 3 / 4;
+  background: #f6f3f8;
 }
 
-.cpd-overlay.open .cpd-sheet {
-  transform: translateY(0);
-}
+.pp-galeria::-webkit-scrollbar { display: none; }
 
-.cpd-handle {
-  width: 40px;
-  height: 4px;
-  border-radius: 999px;
-  background: #d3cdd9;
-  margin: 0.625rem auto 0.25rem;
-  touch-action: none;
-  cursor: grab;
-}
-
-.cpd-close {
-  position: absolute;
-  top: 0.625rem;
-  right: 0.75rem;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 50%;
-  border: none;
-  background: #f3edf8;
-  color: #16001C;
+.pp-slide {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  z-index: 2;
-  -webkit-tap-highlight-color: transparent;
 }
 
-.cpd-close svg { width: 18px; height: 18px; }
-
-.cpd-photo {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 3 / 4;
-  background: #f3edf8;
-  overflow: hidden;
-}
-
-.cpd-img {
-  position: absolute;
-  inset: 0;
+.pp-slide img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  user-select: none;
+  display: block;
 }
 
-.cpd-dots {
-  position: absolute;
-  bottom: 0.625rem;
-  left: 0;
-  right: 0;
+.pp-slide--vacio { aspect-ratio: 3 / 4; border-radius: 6px; }
+
+.pp-dots {
   display: flex;
   justify-content: center;
-  gap: 0.4rem;
+  gap: 0.375rem;
+  padding-top: 0.75rem;
 }
 
-.cpd-dot {
-  width: 7px;
-  height: 7px;
+.pp-dot {
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.6);
-  transition: background 0.15s ease, transform 0.15s ease;
+  background: var(--color-lavender);
+  transition: background 0.2s, transform 0.2s;
 }
 
-.cpd-dot--active {
-  background: var(--color-accent);
+.pp-dot--activo {
+  background: var(--color-bg);
   transform: scale(1.25);
 }
 
-.cpd-body {
-  padding: 1rem 1.25rem 0;
+.pp-info { padding: 1rem 0.125rem 2rem; }
+
+.pp-nombre {
+  font-family: var(--font-heading);
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--color-bg);
+}
+
+.pp-marca {
+  font-size: 0.9375rem;
+  color: var(--color-purple);
+  margin-top: 0.25rem;
+}
+
+.pp-talla {
+  font-size: 0.875rem;
+  margin-top: 0.125rem;
+}
+
+.pp-desc {
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  margin-top: 1.25rem;
+}
+
+.pp-seccion {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #eee8f2;
+}
+
+.pp-seccion-titulo {
+  font-family: var(--font-heading);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-purple);
+  margin-bottom: 0.625rem;
+}
+
+.pp-lista {
+  list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.375rem;
+  font-size: 0.9375rem;
 }
 
-.cpd-nombre {
-  font-family: var(--font-heading);
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: #16001C;
-  line-height: 1.3;
-}
-
-.cpd-marca {
-  font-family: var(--font-body);
-  font-size: 0.875rem;
-  color: #777;
-}
-
-.cpd-talla {
-  width: fit-content;
-  background: #f3edf8;
-  color: var(--color-purple);
-  font-family: var(--font-body);
-  font-size: 0.75rem;
+.pp-lista-key {
   font-weight: 600;
-  border-radius: 999px;
-  padding: 0.2rem 0.65rem;
+  margin-right: 0.25rem;
 }
 
-.cpd-desc {
-  font-family: var(--font-body);
-  font-size: 0.875rem;
-  color: #444;
-  line-height: 1.55;
-  margin-top: 0.25rem;
-  white-space: pre-wrap;
+/* Botón WhatsApp fijo abajo */
+.pp-wa {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1.05rem var(--gutter) calc(1.05rem + var(--safe-bottom));
+  background: var(--color-accent);
+  color: var(--color-bg);
+  font-family: var(--font-heading);
+  font-size: 0.9375rem;
+  font-weight: 700;
 }
+
+.pp-wa[hidden] { display: none; }
+
+.pp-wa svg { width: 22px; height: 22px; flex-shrink: 0; }

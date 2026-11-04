@@ -19,9 +19,14 @@
 
   <h1 class="cp-titulo" id="cpTitulo">Cargando…</h1>
 
-  <div id="cpContenido">
-    <p class="cp-loading">Cargando catálogo…</p>
+  <div class="cp-filtros" id="cpFiltros" hidden>
+    <div class="cp-chips" id="cpChips" role="group" aria-label="Filtrar por talla"></div>
+    <p class="cp-conteo" id="cpConteo" aria-live="polite"></p>
   </div>
+
+  <main id="cpContenido">
+    <p class="cp-loading">Cargando catálogo…</p>
+  </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/supabase-config.js"></script>

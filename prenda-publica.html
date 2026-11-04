@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#16001C">
+  <meta name="description" content="Prenda del catálogo ZETINA">
+  <title>Prenda ZETINA</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/catalogo-publico.css">
+</head>
+<body class="pp-body">
+  <header class="cp-header">
+    <img src="logopngBLANCO.png" alt="ZETINA" class="cp-logo">
+  </header>
+
+  <nav class="pp-nav">
+    <a class="pp-volver" id="ppVolver" href="catalogo-publico.html">← Volver al catálogo</a>
+  </nav>
+
+  <main id="ppContenido">
+    <p class="cp-loading">Cargando prenda…</p>
+  </main>
+
+  <a class="pp-wa" id="ppWa" href="#" target="_blank" rel="noopener" hidden></a>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/prenda-publica.js" defer></script>
+</body>
+</html>
