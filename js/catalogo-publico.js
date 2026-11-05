@@ -1,11 +1,12 @@
 // ── Catálogo público ZETINA ────────────────────────────────────────────────
 // Página independiente: catalogo-publico.html?v=[slug]&talla=[talla]
 // No depende de app.js ni de sesión/login.
+// Solo lee de las vistas públicas (vista_*), nunca de las tablas base.
 // Al tocar una card se navega a prenda-publica.html?v=[slug]&p=[id].
 
 const FOTOS_URL = `${SUPABASE_URL}/storage/v1/object/public/prenda-fotos`;
 
-const PRENDA_COLS = 'id, numero, nombre, marca, emoji, gradiente, talla_real, created_at, fecha_adquisicion, fotos_prendas(url, orden)';
+const PRENDA_COLS = 'id, numero, nombre, marca, talla_real, created_at, fecha_adquisicion';
 const ORDEN_TALLAS = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
 const WA_ICON = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2.01-1.41.25-.69.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35zM12.04 21.5h-.01a9.45 9.45 0 0 1-4.82-1.32l-.35-.21-3.58.94.96-3.49-.23-.36a9.43 9.43 0 0 1-1.45-5.03c0-5.22 4.25-9.46 9.48-9.46 2.53 0 4.9.99 6.69 2.78a9.4 9.4 0 0 1 2.77 6.69c0 5.22-4.25 9.46-9.46 9.46zm8.05-17.52A11.32 11.32 0 0 0 12.04.65C5.77.65.66 5.75.66 12.02c0 2 .52 3.96 1.52 5.68L.57 23.35l5.79-1.52a11.34 11.34 0 0 0 5.67 1.45h.01c6.27 0 11.38-5.1 11.38-11.37 0-3.04-1.18-5.9-3.33-8.05z"/></svg>`;
@@ -79,23 +80,14 @@ function waLink(item) {
 }
 
 // ── Datos ───────────────────────────────────────────────────────────────────
-function todasFotosUrls(fotosPrendas) {
-  return (fotosPrendas || [])
-    .slice()
-    .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
-    .map(f => fotoPublicUrl(f.url))
-    .filter(Boolean);
-}
-
-function mapPrenda(p, fallbackId) {
-  const fotos = todasFotosUrls(p.fotos_prendas);
+function mapPrenda(p, fotos) {
   return {
-    id:        p.id || fallbackId,
+    id:        p.id,
     numero:    p.numero || '',
     nombre:    p.nombre || '',
     marca:     p.marca  || '',
-    emoji:     p.emoji  || '👗',
-    gradiente: p.gradiente || 'linear-gradient(150deg, #16001C 0%, #855AA2 100%)',
+    emoji:     '👗',
+    gradiente: 'linear-gradient(150deg, #16001C 0%, #855AA2 100%)',
     tallaReal: p.talla_real || '',
     tallas:    tallasDe(p.talla_real),
     fecha:     p.created_at || p.fecha_adquisicion || '',
@@ -105,22 +97,47 @@ function mapPrenda(p, fallbackId) {
 
 async function fetchCatalogo() {
   const { data, error } = await db
-    .from('prendas')
+    .from('vista_prendas_publicas')
     .select(PRENDA_COLS)
     .eq('disponible', true)
     .order('created_at', { ascending: false });
   if (error) { console.error('[cp] fetchCatalogo:', error); return []; }
-  return (data || []).map(p => mapPrenda(p));
+  return data || [];
 }
 
 async function fetchDisponible() {
-  const { data, error } = await db
-    .from('inventario_vendedoras')
-    .select(`id, prenda_id, estado, prendas(${PRENDA_COLS})`)
-    .eq('vendedora_id', visionaria.id)
-    .eq('estado', 'activo');
+  const { data: inv, error } = await db
+    .from('vista_inventario_publico')
+    .select('prenda_id')
+    .eq('vendedora_id', visionaria.id);
   if (error) { console.error('[cp] fetchDisponible:', error); return []; }
-  return (data || []).map(inv => mapPrenda(inv.prendas || {}, inv.prenda_id));
+  const ids = [...new Set((inv || []).map(r => r.prenda_id).filter(Boolean))];
+  if (!ids.length) return [];
+  const { data, error: errPrendas } = await db
+    .from('vista_prendas_publicas')
+    .select(PRENDA_COLS)
+    .in('id', ids);
+  if (errPrendas) { console.error('[cp] fetchDisponible prendas:', errPrendas); return []; }
+  return data || [];
+}
+
+// Una sola consulta para las fotos de todas las prendas → Map(prenda_id → [urls])
+async function fetchFotos(ids) {
+  const porPrenda = new Map();
+  if (!ids.length) return porPrenda;
+  const { data, error } = await db
+    .from('vista_fotos_publicas')
+    .select('prenda_id, url, orden')
+    .in('prenda_id', ids)
+    .order('orden', { ascending: true });
+  if (error) { console.error('[cp] fetchFotos:', error); return porPrenda; }
+  (data || []).forEach(f => {
+    const url = fotoPublicUrl(f.url);
+    if (!url) return;
+    if (!porPrenda.has(f.prenda_id)) porPrenda.set(f.prenda_id, []);
+    porPrenda.get(f.prenda_id).push(url);
+  });
+  return porPrenda;
 }
 
 // ── Render ──────────────────────────────────────────────────────────────────
@@ -195,13 +212,17 @@ async function cargarTodo() {
 
   // Unir ambas fuentes evitando duplicados por id de prenda
   const porId = new Map();
-  [...catalogo, ...disponible].forEach(item => {
-    if (item && item.id != null && !porId.has(item.id)) porId.set(item.id, item);
+  [...catalogo, ...disponible].forEach(p => {
+    if (p && p.id != null && !porId.has(p.id)) porId.set(p.id, p);
   });
+
+  const fotos = await fetchFotos([...porId.keys()]);
 
   // Más recientes primero (created_at, o fecha_adquisicion si falta)
   const ts = it => Date.parse(it.fecha) || 0;
-  itemsTodos = [...porId.values()].sort((a, b) => ts(b) - ts(a));
+  itemsTodos = [...porId.values()]
+    .map(p => mapPrenda(p, fotos.get(p.id) || []))
+    .sort((a, b) => ts(b) - ts(a));
 
   renderChips();
   document.getElementById('cpFiltros').hidden = !itemsTodos.length;
@@ -219,7 +240,7 @@ async function init() {
   }
 
   const { data, error } = await db
-    .from('vendedoras')
+    .from('vista_visionarias_publicas')
     .select('id, nombre, telefono')
     .eq('slug', slug)
     .maybeSingle();

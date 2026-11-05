@@ -1,6 +1,7 @@
 // ── Detalle público de prenda ZETINA ───────────────────────────────────────
 // Página independiente: prenda-publica.html?v=[slug]&p=[id]&talla=[talla]
 // No depende de app.js ni de sesión/login. Nunca muestra precios ni datos internos.
+// Solo lee de las vistas públicas (vista_*), nunca de las tablas base.
 
 const FOTOS_URL = `${SUPABASE_URL}/storage/v1/object/public/prenda-fotos`;
 
@@ -50,13 +51,10 @@ function medidasDe(p) {
     .map(m => `${m.nombre || 'Medida'} · ${formatMedida(m.valor)}`);
 }
 
-function composicionDe(rawDesc) {
-  let parsed = null;
-  try { parsed = JSON.parse(rawDesc || ''); } catch (_) {}
-  if (!parsed || typeof parsed !== 'object') return [];
+function composicionDe(p) {
   return [
-    parsed.material    && { key: 'Material',    val: parsed.material },
-    parsed.composicion && { key: 'Composición', val: parsed.composicion },
+    p.material    && { key: 'Material',    val: p.material },
+    p.composicion && { key: 'Composición', val: p.composicion },
   ].filter(Boolean);
 }
 
@@ -86,15 +84,13 @@ function initGaleria() {
 }
 
 // ── Render ──────────────────────────────────────────────────────────────────
-function render(p) {
-  const fotos = (p.fotos_prendas || [])
-    .slice()
-    .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+function render(p, fotosRows) {
+  const fotos = (fotosRows || [])
     .map(f => fotoPublicUrl(f.url))
     .filter(Boolean);
   const esJoy = String(p.numero || '').toUpperCase().startsWith('JOY-');
   const medidas = medidasDe(p);
-  const composicion = composicionDe(p.descripcion);
+  const composicion = composicionDe(p);
 
   document.title = `${p.nombre || 'Prenda'} · ZETINA`;
   document.getElementById('ppContenido').innerHTML = `
@@ -144,23 +140,26 @@ async function init() {
   if (!slug || !id) { mostrarEstado('No encontramos esta prenda. Verifica el enlace.'); return; }
 
   const { data: vend, error: errVend } = await db
-    .from('vendedoras')
+    .from('vista_visionarias_publicas')
     .select('id, telefono')
     .eq('slug', slug)
     .maybeSingle();
   if (errVend || !vend) { mostrarEstado('No encontramos este catálogo. Verifica el enlace.'); return; }
 
-  const [{ data: p, error }, { data: inv }] = await Promise.all([
-    db.from('prendas')
-      .select('id, numero, nombre, marca, emoji, gradiente, talla_real, descripcion_publica, descripcion, disponible, medida_1_nombre, medida_1_valor, medida_2_nombre, medida_2_valor, medida_3_nombre, medida_3_valor, fotos_prendas(url, orden)')
+  const [{ data: p, error }, { data: inv }, { data: fotos }] = await Promise.all([
+    db.from('vista_prendas_publicas')
+      .select('id, numero, nombre, marca, talla_real, descripcion_publica, material, composicion, disponible, medida_1_nombre, medida_1_valor, medida_2_nombre, medida_2_valor, medida_3_nombre, medida_3_valor')
       .eq('id', id)
       .maybeSingle(),
-    db.from('inventario_vendedoras')
-      .select('id')
+    db.from('vista_inventario_publico')
+      .select('prenda_id')
       .eq('vendedora_id', vend.id)
       .eq('prenda_id', id)
-      .eq('estado', 'activo')
       .limit(1),
+    db.from('vista_fotos_publicas')
+      .select('url, orden')
+      .eq('prenda_id', id)
+      .order('orden', { ascending: true }),
   ]);
 
   // Solo mostrar prendas que forman parte del catálogo (general o inventario activo de la Visionaria)
@@ -169,7 +168,7 @@ async function init() {
     return;
   }
 
-  render(p);
+  render(p, fotos);
   setupWhatsApp(p, normalizarTelefono(vend.telefono), slug);
 }
 
